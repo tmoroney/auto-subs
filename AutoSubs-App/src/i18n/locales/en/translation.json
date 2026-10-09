@@ -513,6 +513,12 @@
       "lastWord": "Last word",
       "toPrevious": "Move first word up ({{shortcut}})",
       "toNext": "Move last word down ({{shortcut}})"
+    },
+    "captionActions": {
+      "addAfter": "Add caption",
+      "addAfterTitle": "Insert an empty caption below this one",
+      "deleteCaption": "Delete",
+      "deleteCaptionTitle": "Delete caption, its text joins the nearest one"
     }
   },
   "gettingStarted": {

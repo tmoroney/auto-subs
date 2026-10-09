@@ -493,6 +493,12 @@
       "lastWord": "Última palabra",
       "toPrevious": "Subir primera palabra ({{shortcut}})",
       "toNext": "Bajar última palabra ({{shortcut}})"
+    },
+    "captionActions": {
+      "addAfter": "Añadir subtítulo",
+      "addAfterTitle": "Inserta un subtítulo vacío debajo",
+      "deleteCaption": "Eliminar",
+      "deleteCaptionTitle": "Elimina el subtítulo y une su texto al vecino"
     }
   },
   "gettingStarted": {

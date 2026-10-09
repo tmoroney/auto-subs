@@ -63,6 +63,8 @@ interface SubtitleDocumentContextType {
    * which case callers should fall back to the document filename.
    */
   currentSubtitleDocumentSourceName: string | null;
+  /** Language stored with the open transcript, as passed to reformatting. */
+  subtitleLanguage: string | undefined;
   setSubtitles: (subtitles: Subtitle[]) => void;
   setSpeakers: (speakers: Speaker[]) => void;
   setCurrentSubtitleDocumentFilename: (filename: string | null) => void;
@@ -86,6 +88,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   const [markIn, setMarkIn] = useState(0);
   const [currentSubtitleDocumentFilename, setCurrentSubtitleDocumentFilename] = useState<string | null>(null);
   const [currentSubtitleDocumentSourceName, setCurrentSubtitleDocumentSourceName] = useState<string | null>(null);
+  const [subtitleLanguage, setSubtitleLanguage] = useState<string | undefined>(undefined);
 
   // Prefer the source audio file's name, else the timeline it came from.
   // Deliberately excludes `displayName`, which falls back to the generated
@@ -119,6 +122,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         console.log("Transcript loaded:", transcript);
         setCurrentSubtitleDocumentFilename(filename);
         setCurrentSubtitleDocumentSourceName(subtitleDocumentSourceName(transcript));
+        setSubtitleLanguage(transcript.language);
         setMarkIn(transcript.mark_in);
         setSubtitles(transcript.segments || []);
         setSpeakers(transcript.speakers || []);
@@ -127,6 +131,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         console.warn("No transcript found for:", filename);
         setCurrentSubtitleDocumentFilename(null);
         setCurrentSubtitleDocumentSourceName(null);
+        setSubtitleLanguage(undefined);
         setSubtitles([]);
         setSpeakers([]);
       }
@@ -134,6 +139,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       console.log("No matching transcript found");
       setCurrentSubtitleDocumentFilename(null);
       setCurrentSubtitleDocumentSourceName(null);
+      setSubtitleLanguage(undefined);
       setSubtitles([]);
       setSpeakers([]);
     }
@@ -251,6 +257,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     // Update the global subtitles state to show in sidebar
     setSpeakers(speakers)
     setSubtitles(segments)
+    setSubtitleLanguage(transcript?.language)
     console.log("Subtitle list updated with", segments.length, "subtitles")
 
     // Ensure the font for the detected transcription language is registered
@@ -315,6 +322,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     console.log("Subtitle list updated with", segments.length, "subtitles");
     setSpeakers(transcript.speakers || []);
     setSubtitles(segments);
+    setSubtitleLanguage(transcript.language);
   };
 
   async function exportSubtitlesAs(
@@ -449,6 +457,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
           ? fileInput?.split(/[/\\]/).pop() || null
           : timelineInfo?.name || null,
       )
+      setSubtitleLanguage(undefined)
       setSubtitles(segments)
     } catch (error) {
       console.error('Failed to open file', error);
@@ -462,6 +471,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     setSpeakers(transcript?.speakers || []);
     setCurrentSubtitleDocumentFilename(filename);
     setCurrentSubtitleDocumentSourceName(subtitleDocumentSourceName(transcript));
+    setSubtitleLanguage(transcript?.language);
     if (typeof transcript?.mark_in === "number") {
       setMarkIn(transcript.mark_in);
     }
@@ -481,6 +491,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     setSpeakers([]);
     setCurrentSubtitleDocumentFilename(null);
     setCurrentSubtitleDocumentSourceName(null);
+    setSubtitleLanguage(undefined);
     setMarkIn(0);
   };
 
@@ -491,6 +502,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       markIn,
       currentSubtitleDocumentFilename,
       currentSubtitleDocumentSourceName,
+      subtitleLanguage,
       setSubtitles,
       setSpeakers,
       setCurrentSubtitleDocumentFilename,

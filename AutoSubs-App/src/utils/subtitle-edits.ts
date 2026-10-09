@@ -30,6 +30,19 @@ function matchWords(before: string[], after: string[]): Map<number, number> {
     return matches;
 }
 
+/** Whether the formatter separates this transcript's words with spaces. */
+export function usesWordSpaces(source: Subtitle[], language = 'en'): boolean {
+    const primaryLanguage = language.toLowerCase().split(/[-_]/)[0];
+    const renderedWithSpaces = source.some(cue =>
+        normalize(cue.text) !== cue.words.map(word => word.word.trim()).join(''),
+    );
+    // Explicit languages follow the formatter's spacing profile. In auto mode,
+    // use its rendered source rather than guessing from the edited text.
+    return primaryLanguage === 'auto'
+        ? renderedWithSpaces || !source.some(cue => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(cue.text))
+        : primaryLanguage !== 'zh' && primaryLanguage !== 'ja';
+}
+
 /** Apply edits against the displayed word tokens, keeping the unformatted
  * source of unchanged words. Both inputs have been normalized by the Rust
  * formatter, so their flattened word order is independent of cue density. */
@@ -41,15 +54,7 @@ export function preserveSubtitleEdits(
     const sourceWords = source.flatMap((cue, group) =>
         (cue.words ?? []).map(word => ({ word, group, speaker: cue.speaker_id })),
     );
-    const primaryLanguage = language.toLowerCase().split(/[-_]/)[0];
-    const renderedWithSpaces = source.some(cue =>
-        normalize(cue.text) !== cue.words.map(word => word.word.trim()).join(''),
-    );
-    // Explicit languages follow the formatter's spacing profile. In auto mode,
-    // use its rendered source rather than guessing from the edited text.
-    const usesSpaces = primaryLanguage === 'auto'
-        ? renderedWithSpaces || !source.some(cue => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(cue.text))
-        : primaryLanguage !== 'zh' && primaryLanguage !== 'ja';
+    const usesSpaces = usesWordSpaces(source, language);
 
     const tokenize = (text: string) => usesSpaces
         ? text.split(/\s+/).filter(Boolean)

@@ -493,6 +493,12 @@
       "lastWord": "末词",
       "toPrevious": "首词上移 ({{shortcut}})",
       "toNext": "末词下移 ({{shortcut}})"
+    },
+    "captionActions": {
+      "addAfter": "添加字幕",
+      "addAfterTitle": "在下方插入空字幕",
+      "deleteCaption": "删除",
+      "deleteCaptionTitle": "删除字幕，文字并入相邻字幕"
     }
   },
   "gettingStarted": {

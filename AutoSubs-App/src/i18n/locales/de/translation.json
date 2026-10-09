@@ -493,6 +493,12 @@
       "lastWord": "Letztes Wort",
       "toPrevious": "Erstes Wort nach oben ({{shortcut}})",
       "toNext": "Letztes Wort nach unten ({{shortcut}})"
+    },
+    "captionActions": {
+      "addAfter": "Untertitel hinzufügen",
+      "addAfterTitle": "Leeren Untertitel darunter einfügen",
+      "deleteCaption": "Löschen",
+      "deleteCaptionTitle": "Untertitel löschen, Text wandert zum Nachbarn"
     }
   },
   "gettingStarted": {

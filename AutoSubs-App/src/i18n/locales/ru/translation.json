@@ -503,6 +503,12 @@
       "lastWord": "Последнее слово",
       "toPrevious": "Первое слово вверх ({{shortcut}})",
       "toNext": "Последнее слово вниз ({{shortcut}})"
+    },
+    "captionActions": {
+      "addAfter": "Добавить субтитр",
+      "addAfterTitle": "Вставить пустой субтитр ниже",
+      "deleteCaption": "Удалить",
+      "deleteCaptionTitle": "Удалить субтитр, текст перейдёт в соседний"
     }
   },
   "gettingStarted": {

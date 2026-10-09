@@ -493,6 +493,12 @@
       "lastWord": "Dernier mot",
       "toPrevious": "Monter le premier mot ({{shortcut}})",
       "toNext": "Descendre le dernier mot ({{shortcut}})"
+    },
+    "captionActions": {
+      "addAfter": "Ajouter sous-titre",
+      "addAfterTitle": "Insérer un sous-titre vide en dessous",
+      "deleteCaption": "Supprimer",
+      "deleteCaptionTitle": "Supprime le sous-titre, son texte rejoint le voisin"
     }
   },
   "gettingStarted": {

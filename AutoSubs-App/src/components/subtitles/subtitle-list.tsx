@@ -4,7 +4,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
-import { ArrowDown, ArrowUp, X } from "lucide-react"
+import { ArrowDown, ArrowUp, Plus, Trash2, X } from "lucide-react"
+import { deleteCaptionAt, insertCaptionAfter } from "@/utils/subtitle-caption-ops"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SpeakerSettings } from "@/components/common/speaker-settings"
@@ -44,7 +45,7 @@ const SubtitleList = ({
 }: SubtitleListProps) => {
     const { t } = useTranslation();
     const shortcutModifier = navigator.platform.startsWith("Mac") ? "⌘" : "Ctrl";
-    const { subtitles, updateSubtitles, currentSubtitleDocumentFilename, speakers, updateSpeakers } = useSubtitleDocument();
+    const { subtitles, updateSubtitles, currentSubtitleDocumentFilename, subtitleLanguage, speakers, updateSpeakers } = useSubtitleDocument();
     const [uncontrolledSelectedIndex, setUncontrolledSelectedIndex] = useState<number | null>(null);
     const selectedIndex = controlledSelectedIndex ?? uncontrolledSelectedIndex;
 
@@ -53,7 +54,10 @@ const SubtitleList = ({
     const inlineEditorRef = useRef<HTMLDivElement>(null);
     const subtitlesRef = useRef(subtitles);
     const lastSubtitlesPropRef = useRef(subtitles);
-    const moveHistoryRef = useRef<{ past: (typeof subtitles)[]; future: (typeof subtitles)[] }>({ past: [], future: [] });
+    // Each snapshot remembers the row to select when it is restored, since
+    // adding or removing a caption shifts the rows after it.
+    type MoveSnapshot = { subtitles: typeof subtitles; index: number };
+    const moveHistoryRef = useRef<{ past: MoveSnapshot[]; future: MoveSnapshot[] }>({ past: [], future: [] });
     const [editingSubtitleId, setEditingSubtitleId] = React.useState<number | null>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -115,7 +119,7 @@ const SubtitleList = ({
         return 0;
     }, [speakerIdBase, speakers.length]);
 
-    const filteredSubtitleItems = useMemo(() => {
+    const searchMatches = useMemo(() => {
         const query = searchQuery ?? "";
         return subtitles
             .map((subtitle, index) => ({ subtitle, index }))
@@ -138,9 +142,21 @@ const SubtitleList = ({
             });
     }, [subtitles, searchQuery, matchesQuery, searchCaseSensitive, speakers, getSpeakerIndex]);
 
+    // The row being edited stays visible during a search, so a caption that is
+    // added, or edited until it no longer matches, keeps its editor.
+    const filteredSubtitleItems = useMemo(() => {
+        const index = selectedIndex ?? -1;
+        const selected = subtitles[index];
+        if (!selected || searchMatches.some(item => item.index === index)) return searchMatches;
+        const items = [...searchMatches];
+        const at = items.findIndex(item => item.index > index);
+        items.splice(at < 0 ? items.length : at, 0, { subtitle: selected, index });
+        return items;
+    }, [searchMatches, selectedIndex, subtitles]);
+
     useEffect(() => {
-        onMatchCountChange?.(filteredSubtitleItems.length);
-    }, [filteredSubtitleItems.length, onMatchCountChange]);
+        onMatchCountChange?.(searchMatches.length);
+    }, [searchMatches.length, onMatchCountChange]);
 
     const rowVirtualizer = useVirtualizer({
         count: filteredSubtitleItems.length,
@@ -249,28 +265,33 @@ const SubtitleList = ({
         }
     };
 
-    const recordMove = (next: typeof subtitles, index: number) => {
+    /** `index` is the row to select afterwards; `restoreIndex` is the row to
+     * select when this change is undone. */
+    const recordMove = (next: typeof subtitles, index: number, restoreIndex = index) => {
         const history = moveHistoryRef.current;
-        history.past.push(subtitlesRef.current);
+        history.past.push({ subtitles: subtitlesRef.current, index: restoreIndex });
         if (history.past.length > MAX_MOVE_HISTORY) history.past.shift();
         history.future = [];
         showSubtitles(next, index);
+        if (index !== selectedIndex) setSelectedIndex(index);
+    };
+
+    const restoreMove = (from: MoveSnapshot[], to: MoveSnapshot[], index: number) => {
+        const snapshot = from.pop();
+        if (!snapshot) return;
+        to.push({ subtitles: subtitlesRef.current, index });
+        showSubtitles(snapshot.subtitles, snapshot.index);
+        if (snapshot.index !== selectedIndex) setSelectedIndex(snapshot.index);
     };
 
     const undoMove = (index: number) => {
         const history = moveHistoryRef.current;
-        const previous = history.past.pop();
-        if (!previous) return;
-        history.future.push(subtitlesRef.current);
-        showSubtitles(previous, index);
+        restoreMove(history.past, history.future, index);
     };
 
     const redoMove = (index: number) => {
         const history = moveHistoryRef.current;
-        const next = history.future.pop();
-        if (!next) return;
-        history.past.push(subtitlesRef.current);
-        showSubtitles(next, index);
+        restoreMove(history.future, history.past, index);
     };
 
     const handleMoveFirstWordToPrev = (index: number) => {
@@ -294,6 +315,18 @@ const SubtitleList = ({
         newSubtitles[index] = { ...curr, text: nextCurrText };
         recordMove(newSubtitles, index);
         return true;
+    };
+
+    const handleInsertCaptionAfter = (index: number) => {
+        const next = insertCaptionAfter(subtitlesRef.current, index);
+        if (next === subtitlesRef.current) return;
+        recordMove(next, index + 1, index);
+    };
+
+    const handleDeleteCaption = (index: number) => {
+        const result = deleteCaptionAt(subtitlesRef.current, index, subtitleLanguage);
+        if (!result.ok) return;
+        recordMove(result.subtitles, result.selectedIndex, index);
     };
 
     const handleMoveLastWordToNext = (index: number) => {
@@ -459,7 +492,29 @@ const SubtitleList = ({
                                                 </Button>
                                             )
                                         ) : null}
-
+                                        {subtitles.length > 1 ? (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className={`size-6 shrink-0 text-muted-foreground transition-opacity group-hover:opacity-100 focus-visible:opacity-100 ${subtitle.speaker_id && speakers.length > 0 ? "" : "ml-auto"} ${isSelected ? "opacity-100" : "opacity-0"}`}
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteCaption(index);
+                                                        }}
+                                                        aria-label={t("subtitles.captionActions.deleteCaption")}
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-60">
+                                                    <p>{t("subtitles.captionActions.deleteCaptionTitle")}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        ) : null}
                                     </div>
                                     <div className="relative w-full">
                                         {isSelected ? (
@@ -583,6 +638,29 @@ const SubtitleList = ({
                                             </Tooltip>
                                         </ButtonGroup>
                                         ) : null}
+                                    </div>
+                                    <div className="flex w-full justify-center pt-1">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className={`size-7 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 ${isSelected ? "opacity-100" : "opacity-0"}`}
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleInsertCaptionAfter(index);
+                                                    }}
+                                                    aria-label={t("subtitles.captionActions.addAfter")}
+                                                >
+                                                    <Plus className="size-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-60">
+                                                <p>{t("subtitles.captionActions.addAfterTitle")}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
                                     </div>
                                 </div>
                             );
