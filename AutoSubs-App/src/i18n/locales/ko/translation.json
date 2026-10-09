@@ -507,6 +507,13 @@
       "lastWord": "마지막 단어",
       "toPrevious": "첫 단어 위로 이동 ({{shortcut}})",
       "toNext": "마지막 단어 아래로 이동 ({{shortcut}})"
+    },
+    "captionActions": {
+      "addAfter": "자막 추가",
+      "addAfterTitle": "아래에 빈 자막 삽입",
+      "deleteCaption": "삭제",
+      "deleteCaptionTitle": "이 자막을 목록에서 제거",
+      "deleteOnlyCaption": "자막은 하나 이상 필요합니다"
     }
   },
   "theme": {

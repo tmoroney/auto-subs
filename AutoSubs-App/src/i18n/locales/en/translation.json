@@ -513,6 +513,13 @@
       "lastWord": "Last word",
       "toPrevious": "Move first word up ({{shortcut}})",
       "toNext": "Move last word down ({{shortcut}})"
+    },
+    "captionActions": {
+      "addAfter": "Add caption",
+      "addAfterTitle": "Insert an empty caption below this one",
+      "deleteCaption": "Delete",
+      "deleteCaptionTitle": "Remove this caption from the list",
+      "deleteOnlyCaption": "Keep at least one caption in the transcript"
     }
   },
   "gettingStarted": {

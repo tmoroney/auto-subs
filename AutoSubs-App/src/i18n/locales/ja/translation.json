@@ -507,6 +507,13 @@
       "lastWord": "最後の単語",
       "toPrevious": "最初の単語を上へ ({{shortcut}})",
       "toNext": "最後の単語を下へ ({{shortcut}})"
+    },
+    "captionActions": {
+      "addAfter": "字幕を追加",
+      "addAfterTitle": "この下に空の字幕を挿入",
+      "deleteCaption": "削除",
+      "deleteCaptionTitle": "この字幕をリストから削除",
+      "deleteOnlyCaption": "字幕は1件以上必要です"
     }
   },
   "theme": {

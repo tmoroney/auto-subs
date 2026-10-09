@@ -4,7 +4,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
-import { ArrowDown, ArrowUp, X } from "lucide-react"
+import { ArrowDown, ArrowUp, Plus, Trash2, X } from "lucide-react"
+import { deleteCaptionAt, insertCaptionAfter } from "@/utils/subtitle-caption-ops"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SpeakerSettings } from "@/components/common/speaker-settings"
@@ -296,6 +297,20 @@ const SubtitleList = ({
         return true;
     };
 
+    const handleInsertCaptionAfter = (index: number) => {
+        const next = insertCaptionAfter(subtitlesRef.current, index);
+        recordMove(next, index + 1);
+        setSelectedIndex(index + 1);
+    };
+
+    const handleDeleteCaption = (index: number) => {
+        const result = deleteCaptionAt(subtitlesRef.current, index);
+        if (!result.ok) return;
+        const nextIndex = Math.min(index, result.subtitles.length - 1);
+        recordMove(result.subtitles, nextIndex);
+        setSelectedIndex(nextIndex);
+    };
+
     const handleMoveLastWordToNext = (index: number) => {
         if (index >= subtitlesRef.current.length - 1) return false;
         const words = splitIntoWords(inlineEditorRef.current?.innerText ?? draftText);
@@ -377,6 +392,32 @@ const SubtitleList = ({
                         onClick={() => selectSubtitle(index)}
                     >
                                     <div className="flex w-full items-center gap-2">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-7 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                                    disabled={subtitles.length <= 1}
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteCaption(index);
+                                                    }}
+                                                    aria-label={t("subtitles.captionActions.deleteCaption")}
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-60">
+                                                <p>
+                                                    {subtitles.length <= 1
+                                                        ? t("subtitles.captionActions.deleteOnlyCaption")
+                                                        : t("subtitles.captionActions.deleteCaptionTitle")}
+                                                </p>
+                                            </TooltipContent>
+                                        </Tooltip>
                                         <button
                                             type="button"
                                             title={t("subtitles.jumpToTimeline")}
@@ -583,6 +624,29 @@ const SubtitleList = ({
                                             </Tooltip>
                                         </ButtonGroup>
                                         ) : null}
+                                    </div>
+                                    <div className="flex w-full justify-center pt-1">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="size-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleInsertCaptionAfter(index);
+                                                    }}
+                                                    aria-label={t("subtitles.captionActions.addAfter")}
+                                                >
+                                                    <Plus className="size-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-60">
+                                                <p>{t("subtitles.captionActions.addAfterTitle")}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
                                     </div>
                                 </div>
                             );
