@@ -1,11 +1,10 @@
 import type { Subtitle } from '../types';
+import { usesWordSpaces } from './subtitle-edits.ts';
 
 /** Shortest span an added caption gets before it borrows time from a neighbour. */
 export const MIN_INSERTED_DURATION = 0.5;
 /** Span of a caption added after the last one, where no neighbour bounds it. */
 export const TAIL_INSERTED_DURATION = 2;
-
-const NO_SPACE_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
 
 const reindex = (subtitles: Subtitle[]) => subtitles.map((cue, id) => ({ ...cue, id }));
 
@@ -79,9 +78,10 @@ export type DeleteCaptionResult =
  * text joins the previous caption (the next one when it is first), keeping
  * its words and their timings so none are lost; the merged caption keeps the
  * receiving caption's speaker. The only caption cannot be removed.
- * `selectedIndex` is the caption that received the text.
+ * `selectedIndex` is the caption that received the text. `language` is the
+ * transcript's, so the join uses the same spacing as reformatting does.
  */
-export function deleteCaptionAt(subtitles: Subtitle[], index: number): DeleteCaptionResult {
+export function deleteCaptionAt(subtitles: Subtitle[], index: number, language?: string): DeleteCaptionResult {
     const target = subtitles[index];
     if (!target) return { ok: false, reason: 'out_of_range' };
     if (subtitles.length === 1) return { ok: false, reason: 'only_caption' };
@@ -97,8 +97,7 @@ export function deleteCaptionAt(subtitles: Subtitle[], index: number): DeleteCap
     const firstWords = first.words ?? [];
     const left = (first.text ?? '').trimEnd();
     const right = (second.text ?? '').trimStart();
-    const spaced = !NO_SPACE_SCRIPT.test(left.slice(-1)) && !NO_SPACE_SCRIPT.test(right.charAt(0));
-    const separator = left && right && spaced ? ' ' : '';
+    const separator = left && right && usesWordSpaces(subtitles, language) ? ' ' : '';
     // The formatter separates words that lack a leading space only across a
     // line change, so give the joining word one to render the same text.
     const secondWords = (second.words ?? []).map((word, wordIndex) =>

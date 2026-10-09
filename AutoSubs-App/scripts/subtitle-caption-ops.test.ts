@@ -121,13 +121,36 @@ assert.equal(speakerDeleted.subtitles[0].speaker_id, 'A');
 assert.deepEqual(deleteCaptionAt([cue('solo', 0, 1)], 0), { ok: false, reason: 'only_caption' });
 assert.deepEqual(deleteCaptionAt(gapped, 2), { ok: false, reason: 'out_of_range' });
 
-// Chinese and Japanese text joins without a space.
-const cjk = [cue('你好', 0, 1), cue('世界', 1, 2)];
-cjk.forEach(segment => { segment.words = [{ word: segment.text, start: segment.start, end: segment.end, line_number: 0 }]; });
-const cjkDeleted = deleteCaptionAt(cjk, 1);
-assert.ok(cjkDeleted.ok);
-assert.equal(cjkDeleted.subtitles[0].text, '你好世界');
-assert.deepEqual(cjkDeleted.subtitles[0].words.map(word => word.word), ['你好', '世界']);
+// The join follows the transcript language's spacing, the same rule that
+// reformatting uses, so it is never read as a correction that would collapse
+// the two captions' timed words into one.
+function oneWordCues(texts: string[], word = (text: string) => text): Subtitle[] {
+    return texts.map((text, index) => ({ id: index, start: index, end: index + 1, text, speaker_id: '1',
+        words: [{ word: word(text), start: index, end: index + 1, line_number: 0 }] }));
+}
+function assertJoin(source: Subtitle[], language: string | undefined, text: string) {
+    const merged = deleteCaptionAt(source, 1, language);
+    assert.ok(merged.ok);
+    assert.equal(merged.subtitles[0].text, text);
+    assert.deepEqual(merged.subtitles[0].words.map(word => [word.word.trim(), word.start, word.end]),
+        source.flatMap(segment => segment.words.map(word => [word.word.trim(), word.start, word.end])));
+    const reformatted = preserveSubtitleEdits(source, merged.subtitles, language);
+    assert.equal(reformatted.changed, false, `${language}: ${text} was read as an edit`);
+}
+
+// A Chinese or Japanese word inside an English transcript keeps its space.
+assertJoin(oneWordCues(['Visit', '東京'], text => text === '東京' ? ' 東京' : text), 'en', 'Visit 東京');
+assertJoin(oneWordCues(['Visit', '東京']), 'en', 'Visit 東京');
+assertJoin(oneWordCues(['東京', 'Visit']), 'en', '東京 Visit');
+// Without a stored language reformatting assumes English spacing, and so does the join.
+assertJoin(oneWordCues(['Visit', '東京']), undefined, 'Visit 東京');
+// Chinese and Japanese transcripts join without a space, including Latin words.
+assertJoin(oneWordCues(['你好', '世界']), 'zh', '你好世界');
+assertJoin(oneWordCues(['東京', 'Tokyo']), 'ja', '東京Tokyo');
+assertJoin(oneWordCues(['東京', 'Tokyo']), 'ja-JP', '東京Tokyo');
+// Auto mode infers spacing from the transcript, as reformatting does.
+assertJoin(oneWordCues(['你好', '世界']), 'auto', '你好世界');
+assertJoin([cue('Visit the', 0, 2), ...oneWordCues(['東京']).map(segment => ({ ...segment, start: 2, end: 3 }))], 'auto', 'Visit the 東京');
 
 // A merged caption renders exactly as its words, so reformatting does not
 // read the delete as a text edit, even when the joining word had no space.

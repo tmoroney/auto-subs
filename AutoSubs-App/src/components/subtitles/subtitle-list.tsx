@@ -45,7 +45,7 @@ const SubtitleList = ({
 }: SubtitleListProps) => {
     const { t } = useTranslation();
     const shortcutModifier = navigator.platform.startsWith("Mac") ? "⌘" : "Ctrl";
-    const { subtitles, updateSubtitles, currentSubtitleDocumentFilename, speakers, updateSpeakers } = useSubtitleDocument();
+    const { subtitles, updateSubtitles, currentSubtitleDocumentFilename, subtitleLanguage, speakers, updateSpeakers } = useSubtitleDocument();
     const [uncontrolledSelectedIndex, setUncontrolledSelectedIndex] = useState<number | null>(null);
     const selectedIndex = controlledSelectedIndex ?? uncontrolledSelectedIndex;
 
@@ -324,7 +324,7 @@ const SubtitleList = ({
     };
 
     const handleDeleteCaption = (index: number) => {
-        const result = deleteCaptionAt(subtitlesRef.current, index);
+        const result = deleteCaptionAt(subtitlesRef.current, index, subtitleLanguage);
         if (!result.ok) return;
         recordMove(result.subtitles, result.selectedIndex, index);
     };
