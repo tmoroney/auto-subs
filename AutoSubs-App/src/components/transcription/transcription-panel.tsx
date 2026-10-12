@@ -17,6 +17,7 @@ import type { TranscriptionOptions, EnsureModelsRequest, EnsureModelsResponse } 
 import { getActiveCensorWords } from "@/censor/merge";
 import { TranscriptionPanelView } from "./transcription-panel-view";
 import { describeError } from "./utils";
+import { inspectWhisperModel } from "@/components/settings/import-model-dialog";
 
 interface TranscriptionPanelProps {
   onViewSubtitles?: () => void;
@@ -293,6 +294,18 @@ export function TranscriptionPanel({
       return;
     }
 
+    // An imported model is used where it was saved, so it can have been moved
+    // or deleted since. Check before anything starts, in the user's language.
+    const selectedModel = modelsState[model];
+    if (selectedModel?.importedPath) {
+      const info = await inspectWhisperModel(
+        selectedModel.importedPath,
+        tErr,
+        tErr("models.imported.errors.missingTitle"),
+      );
+      if (!info) return;
+    }
+
     setIsProcessing(true);
     setTranscriptionProgress(0);
     clearProgressSteps();
@@ -318,6 +331,7 @@ export function TranscriptionPanel({
         enableForcedAlignment: willUseForcedAlignment,
         maxSpeakers: speakerLimit,
         diarizeBackend,
+        asrModelPath: selectedModel?.importedPath,
       };
 
       const [audioInfo, modelPaths] = await Promise.all([
