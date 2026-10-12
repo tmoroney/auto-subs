@@ -97,6 +97,49 @@ fn setup_params(options: &TranscribeOptions) -> FullParams<'_, '_> {
     params
 }
 
+/// The DTW alignment-head preset for a whisper.cpp model name.
+fn dtw_preset(name: &str) -> Option<DtwModelPreset> {
+    Some(match name {
+        "tiny.en" => DtwModelPreset::TinyEn,
+        "tiny" => DtwModelPreset::Tiny,
+        "base.en" => DtwModelPreset::BaseEn,
+        "base" => DtwModelPreset::Base,
+        "small.en" => DtwModelPreset::SmallEn,
+        "small" => DtwModelPreset::Small,
+        "medium.en" => DtwModelPreset::MediumEn,
+        "medium" => DtwModelPreset::Medium,
+        "large-v1" => DtwModelPreset::LargeV1,
+        "large-v2" => DtwModelPreset::LargeV2,
+        "large-v3" => DtwModelPreset::LargeV3,
+        "large-v3-turbo" => DtwModelPreset::LargeV3Turbo,
+        _ => return None,
+    })
+}
+
+/// The whisper.cpp model whose DTW preset fits this model.
+///
+/// Catalogue models are known by name. An imported file has an opaque id, so
+/// its header decides; a shape that matches no base model gets `None`, which
+/// turns DTW off rather than applying another model's alignment heads.
+fn dtw_base_model<'a>(model_name: &'a str, model_path: &Path) -> Option<&'a str> {
+    if dtw_preset(model_name).is_some() {
+        return Some(model_name);
+    }
+    match crate::ggml_header::WhisperHeader::read(model_path) {
+        Ok(header) => {
+            let base = header.base_model();
+            if base.is_none() {
+                tracing::warn!("DTW disabled: model header {:?} matches no known Whisper model", header);
+            }
+            base
+        }
+        Err(e) => {
+            tracing::warn!("DTW disabled: couldn't read model header ({})", e);
+            None
+        }
+    }
+}
+
 pub fn create_context(
     model_path: &Path,
     model_name: &str,
@@ -128,25 +171,17 @@ pub fn create_context(
         ctx_params.gpu_device = gpu_device; // GPU device id, default 0
     }
 
-    // Set DTW parameters if enabled
-    if let Some(true) = enable_dtw {
+    // Set DTW parameters if enabled and the model's alignment heads are known
+    let dtw_base = match enable_dtw {
+        Some(true) => dtw_base_model(model_name, model_path)
+            .and_then(|base| dtw_preset(base).map(|preset| (base, preset))),
+        _ => None,
+    };
+    let dtw_on = dtw_base.is_some();
+    if let Some((base, model_preset)) = dtw_base {
         ctx_params.flash_attn(false); // DTW requires flash_attn off
-        let model_preset = match model_name {
-            "tiny.en" => DtwModelPreset::TinyEn,
-            "tiny" => DtwModelPreset::Tiny,
-            "base.en" => DtwModelPreset::BaseEn,
-            "base" => DtwModelPreset::Base,
-            "small.en" => DtwModelPreset::SmallEn,
-            "small" => DtwModelPreset::Small,
-            "medium.en" => DtwModelPreset::MediumEn,
-            "medium" => DtwModelPreset::Medium,
-            "large-v3" => DtwModelPreset::LargeV3,
-            "large-v3-turbo" => DtwModelPreset::LargeV3Turbo,
-            _ => DtwModelPreset::Small, // Defaulting to Small
-        };
-
-        let dtw_mem_size = calculate_dtw_mem_size(model_name);
-        tracing::info!("DTW enabled: allocating {} MB for DTW memory", dtw_mem_size / 1024 / 1024);
+        let dtw_mem_size = calculate_dtw_mem_size(base);
+        tracing::info!("DTW enabled ({}): allocating {} MB for DTW memory", base, dtw_mem_size / 1024 / 1024);
         ctx_params.dtw_parameters(DtwParameters {
             mode: DtwMode::ModelPreset { model_preset },
             dtw_mem_size,
@@ -163,7 +198,7 @@ pub fn create_context(
         ctx_params.use_gpu,
         ctx_params.gpu_device,
         ctx_params.flash_attn,
-        enable_dtw.unwrap_or(false)
+        dtw_on
     );
     let model_path = model_path
         .to_str()
@@ -602,5 +637,34 @@ mod tests {
         for w in out.windows(2) {
             assert_eq!(w[0].end, w[1].start);
         }
+    }
+
+    #[test]
+    fn dtw_base_comes_from_the_name_or_the_header() {
+        use crate::ggml_header::synthetic_header;
+        let dir = std::env::temp_dir().join(format!("dtw-base-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let missing = dir.join("missing.bin");
+
+        // Catalogue names don't need the file.
+        assert_eq!(dtw_base_model("small", &missing), Some("small"));
+        assert_eq!(dtw_base_model("large-v3-turbo", &missing), Some("large-v3-turbo"));
+
+        // An imported model's header picks the preset.
+        let fine_tune = dir.join("fine-tune.bin");
+        std::fs::write(&fine_tune, synthetic_header(51866, 32, 32, 128)).unwrap();
+        assert_eq!(dtw_base_model("custom:abc", &fine_tune), Some("large-v3"));
+        assert!(dtw_preset("large-v2").is_some());
+
+        // Unknown shape, unreadable or non-GGML file: DTW off.
+        let distil = dir.join("distil.bin");
+        std::fs::write(&distil, synthetic_header(51866, 32, 2, 128)).unwrap();
+        assert_eq!(dtw_base_model("custom:def", &distil), None);
+        assert_eq!(dtw_base_model("custom:ghi", &missing), None);
+        let ct2 = dir.join("model.bin");
+        std::fs::write(&ct2, b"not a ggml file at all, but long enough to read a header").unwrap();
+        assert_eq!(dtw_base_model("custom:jkl", &ct2), None);
+
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

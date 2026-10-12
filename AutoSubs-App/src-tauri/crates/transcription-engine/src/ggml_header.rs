@@ -144,17 +144,20 @@ impl WhisperHeader {
     }
 }
 
+/// A header with the given shape, for tests.
+#[cfg(test)]
+pub(crate) fn synthetic_header(n_vocab: i32, n_audio_layer: i32, n_text_layer: i32, n_mels: i32) -> Vec<u8> {
+    let mut bytes = GGML_FILE_MAGIC.to_le_bytes().to_vec();
+    for v in [n_vocab, 1500, 384, 6, n_audio_layer, 448, 384, 6, n_text_layer, n_mels, 1] {
+        bytes.extend_from_slice(&v.to_le_bytes());
+    }
+    bytes
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn header(n_vocab: i32, n_audio_layer: i32, n_text_layer: i32, n_mels: i32) -> Vec<u8> {
-        let mut bytes = GGML_FILE_MAGIC.to_le_bytes().to_vec();
-        for v in [n_vocab, 1500, 384, 6, n_audio_layer, 448, 384, 6, n_text_layer, n_mels, 1] {
-            bytes.extend_from_slice(&v.to_le_bytes());
-        }
-        bytes
-    }
+    use super::synthetic_header as header;
 
     fn base(bytes: &[u8]) -> Option<&'static str> {
         WhisperHeader::parse(bytes).unwrap().base_model()

@@ -37,3 +37,27 @@ pub fn delete_model<R: Runtime>(model: &str, app: AppHandle<R>) -> Result<(), St
         Err(format!("Failed to delete model '{}' (model may not exist)", model))
     }
 }
+
+/// What the header of an imported Whisper model file says about it.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WhisperModelInfo {
+    /// Whether the model transcribes more than English.
+    pub multilingual: bool,
+    /// The whisper.cpp model it was built from, or `None` when the shape is
+    /// unknown (word timing is then turned off for it).
+    pub base_model: Option<String>,
+}
+
+/// Checks that `path` is a whisper.cpp GGML model and reads its header.
+/// Errors are stable codes (`model_file_not_found`, `model_file_not_ggml`,
+/// `model_file_unreadable`) that the frontend translates.
+#[tauri::command]
+pub fn inspect_whisper_model(path: String) -> Result<WhisperModelInfo, String> {
+    let header = transcription_engine::ggml_header::WhisperHeader::read(std::path::Path::new(&path))
+        .map_err(|e| e.to_string())?;
+    Ok(WhisperModelInfo {
+        multilingual: header.is_multilingual(),
+        base_model: header.base_model().map(str::to_string),
+    })
+}
