@@ -1,8 +1,8 @@
 /**
  * A lock that lets only one async run start at a time. A ref rather than
  * React state: state updates don't land until the next render, so two quick
- * clicks would both read "not busy". Hold it only until the run's own busy
- * state shows, so the lock never outlives what the user can see.
+ * clicks would both read "not busy". Pair it with visible busy state so a
+ * click it turns away never looks like it should have worked.
  */
 export interface RunLock {
   current: boolean;

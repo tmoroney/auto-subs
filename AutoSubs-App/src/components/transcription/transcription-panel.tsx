@@ -275,23 +275,28 @@ export function TranscriptionPanel({
     setFileInput,
   ]);
 
-  // Covers the gap between the click and isProcessing, where the
-  // imported-model file check awaits while Generate still shows, so a second
-  // click can't start a parallel run. Released once isProcessing takes over
-  // (or the run stops early), so a cancelled run never leaves Generate dead.
+  // One run at a time, from the click until the run has fully settled. That
+  // covers the imported-model file check before isProcessing is set, and a
+  // cancelled export that is still waiting for the editor after isProcessing
+  // is cleared; a new run started then would share progress and cleanup with
+  // the old one. runPending mirrors the lock so Generate shows it is busy
+  // instead of ignoring clicks.
   const startLockRef = React.useRef(false);
+  const [runPending, setRunPending] = React.useState(false);
 
   const handleStartTranscription = async () => {
     const release = tryClaimRun(startLockRef);
     if (!release) return;
+    setRunPending(true);
     try {
-      await runTranscription(release);
+      await runTranscription();
     } finally {
       release();
+      setRunPending(false);
     }
   };
 
-  const runTranscription = async (releaseStartLock: () => void) => {
+  const runTranscription = async () => {
     if (effectiveMode === "timeline" && !timelineInfo.timelineId) {
       console.error("No timeline selected");
       return;
@@ -324,7 +329,6 @@ export function TranscriptionPanel({
     }
 
     setIsProcessing(true);
-    releaseStartLock();
     setTranscriptionProgress(0);
     clearProgressSteps();
 
@@ -526,6 +530,7 @@ export function TranscriptionPanel({
             selectedFile={fileInput}
             onSelectedFileChange={handleSelectedFileChange}
             onStart={handleStartTranscription}
+            isStarting={runPending}
             onCancel={handleCancelTranscription}
             onStartNewTranscription={handleStartNewTranscription}
             onRefreshAudioTracks={refreshAudioTracks}
