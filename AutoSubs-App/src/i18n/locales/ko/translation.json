@@ -405,6 +405,31 @@
       "description": "로컬 처리, 유럽 25개 언어",
       "details": "Parakeet보다 빠르고 정확합니다. CC BY-SA 4.0.",
       "badge": "CC BY-SA 4.0"
+    },
+    "imported": {
+      "importButton": "모델 파일 가져오기…",
+      "groupTitle": "가져온 모델",
+      "builtInTitle": "기본 모델",
+      "badge": "가져옴",
+      "englishBadge": "영어",
+      "details": "가져온 Whisper 파일로, 저장된 위치에서 그대로 사용됩니다.",
+      "fileFilter": "Whisper 모델 (GGML)",
+      "nameTitle": "모델 이름 지정",
+      "nameLabel": "모델 이름",
+      "nameHint": "비워 두면 {{name}}(으)로 지정됩니다.",
+      "noWordTiming": "이 모델에서는 {{feature}}이(가) 꺼집니다 (기반 모델 알 수 없음).",
+      "confirm": "가져오기",
+      "rename": "이름 바꾸기",
+      "remove": "목록에서 제거",
+      "removeConfirmTitle": "이 모델을 제거할까요?",
+      "removeConfirmBody": "{{model}}이(가) AutoSubs에서 제거됩니다. 파일은 컴퓨터에 그대로 남습니다:\n\n{{path}}",
+      "errors": {
+        "title": "이 파일은 사용할 수 없음",
+        "missingTitle": "모델 파일을 찾을 수 없음",
+        "notFound": "모델 파일이 이동되었거나 삭제되었습니다:\n\n{{path}}\n\n새 위치에서 다시 가져오세요.",
+        "notGgml": "whisper.cpp 모델 파일이 아닙니다. model.bin이나 pytorch_model.bin이 아닌 ggml-model.bin 같은 이름의 파일을 선택하세요.",
+        "unreadable": "AutoSubs가 이 파일을 읽지 못했습니다:\n\n{{path}}\n\n파일을 열 권한이 있는지 확인하세요."
+      }
     }
   },
   "progressSteps": {
