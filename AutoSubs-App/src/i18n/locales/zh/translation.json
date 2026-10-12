@@ -463,7 +463,8 @@
         "missingTitle": "找不到模型文件",
         "notFound": "模型文件已被移动或删除：\n\n{{path}}\n\n请从新位置重新导入。",
         "notGgml": "这不是 whisper.cpp 模型文件。请选择名称类似 ggml-model.bin 的文件，而不是 model.bin 或 pytorch_model.bin。",
-        "unreadable": "AutoSubs 无法读取此文件：\n\n{{path}}\n\n请检查您是否有权限打开它。"
+        "unreadable": "AutoSubs 无法读取此文件：\n\n{{path}}\n\n请检查您是否有权限打开它。",
+        "incomplete": "此模型文件不完整或已损坏，通常是因为下载未完成：\n\n{{path}}\n\n请重新下载后再导入。"
       }
     }
   },

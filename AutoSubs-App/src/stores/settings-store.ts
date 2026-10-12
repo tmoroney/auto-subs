@@ -10,8 +10,7 @@ import {
   getFirstRecommendedModelForLanguage,
 } from "@/lib/models";
 import {
-  clampModelIndex,
-  sanitizeImportedModels,
+  restoreImportedSelection,
   selectionAfterRemoval,
 } from "@/lib/imported-models";
 import { DEFAULT_PRESET_ID } from "@/presets/built-in-presets";
@@ -113,14 +112,14 @@ export function normalizePersistedSettings(persisted: unknown): Partial<Settings
   const next = rest as Partial<Settings>;
 
   // Imported models arrived after the index format, so older files have none.
-  next.importedModels = sanitizeImportedModels(next.importedModels);
-  if ("model" in next) {
-    next.model = clampModelIndex(
-      next.model,
-      models.length + next.importedModels.length,
-      DEFAULT_SETTINGS.model,
-    );
-  }
+  const restored = restoreImportedSelection(
+    next.model,
+    next.importedModels,
+    models.length,
+    DEFAULT_SETTINGS.model,
+  );
+  next.importedModels = restored.importedModels;
+  if ("model" in next) next.model = restored.model;
 
   if (isCaptionStyle(captionStyle)) {
     next.captionStyle = captionStyle;

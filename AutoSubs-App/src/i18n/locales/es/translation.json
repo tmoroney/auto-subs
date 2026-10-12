@@ -463,7 +463,8 @@
         "missingTitle": "Modelo no encontrado",
         "notFound": "El archivo del modelo se movió o se eliminó:\n\n{{path}}\n\nVuelve a importarlo desde su nueva ubicación.",
         "notGgml": "Este no es un archivo de modelo de whisper.cpp. Elige el que se llama como ggml-model.bin, no model.bin ni pytorch_model.bin.",
-        "unreadable": "AutoSubs no pudo leer este archivo:\n\n{{path}}\n\nComprueba que tienes permiso para abrirlo."
+        "unreadable": "AutoSubs no pudo leer este archivo:\n\n{{path}}\n\nComprueba que tienes permiso para abrirlo.",
+        "incomplete": "Este archivo de modelo está incompleto o dañado, a menudo porque una descarga no terminó:\n\n{{path}}\n\nDescárgalo de nuevo y luego impórtalo."
       }
     }
   },

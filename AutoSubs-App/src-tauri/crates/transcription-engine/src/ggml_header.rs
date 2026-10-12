@@ -6,9 +6,10 @@
 //! shape of the network, which is enough to tell the base models apart.
 //!
 //! The layout mirrors `whisper_model_load` in whisper.cpp's `src/whisper.cpp`:
-//! a little-endian u32 magic followed by eleven i32 hyperparameters.
+//! a little-endian u32 magic followed by eleven i32 hyperparameters, then the
+//! mel filters, the vocabulary and the tensors.
 
-use std::io::Read;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
 /// `GGML_FILE_MAGIC` in whisper.cpp's `ggml.h` ("ggml").
@@ -27,6 +28,9 @@ pub enum HeaderError {
     Unreadable,
     /// The file is too short or doesn't start with the GGML magic.
     NotGgml,
+    /// The header is fine but the rest of the file isn't a complete model,
+    /// typically a download that didn't finish.
+    Incomplete,
 }
 
 impl std::fmt::Display for HeaderError {
@@ -35,6 +39,7 @@ impl std::fmt::Display for HeaderError {
             HeaderError::NotFound => "model_file_not_found",
             HeaderError::Unreadable => "model_file_unreadable",
             HeaderError::NotGgml => "model_file_not_ggml",
+            HeaderError::Incomplete => "model_file_incomplete",
         })
     }
 }
@@ -103,6 +108,71 @@ impl WhisperHeader {
         Self::parse(&buf)
     }
 
+    /// Read the header and check that the rest of the file is a complete
+    /// model, so a partial download is caught at import rather than when
+    /// whisper.cpp loads it.
+    ///
+    /// Walks the mel filters, vocabulary and tensor headers the way
+    /// `whisper_model_load` does, seeking over tensor data instead of reading
+    /// it: the file must end exactly after the last tensor, and hold as many
+    /// tensors as whisper.cpp expects for this shape. Tensor sizes come from
+    /// ggml's own type table, so quantized files are checked the same way.
+    pub fn inspect(path: &Path) -> Result<Self, HeaderError> {
+        let header = Self::read(path)?;
+        let file = std::fs::File::open(path).map_err(|_| HeaderError::Unreadable)?;
+        let len = file.metadata().map_err(|_| HeaderError::Unreadable)?.len();
+        let mut walker = Walker { inner: std::io::BufReader::with_capacity(1 << 16, file), pos: 0, len };
+        walker.discard(HEADER_LEN as u64)?;
+        header.check_layout(&mut walker)?;
+        Ok(header)
+    }
+
+    /// The number of tensors whisper.cpp registers for this shape: seven
+    /// encoder-wide and four decoder-wide, plus fifteen per encoder layer and
+    /// twenty-four per decoder layer (see `whisper_model_load`).
+    fn expected_tensors(&self) -> Option<u64> {
+        let audio = u64::try_from(self.n_audio_layer).ok()?;
+        let text = u64::try_from(self.n_text_layer).ok()?;
+        Some(11 + 15 * audio + 24 * text)
+    }
+
+    fn check_layout<R: Read + Seek>(&self, r: &mut Walker<R>) -> Result<(), HeaderError> {
+        let expected = self.expected_tensors().ok_or(HeaderError::Incomplete)?;
+
+        // Mel filters: n_mel x n_fft f32 values.
+        let n_mel = r.count()?;
+        let n_fft = r.count()?;
+        r.discard(n_mel.checked_mul(n_fft).and_then(|n| n.checked_mul(4)).ok_or(HeaderError::Incomplete)?)?;
+
+        // Vocabulary: length-prefixed token bytes.
+        for _ in 0..r.count()? {
+            let len = r.i32()? as u32;
+            r.discard(u64::from(len))?;
+        }
+
+        // Tensors until the end of the file.
+        let mut loaded = 0u64;
+        while r.remaining() > 0 {
+            let n_dims = r.i32()?;
+            let name_len = r.count()?;
+            let ttype = r.i32()?;
+            if !(1..=4).contains(&n_dims) {
+                return Err(HeaderError::Incomplete);
+            }
+            let mut elements = 1u64;
+            for _ in 0..n_dims {
+                elements = elements.checked_mul(r.count()?).ok_or(HeaderError::Incomplete)?;
+            }
+            r.discard(name_len)?;
+            r.skip(tensor_bytes(ttype, elements).ok_or(HeaderError::Incomplete)?)?;
+            loaded += 1;
+            if loaded > expected {
+                return Err(HeaderError::Incomplete);
+            }
+        }
+        if loaded == expected { Ok(()) } else { Err(HeaderError::Incomplete) }
+    }
+
     /// Same rule as `whisper_hparams::is_multilingual` in whisper.cpp.
     pub fn is_multilingual(&self) -> bool {
         self.n_vocab >= 51865
@@ -145,6 +215,75 @@ impl WhisperHeader {
 }
 
 /// A header with the given shape, for tests.
+/// Bytes a tensor of `ttype` with `elements` values takes on disk, from the
+/// same type table whisper.cpp sizes it with. `None` for types ggml doesn't
+/// know or has retired, which whisper.cpp can't load either.
+fn tensor_bytes(ttype: i32, elements: u64) -> Option<u64> {
+    use whisper_rs::whisper_rs_sys as sys;
+    let t = sys::ggml_type::try_from(ttype).ok()?;
+    if t >= sys::ggml_type_GGML_TYPE_COUNT {
+        return None;
+    }
+    // SAFETY: both are lookups in ggml's static type table, in range above.
+    let (size, block) = unsafe { (sys::ggml_type_size(t) as u64, sys::ggml_blck_size(t)) };
+    let block = u64::try_from(block).ok().filter(|&b| b > 0)?;
+    if size == 0 || elements % block != 0 {
+        return None;
+    }
+    (elements / block).checked_mul(size)
+}
+
+/// Reads through a model file while tracking how much of it is left, so a
+/// section that runs past the end is reported as an incomplete file rather
+/// than an I/O error.
+struct Walker<R> {
+    inner: R,
+    pos: u64,
+    len: u64,
+}
+
+impl<R: Read + Seek> Walker<R> {
+    fn remaining(&self) -> u64 {
+        self.len.saturating_sub(self.pos)
+    }
+
+    fn take(&mut self, n: u64) -> Result<(), HeaderError> {
+        if n > self.remaining() {
+            return Err(HeaderError::Incomplete);
+        }
+        self.pos += n;
+        Ok(())
+    }
+
+    fn i32(&mut self) -> Result<i32, HeaderError> {
+        self.take(4)?;
+        let mut b = [0u8; 4];
+        self.inner.read_exact(&mut b).map_err(|_| HeaderError::Unreadable)?;
+        Ok(i32::from_le_bytes(b))
+    }
+
+    /// An i32 that counts something, so it can't be negative.
+    fn count(&mut self) -> Result<u64, HeaderError> {
+        u64::try_from(self.i32()?).map_err(|_| HeaderError::Incomplete)
+    }
+
+    /// Step over a short run of bytes, keeping the read buffer.
+    fn discard(&mut self, n: u64) -> Result<(), HeaderError> {
+        self.take(n)?;
+        let copied = std::io::copy(&mut (&mut self.inner).take(n), &mut std::io::sink())
+            .map_err(|_| HeaderError::Unreadable)?;
+        if copied == n { Ok(()) } else { Err(HeaderError::Unreadable) }
+    }
+
+    /// Seek over tensor data without reading it.
+    fn skip(&mut self, n: u64) -> Result<(), HeaderError> {
+        self.take(n)?;
+        let offset = i64::try_from(n).map_err(|_| HeaderError::Incomplete)?;
+        self.inner.seek(SeekFrom::Current(offset)).map_err(|_| HeaderError::Unreadable)?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 pub(crate) fn synthetic_header(n_vocab: i32, n_audio_layer: i32, n_text_layer: i32, n_mels: i32) -> Vec<u8> {
     let mut bytes = GGML_FILE_MAGIC.to_le_bytes().to_vec();
@@ -217,6 +356,96 @@ mod tests {
         assert_eq!(WhisperHeader::parse(&[]), Err(HeaderError::NotGgml));
     }
 
+    /// A complete model file for this header: mel filters, a vocabulary of
+    /// one-byte tokens, and every tensor whisper.cpp expects, each holding
+    /// `elements` values of `ttype` (`bytes` on disk).
+    fn complete_model(header_bytes: Vec<u8>, ttype: i32, elements: i32, bytes: usize) -> Vec<u8> {
+        let h = WhisperHeader::parse(&header_bytes).unwrap();
+        let mut out = header_bytes;
+        let push = |out: &mut Vec<u8>, v: i32| out.extend_from_slice(&v.to_le_bytes());
+        push(&mut out, h.n_mels);
+        push(&mut out, 2);
+        out.extend(std::iter::repeat_n(0u8, h.n_mels as usize * 2 * 4));
+        push(&mut out, h.n_vocab);
+        for _ in 0..h.n_vocab {
+            push(&mut out, 1);
+            out.push(b'a');
+        }
+        for _ in 0..h.expected_tensors().unwrap() {
+            let name = b"tensor";
+            push(&mut out, 1);
+            push(&mut out, name.len() as i32);
+            push(&mut out, ttype);
+            push(&mut out, elements);
+            out.extend_from_slice(name);
+            out.extend(std::iter::repeat_n(0u8, bytes));
+        }
+        out
+    }
+
+    fn inspect_bytes(bytes: &[u8]) -> Result<WhisperHeader, HeaderError> {
+        let header = WhisperHeader::parse(bytes)?;
+        let mut walker = Walker { inner: std::io::Cursor::new(bytes), pos: 0, len: bytes.len() as u64 };
+        walker.discard(HEADER_LEN as u64)?;
+        header.check_layout(&mut walker)?;
+        Ok(header)
+    }
+
+    // ggml type ids: F16 = 1 (2 bytes a value), Q5_0 = 6 (22 bytes per 32).
+    const F16: i32 = 1;
+    const Q5_0: i32 = 6;
+
+    #[test]
+    fn complete_files_pass_inspection_including_quantized() {
+        let f16 = complete_model(header(51865, 4, 4, 80), F16, 32, 64);
+        assert_eq!(inspect_bytes(&f16).unwrap().base_model(), Some("tiny"));
+        let q5 = complete_model(header(51866, 32, 4, 128), Q5_0, 64, 44);
+        assert_eq!(inspect_bytes(&q5).unwrap().base_model(), Some("large-v3-turbo"));
+    }
+
+    #[test]
+    fn partial_files_fail_inspection() {
+        let full = complete_model(header(51865, 4, 4, 80), F16, 32, 64);
+
+        // Header only.
+        assert_eq!(inspect_bytes(&full[..HEADER_LEN]), Err(HeaderError::Incomplete));
+        // A download cut off mid-tensor, in the vocabulary, or in the filters.
+        assert_eq!(inspect_bytes(&full[..full.len() - 1]), Err(HeaderError::Incomplete));
+        assert_eq!(inspect_bytes(&full[..full.len() / 2]), Err(HeaderError::Incomplete));
+        assert_eq!(inspect_bytes(&full[..HEADER_LEN + 20]), Err(HeaderError::Incomplete));
+        // Cut off exactly at a tensor boundary: one tensor short.
+        let one_tensor = 4 * 4 + "tensor".len() + 64;
+        assert_eq!(inspect_bytes(&full[..full.len() - one_tensor]), Err(HeaderError::Incomplete));
+        // Trailing bytes after the last tensor.
+        let mut extra = full.clone();
+        extra.extend_from_slice(&[0u8; 8]);
+        assert_eq!(inspect_bytes(&extra), Err(HeaderError::Incomplete));
+    }
+
+    #[test]
+    fn tensors_with_impossible_sizes_fail_inspection() {
+        // A tensor type ggml retired (Q4_2) and one it never had.
+        assert_eq!(inspect_bytes(&complete_model(header(51865, 4, 4, 80), 4, 32, 18)), Err(HeaderError::Incomplete));
+        assert_eq!(inspect_bytes(&complete_model(header(51865, 4, 4, 80), 999, 32, 64)), Err(HeaderError::Incomplete));
+        // A quantized tensor whose element count isn't a whole number of blocks.
+        assert_eq!(inspect_bytes(&complete_model(header(51865, 4, 4, 80), Q5_0, 33, 22)), Err(HeaderError::Incomplete));
+        // Data that is the right total size but declared with the wrong type.
+        assert_eq!(inspect_bytes(&complete_model(header(51865, 4, 4, 80), Q5_0, 32, 64)), Err(HeaderError::Incomplete));
+    }
+
+    /// Real whisper.cpp files, which the repo doesn't ship: point
+    /// `AUTOSUBS_TEST_GGML` at one or more (`:`-separated) and run with
+    /// `--ignored`.
+    #[test]
+    #[ignore]
+    fn inspects_real_model_files() {
+        let paths = std::env::var("AUTOSUBS_TEST_GGML").expect("set AUTOSUBS_TEST_GGML");
+        for path in paths.split(':') {
+            let header = WhisperHeader::inspect(Path::new(path)).unwrap_or_else(|e| panic!("{path}: {e}"));
+            assert!(header.base_model().is_some(), "{path}: {header:?}");
+        }
+    }
+
     #[test]
     fn reads_from_disk_and_reports_missing_files() {
         let dir = std::env::temp_dir().join(format!("ggml-header-test-{}", std::process::id()));
@@ -227,12 +456,19 @@ mod tests {
         bytes.extend_from_slice(&[0u8; 64]); // tensor data follows the header
         std::fs::write(&good, &bytes).unwrap();
         assert_eq!(WhisperHeader::read(&good).unwrap().base_model(), Some("medium"));
+        // The header reads, but tensor data alone isn't a complete model.
+        assert_eq!(WhisperHeader::inspect(&good), Err(HeaderError::Incomplete));
+
+        let complete = dir.join("complete.bin");
+        std::fs::write(&complete, complete_model(header(51864, 6, 6, 80), F16, 32, 64)).unwrap();
+        assert_eq!(WhisperHeader::inspect(&complete).unwrap().base_model(), Some("base.en"));
 
         let short = dir.join("short.bin");
         std::fs::write(&short, &bytes[..10]).unwrap();
         assert_eq!(WhisperHeader::read(&short), Err(HeaderError::NotGgml));
 
         assert_eq!(WhisperHeader::read(&dir.join("missing.bin")), Err(HeaderError::NotFound));
+        assert_eq!(WhisperHeader::inspect(&dir.join("missing.bin")), Err(HeaderError::NotFound));
 
         std::fs::remove_dir_all(&dir).unwrap();
     }

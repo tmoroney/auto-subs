@@ -18,6 +18,7 @@ import { getActiveCensorWords } from "@/censor/merge";
 import { TranscriptionPanelView } from "./transcription-panel-view";
 import { describeError } from "./utils";
 import { inspectWhisperModel } from "@/components/settings/import-model-dialog";
+import { tryClaimRun } from "@/lib/run-lock";
 
 interface TranscriptionPanelProps {
   onViewSubtitles?: () => void;
@@ -274,7 +275,22 @@ export function TranscriptionPanel({
     setFileInput,
   ]);
 
+  // Held from the click until the run ends, including the imported-model file
+  // check that happens before isProcessing is set, so a second click can't
+  // start a parallel run.
+  const startLockRef = React.useRef(false);
+
   const handleStartTranscription = async () => {
+    const release = tryClaimRun(startLockRef);
+    if (!release) return;
+    try {
+      await runTranscription();
+    } finally {
+      release();
+    }
+  };
+
+  const runTranscription = async () => {
     if (effectiveMode === "timeline" && !timelineInfo.timelineId) {
       console.error("No timeline selected");
       return;

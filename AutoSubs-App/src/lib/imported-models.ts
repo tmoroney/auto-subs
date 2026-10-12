@@ -95,6 +95,29 @@ export function clampModelIndex(selected: unknown, total: number, defaultIndex: 
     : defaultIndex;
 }
 
+/**
+ * The persisted selection and imported models, cleaned up for loading.
+ * Malformed entries are dropped, which moves the ones after them, so a saved
+ * index pointing at an imported model is re-found by entry rather than kept
+ * as a number. An index at a dropped entry, or outside the list, falls back
+ * to `defaultIndex`.
+ */
+export function restoreImportedSelection(
+  selected: unknown,
+  rawImported: unknown,
+  builtInCount: number,
+  defaultIndex: number,
+): { model: number; importedModels: ImportedModel[] } {
+  const importedModels = sanitizeImportedModels(rawImported);
+  const total = builtInCount + importedModels.length;
+  if (typeof selected === "number" && Number.isInteger(selected) && selected >= builtInCount) {
+    const entry = Array.isArray(rawImported) ? rawImported[selected - builtInCount] : undefined;
+    const position = importedModels.findIndex((m) => m === entry);
+    return { model: position === -1 ? defaultIndex : builtInCount + position, importedModels };
+  }
+  return { model: clampModelIndex(selected, total, defaultIndex), importedModels };
+}
+
 /** Drop persisted entries that don't have the shape this version expects. */
 export function sanitizeImportedModels(value: unknown): ImportedModel[] {
   if (!Array.isArray(value)) return [];

@@ -49,12 +49,19 @@ pub struct WhisperModelInfo {
     pub base_model: Option<String>,
 }
 
-/// Checks that `path` is a whisper.cpp GGML model and reads its header.
-/// Errors are stable codes (`model_file_not_found`, `model_file_not_ggml`,
-/// `model_file_unreadable`) that the frontend translates.
+/// Checks that `path` is a complete whisper.cpp GGML model and reads its
+/// header. Errors are stable codes (`model_file_not_found`,
+/// `model_file_not_ggml`, `model_file_incomplete`, `model_file_unreadable`)
+/// that the frontend translates.
 #[tauri::command]
-pub fn inspect_whisper_model(path: String) -> Result<WhisperModelInfo, String> {
-    let header = transcription_engine::ggml_header::WhisperHeader::read(std::path::Path::new(&path))
+pub async fn inspect_whisper_model(path: String) -> Result<WhisperModelInfo, String> {
+    // Walking a large model's tensor table touches the disk; keep it off the
+    // main thread.
+    let header = tauri::async_runtime::spawn_blocking(move || {
+        transcription_engine::ggml_header::WhisperHeader::inspect(std::path::Path::new(&path))
+    })
+    .await
+    .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
     Ok(WhisperModelInfo {
         multilingual: header.is_multilingual(),

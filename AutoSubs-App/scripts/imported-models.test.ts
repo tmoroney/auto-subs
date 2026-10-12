@@ -5,9 +5,11 @@ import {
     importedModelToModel,
     isImportedModelId,
     resolveImportedModelName,
+    restoreImportedSelection,
     sanitizeImportedModels,
     selectionAfterRemoval,
 } from '../src/lib/imported-models.ts';
+import { tryClaimRun } from '../src/lib/run-lock.ts';
 import type { ImportedModel } from '../src/types.ts';
 
 const imported = (n: number, name = `Model ${n}`): ImportedModel =>
@@ -68,3 +70,33 @@ assert.deepEqual(importedModelToModel(imported(2)).languageSupport, { kind: 'mul
 
 assert.equal(fileNameOf('/Users/me/nb-whisper-small/ggml-model.bin'), 'ggml-model.bin');
 assert.equal(fileNameOf('C:\\Models\\ggml-model-q5_0.bin'), 'ggml-model-q5_0.bin');
+
+// Loading settings: dropping a malformed entry must not move the selection onto
+// a different model. With [null, A, B], the saved index for A is builtIn + 1.
+const A = imported(1, 'A');
+const B = imported(2, 'B');
+const saved = [null, A, B];
+assert.deepEqual(restoreImportedSelection(builtIn + 1, saved, builtIn, 0), { model: builtIn, importedModels: [A, B] });
+assert.deepEqual(restoreImportedSelection(builtIn + 2, saved, builtIn, 0), { model: builtIn + 1, importedModels: [A, B] });
+// The selection was the malformed entry itself: back to the default.
+assert.equal(restoreImportedSelection(builtIn, saved, builtIn, 0).model, 0);
+// Past the end, or with no imported list at all: back to the default.
+assert.equal(restoreImportedSelection(builtIn + 3, saved, builtIn, 0).model, 0);
+assert.deepEqual(restoreImportedSelection(builtIn, undefined, builtIn, 0), { model: 0, importedModels: [] });
+// Built-in selections are untouched; invalid ones fall back.
+assert.equal(restoreImportedSelection(4, saved, builtIn, 0).model, 4);
+assert.equal(restoreImportedSelection(-1, saved, builtIn, 0).model, 0);
+assert.equal(restoreImportedSelection('3', saved, builtIn, 0).model, 0);
+// Nothing malformed: every index stays where it was.
+assert.equal(restoreImportedSelection(builtIn + 1, [A, B], builtIn, 0).model, builtIn + 1);
+
+// Generate: a second click while the first run (or its model file check) is
+// still in flight can't start another run; once released, it can.
+const lock = { current: false };
+const release = tryClaimRun(lock);
+assert.ok(release);
+assert.equal(tryClaimRun(lock), null);
+release();
+const again = tryClaimRun(lock);
+assert.ok(again);
+again();

@@ -7,7 +7,7 @@ description = "Internal transcription engine for AutoSubs"
 publish = false
 
 [dependencies]
-whisper-rs = { version = "0.16.0", default-features = false, features = ["tracing_backend"] }
+whisper-rs = { version = "0.16.0", default-features = false, features = ["tracing_backend", "raw-api"] }
 diarize = { path = "../diarize" }
 transcribe-rs = { version = "0.3.11", features = ["onnx"] }
 hf-hub = "0.5.0"

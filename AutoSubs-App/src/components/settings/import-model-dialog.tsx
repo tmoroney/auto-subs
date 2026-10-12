@@ -32,6 +32,7 @@ export interface PendingImport extends WhisperModelInfo {
 const ERROR_KEYS: Record<string, string> = {
   model_file_not_found: "models.imported.errors.notFound",
   model_file_not_ggml: "models.imported.errors.notGgml",
+  model_file_incomplete: "models.imported.errors.incomplete",
   model_file_unreadable: "models.imported.errors.unreadable",
 };
 
