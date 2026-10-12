@@ -275,22 +275,23 @@ export function TranscriptionPanel({
     setFileInput,
   ]);
 
-  // Held from the click until the run ends, including the imported-model file
-  // check that happens before isProcessing is set, so a second click can't
-  // start a parallel run.
+  // Covers the gap between the click and isProcessing, where the
+  // imported-model file check awaits while Generate still shows, so a second
+  // click can't start a parallel run. Released once isProcessing takes over
+  // (or the run stops early), so a cancelled run never leaves Generate dead.
   const startLockRef = React.useRef(false);
 
   const handleStartTranscription = async () => {
     const release = tryClaimRun(startLockRef);
     if (!release) return;
     try {
-      await runTranscription();
+      await runTranscription(release);
     } finally {
       release();
     }
   };
 
-  const runTranscription = async () => {
+  const runTranscription = async (releaseStartLock: () => void) => {
     if (effectiveMode === "timeline" && !timelineInfo.timelineId) {
       console.error("No timeline selected");
       return;
@@ -323,6 +324,7 @@ export function TranscriptionPanel({
     }
 
     setIsProcessing(true);
+    releaseStartLock();
     setTranscriptionProgress(0);
     clearProgressSteps();
 

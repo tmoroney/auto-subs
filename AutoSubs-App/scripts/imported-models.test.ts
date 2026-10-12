@@ -99,4 +99,10 @@ assert.equal(tryClaimRun(lock), null);
 release();
 const again = tryClaimRun(lock);
 assert.ok(again);
+// The first run finishing later (a second release) must not free the lock the
+// newer run holds, or a third click could start alongside it.
+release();
+assert.equal(lock.current, true);
+assert.equal(tryClaimRun(lock), null);
 again();
+assert.equal(lock.current, false);
