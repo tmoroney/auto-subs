@@ -76,19 +76,52 @@ assert.equal(fileNameOf('C:\\Models\\ggml-model-q5_0.bin'), 'ggml-model-q5_0.bin
 const A = imported(1, 'A');
 const B = imported(2, 'B');
 const saved = [null, A, B];
-assert.deepEqual(restoreImportedSelection(builtIn + 1, saved, builtIn, 0), { model: builtIn, importedModels: [A, B] });
-assert.deepEqual(restoreImportedSelection(builtIn + 2, saved, builtIn, 0), { model: builtIn + 1, importedModels: [A, B] });
+assert.deepEqual(restoreImportedSelection(builtIn + 1, saved, builtIn, builtIn, 0), { model: builtIn, importedModels: [A, B] });
+assert.deepEqual(restoreImportedSelection(builtIn + 2, saved, builtIn, builtIn, 0), { model: builtIn + 1, importedModels: [A, B] });
 // The selection was the malformed entry itself: back to the default.
-assert.equal(restoreImportedSelection(builtIn, saved, builtIn, 0).model, 0);
+assert.equal(restoreImportedSelection(builtIn, saved, builtIn, builtIn, 0).model, 0);
 // Past the end, or with no imported list at all: back to the default.
-assert.equal(restoreImportedSelection(builtIn + 3, saved, builtIn, 0).model, 0);
-assert.deepEqual(restoreImportedSelection(builtIn, undefined, builtIn, 0), { model: 0, importedModels: [] });
+assert.equal(restoreImportedSelection(builtIn + 3, saved, builtIn, builtIn, 0).model, 0);
+assert.deepEqual(restoreImportedSelection(builtIn, undefined, builtIn, builtIn, 0), { model: 0, importedModels: [] });
 // Built-in selections are untouched; invalid ones fall back.
-assert.equal(restoreImportedSelection(4, saved, builtIn, 0).model, 4);
-assert.equal(restoreImportedSelection(-1, saved, builtIn, 0).model, 0);
-assert.equal(restoreImportedSelection('3', saved, builtIn, 0).model, 0);
+assert.equal(restoreImportedSelection(4, saved, builtIn, builtIn, 0).model, 4);
+assert.equal(restoreImportedSelection(-1, saved, builtIn, builtIn, 0).model, 0);
+assert.equal(restoreImportedSelection('3', saved, builtIn, builtIn, 0).model, 0);
 // Nothing malformed: every index stays where it was.
-assert.equal(restoreImportedSelection(builtIn + 1, [A, B], builtIn, 0).model, builtIn + 1);
+assert.equal(restoreImportedSelection(builtIn + 1, [A, B], builtIn, builtIn, 0).model, builtIn + 1);
+
+// An app update changes how many built-in models there are. The saved index is
+// read against the built-in count it was saved with and rebased onto today's.
+// Grows by one: imported selections stay on the same entry.
+assert.deepEqual(restoreImportedSelection(26, [A, B], 26, 27, 0), { model: 27, importedModels: [A, B] });
+assert.equal(restoreImportedSelection(27, [A, B], 26, 27, 0).model, 28);
+// Shrinks by one: still the same entry.
+assert.equal(restoreImportedSelection(27, [A, B], 26, 25, 0).model, 26);
+assert.equal(restoreImportedSelection(26, [A, B], 26, 25, 0).model, 25);
+// Shrinks past a built-in selection: the default, never the first imported model.
+assert.equal(restoreImportedSelection(25, [A, B], 26, 25, 0).model, 0);
+assert.equal(restoreImportedSelection(25, [A, B], 26, 25, 3).model, 3);
+// Built-in selections the catalogue still reaches are kept as they are.
+assert.equal(restoreImportedSelection(24, [A, B], 26, 25, 0).model, 24);
+assert.equal(restoreImportedSelection(25, [A, B], 26, 27, 0).model, 25);
+// The catalogue changes and a malformed entry before the selection is dropped:
+// both shifts apply. With [null, A, B] saved on base 26, B was 28.
+assert.equal(restoreImportedSelection(28, saved, 26, 27, 0).model, 28);
+assert.equal(restoreImportedSelection(27, saved, 26, 27, 0).model, 27);
+assert.equal(restoreImportedSelection(28, saved, 26, 25, 0).model, 26);
+// The selection was the dropped entry: the default.
+assert.equal(restoreImportedSelection(26, saved, 26, 25, 0).model, 0);
+// No saved base (files from before it existed) or an invalid one counts as
+// today's built-in count.
+for (const base of [undefined, -1, '26', 1.5, null, NaN]) {
+    assert.equal(restoreImportedSelection(27, [A, B], base, 27, 0).model, 27);
+    assert.equal(restoreImportedSelection(28, [A, B], base, 27, 0).model, 28);
+    assert.equal(restoreImportedSelection(29, [A, B], base, 27, 0).model, 0);
+    assert.equal(restoreImportedSelection(4, [A, B], base, 27, 0).model, 4);
+}
+// Nothing changed: same base, same index.
+assert.equal(restoreImportedSelection(27, [A, B], 26, 26, 0).model, 27);
+assert.equal(restoreImportedSelection(5, [A, B], 26, 26, 0).model, 5);
 
 // Generate: a second click while the first run (or its model file check) is
 // still in flight can't start another run; once released, it can.

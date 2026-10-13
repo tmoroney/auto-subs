@@ -164,8 +164,11 @@ export interface Settings {
     subSlateMilestoneShown: boolean;
 
     // Processing settings
-    model: number; // index into the built-in models followed by importedModels
+    // Index into the built-in models followed by importedModels. Loading
+    // rebases it from importedModelsBase, the built-in count when it was saved.
+    model: number;
     importedModels: ImportedModel[];
+    importedModelsBase: number;
     language: string,
     translate: boolean,
     targetLanguage: string,

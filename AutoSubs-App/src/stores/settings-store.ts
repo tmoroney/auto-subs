@@ -46,6 +46,9 @@ export const DEFAULT_SETTINGS: Settings = {
   // Processing settings
   model: 0,
   importedModels: [],
+  // Always the current catalogue size, so the saved value tells the next
+  // version which built-in count the saved `model` index was based on.
+  importedModelsBase: models.length,
   language: "auto",
   translate: false,
   targetLanguage: "en",
@@ -112,13 +115,16 @@ export function normalizePersistedSettings(persisted: unknown): Partial<Settings
   const next = rest as Partial<Settings>;
 
   // Imported models arrived after the index format, so older files have none.
+  // The built-in count may differ from the version that saved the file.
   const restored = restoreImportedSelection(
     next.model,
     next.importedModels,
+    next.importedModelsBase,
     models.length,
     DEFAULT_SETTINGS.model,
   );
   next.importedModels = restored.importedModels;
+  next.importedModelsBase = models.length;
   if ("model" in next) next.model = restored.model;
 
   if (isCaptionStyle(captionStyle)) {

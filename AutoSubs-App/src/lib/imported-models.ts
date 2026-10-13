@@ -6,8 +6,10 @@ import type { ImportedModel, Model } from "../types";
  * They are used where they are saved, never copied into the model cache, and
  * listed after the built-in models. The selected model is persisted as an
  * index into that combined list, so adding or removing an imported model has
- * to keep the index pointing at the same model. That logic lives here, free of
- * React and Tauri, so it can be tested on its own.
+ * to keep the index pointing at the same model, and so does an update that
+ * changes how many built-in models there are (the saved built-in count lets
+ * loading rebase the index). That logic lives here, free of React and Tauri,
+ * so it can be tested on its own.
  */
 
 /** Prefix that keeps imported ids from colliding with catalogue ids. */
@@ -97,25 +99,36 @@ export function clampModelIndex(selected: unknown, total: number, defaultIndex: 
 
 /**
  * The persisted selection and imported models, cleaned up for loading.
- * Malformed entries are dropped, which moves the ones after them, so a saved
- * index pointing at an imported model is re-found by entry rather than kept
- * as a number. An index at a dropped entry, or outside the list, falls back
- * to `defaultIndex`.
+ *
+ * The built-in catalogue changes size between releases, so the saved index is
+ * read against `savedBase`, the built-in count of the version that wrote it,
+ * and rebased onto `builtInCount`. Malformed entries are dropped, which moves
+ * the ones after them, so a saved imported selection is re-found by entry
+ * rather than kept as a number. A dropped entry, an index outside the list, or
+ * a built-in selection the catalogue no longer reaches falls back to
+ * `defaultIndex`. A `savedBase` that isn't a non-negative integer (files from
+ * before it was saved, which have no imported models) counts as `builtInCount`.
  */
 export function restoreImportedSelection(
   selected: unknown,
   rawImported: unknown,
+  savedBase: unknown,
   builtInCount: number,
   defaultIndex: number,
 ): { model: number; importedModels: ImportedModel[] } {
   const importedModels = sanitizeImportedModels(rawImported);
-  const total = builtInCount + importedModels.length;
-  if (typeof selected === "number" && Number.isInteger(selected) && selected >= builtInCount) {
-    const entry = Array.isArray(rawImported) ? rawImported[selected - builtInCount] : undefined;
+  const base = isIndex(savedBase) ? savedBase : builtInCount;
+  if (!isIndex(selected)) return { model: defaultIndex, importedModels };
+  if (selected >= base) {
+    const entry = Array.isArray(rawImported) ? rawImported[selected - base] : undefined;
     const position = importedModels.findIndex((m) => m === entry);
     return { model: position === -1 ? defaultIndex : builtInCount + position, importedModels };
   }
-  return { model: clampModelIndex(selected, total, defaultIndex), importedModels };
+  return { model: selected < builtInCount ? selected : defaultIndex, importedModels };
+}
+
+function isIndex(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
 /** Drop persisted entries that don't have the shape this version expects. */
