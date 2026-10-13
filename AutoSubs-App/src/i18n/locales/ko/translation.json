@@ -417,7 +417,7 @@
       "nameTitle": "모델 이름 지정",
       "nameLabel": "모델 이름",
       "nameHint": "비워 두면 {{name}}(으)로 지정됩니다.",
-      "noWordTiming": "이 모델에서는 {{feature}}이(가) 꺼집니다 (기반 모델 알 수 없음).",
+      "noWordTiming": "이 모델에서는 {{feature}}이(가) 꺼집니다.",
       "confirm": "가져오기",
       "rename": "이름 바꾸기",
       "remove": "목록에서 제거",

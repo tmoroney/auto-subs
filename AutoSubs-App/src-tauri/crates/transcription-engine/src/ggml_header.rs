@@ -214,7 +214,6 @@ impl WhisperHeader {
     }
 }
 
-/// A header with the given shape, for tests.
 /// Bytes a tensor of `ttype` with `elements` values takes on disk, from the
 /// same type table whisper.cpp sizes it with. `None` for types ggml doesn't
 /// know or has retired, which whisper.cpp can't load either.
@@ -284,6 +283,7 @@ impl<R: Read + Seek> Walker<R> {
     }
 }
 
+/// A header with the given shape, for tests.
 #[cfg(test)]
 pub(crate) fn synthetic_header(n_vocab: i32, n_audio_layer: i32, n_text_layer: i32, n_mels: i32) -> Vec<u8> {
     let mut bytes = GGML_FILE_MAGIC.to_le_bytes().to_vec();

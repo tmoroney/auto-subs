@@ -417,7 +417,7 @@
       "nameTitle": "モデル名を付ける",
       "nameLabel": "モデル名",
       "nameHint": "空欄の場合は {{name}} になります。",
-      "noWordTiming": "このモデルでは{{feature}}はオフです（元のモデルが不明）。",
+      "noWordTiming": "このモデルでは{{feature}}はオフです。",
       "confirm": "読み込む",
       "rename": "名前を変更",
       "remove": "一覧から外す",

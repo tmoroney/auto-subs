@@ -452,7 +452,7 @@
       "nameTitle": "为此模型命名",
       "nameLabel": "模型名称",
       "nameHint": "留空则命名为 {{name}}。",
-      "noWordTiming": "此模型已关闭{{feature}}（基础模型未知）。",
+      "noWordTiming": "此模型已关闭{{feature}}。",
       "confirm": "导入",
       "rename": "重命名",
       "remove": "移除",

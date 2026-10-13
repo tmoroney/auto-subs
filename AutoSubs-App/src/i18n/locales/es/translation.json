@@ -452,7 +452,7 @@
       "nameTitle": "Nombra este modelo",
       "nameLabel": "Nombre del modelo",
       "nameHint": "Déjalo vacío para llamarlo {{name}}.",
-      "noWordTiming": "{{feature}} desactivado aquí (modelo base desconocido).",
+      "noWordTiming": "{{feature}} desactivado aquí.",
       "confirm": "Importar",
       "rename": "Cambiar nombre",
       "remove": "Quitar",

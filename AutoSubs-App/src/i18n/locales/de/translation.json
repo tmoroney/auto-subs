@@ -452,7 +452,7 @@
       "nameTitle": "Modell benennen",
       "nameLabel": "Modellname",
       "nameHint": "Leer lassen, um es {{name}} zu nennen.",
-      "noWordTiming": "{{feature}} ist hier aus (Basismodell unbekannt).",
+      "noWordTiming": "{{feature}} ist hier aus.",
       "confirm": "Importieren",
       "rename": "Umbenennen",
       "remove": "Entfernen",

@@ -456,7 +456,7 @@
       "nameTitle": "Name this model",
       "nameLabel": "Model name",
       "nameHint": "Leave blank to name it {{name}}.",
-      "noWordTiming": "{{feature}} is off for this model (unknown base model).",
+      "noWordTiming": "{{feature}} is off for this model.",
       "confirm": "Import",
       "rename": "Rename",
       "remove": "Remove",
