@@ -5,10 +5,12 @@ use dirs;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::path::PathBuf;
+use std::fs;
+use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager, Runtime, command};
 use transcription_engine::{
     Callbacks, CensorStyle, ContentFormatting, DiarizeBackend, Engine, EngineConfig, LabeledProgressFn, PostProcessConfig, ProgressType, SegmentStage,
@@ -79,6 +81,150 @@ fn flush_progress_queue<R: Runtime>(app: &AppHandle<R>, last_emitted: &mut Optio
 }
 
 static NORMALIZED_AUDIO_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+const NORMALIZED_AUDIO_DIR: &str = "normalized-audio";
+const NORMALIZED_AUDIO_CACHE_VERSION: &str = "v1";
+const NORMALIZED_AUDIO_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
+const NORMALIZED_AUDIO_TMP_MAX_AGE: Duration = Duration::from_secs(60 * 60);
+const NORMALIZED_AUDIO_MAX_FILES: usize = 12;
+
+fn normalized_audio_dir(cache_dir: &Path) -> PathBuf {
+    cache_dir.join(NORMALIZED_AUDIO_DIR)
+}
+
+/// Whether the file already has the mono/16 kHz/16-bit PCM WAV shape that
+/// whisper-diarize-rs expects. Reading just the header avoids launching FFmpeg
+/// for files AutoSubs produced itself, or for users who export exactly that
+/// format.
+fn is_normalized_wav(path: &Path) -> bool {
+    let Ok(reader) = hound::WavReader::open(path) else {
+        return false;
+    };
+    let spec = reader.spec();
+    spec.channels == 1
+        && spec.sample_rate == 16_000
+        && spec.bits_per_sample == 16
+        && spec.sample_format == hound::SampleFormat::Int
+}
+
+fn should_normalize(source: &Path, additional_ffmpeg_args: Option<&[String]>) -> bool {
+    if additional_ffmpeg_args.is_some_and(|args| !args.is_empty()) {
+        return true;
+    }
+    !is_normalized_wav(source)
+}
+
+/// Cache path keyed by the source file identity, its metadata, and any extra
+/// FFmpeg arguments. Including the cache version invalidates outputs when the
+/// normalization recipe changes.
+fn normalized_cache_path(
+    cache_dir: &Path,
+    source: &Path,
+    additional_ffmpeg_args: Option<&[String]>,
+) -> std::io::Result<PathBuf> {
+    let metadata = fs::metadata(source)?;
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    NORMALIZED_AUDIO_CACHE_VERSION.hash(&mut hasher);
+    source.hash(&mut hasher);
+    metadata.len().hash(&mut hasher);
+    if let Ok(modified) = metadata.modified()
+        && let Ok(since_epoch) = modified.duration_since(UNIX_EPOCH)
+    {
+        since_epoch.as_nanos().hash(&mut hasher);
+    }
+    additional_ffmpeg_args.hash(&mut hasher);
+    Ok(normalized_audio_dir(cache_dir).join(format!("{:016x}.wav", hasher.finish())))
+}
+
+fn normalized_temp_path(output: &Path) -> PathBuf {
+    let counter = NORMALIZED_AUDIO_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let name = output
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("normalized_audio.wav");
+    output.with_file_name(format!(
+        ".{name}.{}.{}.tmp",
+        std::process::id(),
+        counter
+    ))
+}
+
+/// Publish a completed FFmpeg output. A concurrent request for the same source
+/// may have already published the same cache entry; in that case the existing
+/// complete file wins and our temp file is discarded.
+fn publish_normalized_audio(temp: &Path, destination: &Path) -> std::io::Result<()> {
+    if fs::rename(temp, destination).is_ok() {
+        return Ok(());
+    }
+    if is_normalized_wav(destination) {
+        let _ = fs::remove_file(temp);
+        return Ok(());
+    }
+    match fs::remove_file(destination) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error),
+    }
+    fs::rename(temp, destination)
+}
+
+fn age_of(modified: SystemTime, now: SystemTime) -> Duration {
+    now.duration_since(modified).unwrap_or_default()
+}
+
+/// Remove stale cache entries and legacy single-file normalizations. Runs at
+/// startup so a long-lived cache cannot grow without bound; the most recent
+/// entries survive to keep repeated transcriptions fast.
+pub fn cleanup_normalized_audio_cache(cache_dir: &Path) {
+    let now = SystemTime::now();
+    let dir = normalized_audio_dir(cache_dir);
+    let mut retained: Vec<(SystemTime, PathBuf)> = Vec::new();
+
+    if let Ok(entries) = fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            let name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
+            let is_temp = name.ends_with(".tmp");
+            if !is_temp && path.extension().and_then(|ext| ext.to_str()) != Some("wav") {
+                continue;
+            }
+            let modified = entry
+                .metadata()
+                .and_then(|metadata| metadata.modified())
+                .unwrap_or(UNIX_EPOCH);
+            if is_temp && age_of(modified, now) > NORMALIZED_AUDIO_TMP_MAX_AGE {
+                let _ = fs::remove_file(&path);
+            } else if !is_temp && age_of(modified, now) > NORMALIZED_AUDIO_MAX_AGE {
+                let _ = fs::remove_file(&path);
+            } else if !is_temp {
+                retained.push((modified, path));
+            }
+        }
+    }
+
+    if retained.len() > NORMALIZED_AUDIO_MAX_FILES {
+        retained.sort_by_key(|(modified, _)| *modified);
+        let remove_count = retained.len() - NORMALIZED_AUDIO_MAX_FILES;
+        for (_, path) in retained.into_iter().take(remove_count) {
+            let _ = fs::remove_file(path);
+        }
+    }
+
+    // Pre-Phase-2 builds wrote `normalized_audio.wav` and (in tests)
+    // `normalized_audio_<n>.wav` directly into the cache root.
+    if let Ok(entries) = fs::read_dir(cache_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with("normalized_audio") && name.ends_with(".wav") {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+    }
+}
 
 // Utility function for rounding to n decimal places
 fn round_to_places(val: f64, places: u32) -> f64 {
@@ -328,16 +474,20 @@ pub async fn transcribe_audio<R: Runtime>(
     // --- Audio Normalization (only task left in app before passing to crate) ---
     report_progress(0, ProgressType::Prepare, "progressSteps.prepare.normalize");
 
-    let audio_path = if should_normalize(options.audio_path.clone().into()) {
-        create_normalized_audio(app.clone(), options.audio_path.clone().into(), None)
+    let source_audio: PathBuf = options.audio_path.clone().into();
+    let audio_path = if should_normalize(&source_audio, None) {
+        create_normalized_audio(app.clone(), source_audio.clone(), None)
             .await
             .map_err(|e| {
                 tracing::error!("audio normalization failed: {}", e);
                 format!("Failed to normalize audio: {}", e)
             })?
     } else {
-        tracing::info!("audio normalization skipped");
-        options.audio_path.clone().into()
+        tracing::info!(
+            "audio normalization skipped: {} is already mono 16 kHz PCM16 WAV",
+            source_audio.display()
+        );
+        source_audio
     };
 
     report_progress(100, ProgressType::Prepare, "progressSteps.prepare.normalize");
@@ -524,10 +674,17 @@ pub async fn transcribe_audio<R: Runtime>(
         // Run transcription.
         // `raw_segments` preserves the engine's pre-formatting word data (used as
         // `originalSegments` for reformatting). `segments` are fully formatted for display.
+        //
+        // Inference is CPU-bound and synchronous inside the engine, so run the
+        // whole pipeline on a blocking task. Awaiting it from the async runtime
+        // would pin a worker thread for the duration of a long transcription and
+        // starve the progress emitter, Adobe bridge and other Tauri commands.
         tracing::info!("transcription pipeline started");
-        let (raw_segments, segments, output_language) = engine
-            .transcribe_audio(
-                &audio_path.to_string_lossy(),
+        let runtime = tokio::runtime::Handle::current();
+        let engine_audio_path = audio_path.to_string_lossy().into_owned();
+        let engine_result = tokio::task::spawn_blocking(move || {
+            runtime.block_on(engine.transcribe_audio(
+                &engine_audio_path,
                 transcribe_options,
                 options.max_lines, // max_lines
                 options.density, // density
@@ -535,23 +692,26 @@ pub async fn transcribe_audio<R: Runtime>(
                 options.custom_max_words_per_line, // custom_max_words_per_line
                 Some(content_formatting),
                 Some(callbacks),
-            )
-            .await
-            .map_err(|e| {
-                // Check if this was a cancellation error
-                if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
-                    if *should_cancel {
-                        tracing::info!("transcription cancelled by user");
-                        "Transcription cancelled".to_string()
-                    } else {
-                        tracing::error!("transcription failed: {:#}", e);
-                        format!("Transcription failed: {:#}", e)
-                    }
+            ))
+        })
+        .await
+        .map_err(|e| format!("Transcription task failed: {e}"))?;
+
+        let (raw_segments, segments, output_language) = engine_result.map_err(|e| {
+            // Check if this was a cancellation error
+            if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
+                if *should_cancel {
+                    tracing::info!("transcription cancelled by user");
+                    "Transcription cancelled".to_string()
                 } else {
                     tracing::error!("transcription failed: {:#}", e);
                     format!("Transcription failed: {:#}", e)
                 }
-            })?;
+            } else {
+                tracing::error!("transcription failed: {:#}", e);
+                format!("Transcription failed: {:#}", e)
+            }
+        })?;
 
         // Check for cancellation after transcription completes
         if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
@@ -639,12 +799,6 @@ pub async fn transcribe_audio<R: Runtime>(
     }
 }
 
-/// Always normalize audio to ensure it's mono 16kHz WAV for whisper-diarize-rs
-fn should_normalize(_source: PathBuf) -> bool {
-    true
-}
-
-// This function must now be `async` because it calls the async `normalize` function.
 /// Expand a leading `~` in a file path to the user's home directory.
 /// Windows CMD and PowerShell expand `~` as a path alias only in specific contexts;
 /// Rust's `PathBuf` does not expand it at all, so we must do it explicitly.
@@ -671,24 +825,52 @@ pub async fn create_normalized_audio<R: Runtime>(
     let source = expand_tilde(source);
     tracing::info!("audio normalization: start input={}", source.display());
 
+    if !should_normalize(&source, additional_ffmpeg_args.as_deref()) {
+        tracing::info!(
+            "audio normalization: source is already normalized, reusing {}",
+            source.display()
+        );
+        return Ok(source);
+    }
+
     let path_resolver = app.path();
 
     let cache_dir = path_resolver
         .app_cache_dir()
         .unwrap_or_else(|_| std::env::temp_dir());
+    let out_path = normalized_cache_path(&cache_dir, &source, additional_ffmpeg_args.as_deref())
+        .map_err(|e| eyre::eyre!("could not key normalized audio cache: {}", e))?;
 
-    let out_path = if cfg!(test) {
-        let n = NORMALIZED_AUDIO_COUNTER.fetch_add(1, Ordering::Relaxed);
-        cache_dir.join(format!("normalized_audio_{}.wav", n))
-    } else {
-        cache_dir.join("normalized_audio.wav")
-    };
+    if is_normalized_wav(&out_path) {
+        tracing::info!("audio normalization: cache hit {}", out_path.display());
+        return Ok(out_path);
+    }
+
+    fs::create_dir_all(normalized_audio_dir(&cache_dir))
+        .map_err(|e| eyre::eyre!("could not create normalized audio cache: {}", e))?;
+    let tmp_path = normalized_temp_path(&out_path);
 
     tracing::info!("Normalizing audio to path: {}", out_path.display());
+    if let Err(e) = audio::normalize(
+        app,
+        source,
+        tmp_path.clone(),
+        additional_ffmpeg_args,
+    )
+    .await
+    {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(eyre::eyre!("{}", e));
+    }
 
-    audio::normalize(app, source, out_path.clone(), additional_ffmpeg_args)
-        .await
-        .map_err(|e| eyre::eyre!("Failed to normalize audio: {}", e))?;
+    publish_normalized_audio(&tmp_path, &out_path).map_err(|e| {
+        let _ = fs::remove_file(&tmp_path);
+        eyre::eyre!(
+            "could not publish normalized audio {}: {}",
+            out_path.display(),
+            e
+        )
+    })?;
 
     Ok(out_path)
 }
@@ -980,5 +1162,116 @@ mod ensure_models_wire_format_tests {
         ] {
             assert!(json.get(key).is_some(), "missing {key} in {json}");
         }
+    }
+}
+
+#[cfg(test)]
+mod normalized_audio_cache_tests {
+    use super::*;
+    use hound::{SampleFormat, WavSpec, WavWriter};
+    use std::sync::{Arc, Barrier};
+    use tempfile::tempdir;
+
+    fn write_wav(path: &Path, channels: u16, sample_rate: u32, bits: u16) {
+        let spec = WavSpec {
+            channels,
+            sample_rate,
+            bits_per_sample: bits,
+            sample_format: SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(path, spec).unwrap();
+        for _ in 0..sample_rate {
+            writer.write_sample(0i16).unwrap();
+        }
+        writer.finalize().unwrap();
+    }
+
+    #[test]
+    fn probe_requires_mono_16k_pcm16() {
+        let dir = tempdir().unwrap();
+        let valid = dir.path().join("valid.wav");
+        write_wav(&valid, 1, 16_000, 16);
+        assert!(is_normalized_wav(&valid));
+
+        let stereo = dir.path().join("stereo.wav");
+        write_wav(&stereo, 2, 16_000, 16);
+        assert!(!is_normalized_wav(&stereo));
+
+        let wrong_rate = dir.path().join("48k.wav");
+        write_wav(&wrong_rate, 1, 48_000, 16);
+        assert!(!is_normalized_wav(&wrong_rate));
+    }
+
+    #[test]
+    fn already_normalized_sources_skip_ffmpeg_unless_args_are_added() {
+        let dir = tempdir().unwrap();
+        let valid = dir.path().join("valid.wav");
+        write_wav(&valid, 1, 16_000, 16);
+
+        assert!(!should_normalize(&valid, None));
+        let args = vec!["-af".to_string(), "loudnorm".to_string()];
+        assert!(should_normalize(&valid, Some(&args)));
+    }
+
+    #[test]
+    fn cache_key_tracks_source_and_arguments() {
+        let dir = tempdir().unwrap();
+        let first = dir.path().join("first.wav");
+        let second = dir.path().join("second.wav");
+        write_wav(&first, 1, 16_000, 16);
+        write_wav(&second, 1, 16_000, 16);
+
+        let base = normalized_cache_path(dir.path(), &first, None).unwrap();
+        assert_ne!(base, normalized_cache_path(dir.path(), &second, None).unwrap());
+
+        let args = vec!["-af".to_string(), "loudnorm".to_string()];
+        assert_ne!(base, normalized_cache_path(dir.path(), &first, Some(&args)).unwrap());
+    }
+
+    #[test]
+    fn concurrent_publishers_leave_a_complete_cached_file() {
+        let dir = tempdir().unwrap();
+        let destination = dir.path().join("shared.wav");
+        let barrier = Arc::new(Barrier::new(2));
+        let mut handles = Vec::new();
+
+        for index in 0..2 {
+            let temp = dir.path().join(format!("temp-{index}.wav"));
+            write_wav(&temp, 1, 16_000, 16);
+            let destination = destination.clone();
+            let barrier = Arc::clone(&barrier);
+            handles.push(std::thread::spawn(move || {
+                barrier.wait();
+                publish_normalized_audio(&temp, &destination)
+            }));
+        }
+
+        for handle in handles {
+            assert!(handle.join().unwrap().is_ok());
+        }
+        assert!(is_normalized_wav(&destination));
+    }
+
+    #[test]
+    fn cleanup_removes_legacy_files_and_caps_cache_size() {
+        let dir = tempdir().unwrap();
+        let cache = normalized_audio_dir(dir.path());
+        fs::create_dir_all(&cache).unwrap();
+
+        for index in 0..(NORMALIZED_AUDIO_MAX_FILES + 3) {
+            write_wav(&cache.join(format!("{index}.wav")), 1, 16_000, 16);
+        }
+        let legacy = dir.path().join("normalized_audio.wav");
+        fs::write(&legacy, b"legacy").unwrap();
+
+        cleanup_normalized_audio_cache(dir.path());
+
+        let remaining = fs::read_dir(&cache)
+            .unwrap()
+            .flatten()
+            .filter(|entry| entry.path().extension().and_then(|ext| ext.to_str()) == Some("wav"))
+            .count();
+        assert!(remaining <= NORMALIZED_AUDIO_MAX_FILES);
+        assert!(!legacy.exists());
     }
 }

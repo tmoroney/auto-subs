@@ -319,12 +319,12 @@ fn request_in_flight(text: &str, id: &str) -> bool {
 
 /// If the payload carries a string `filePath`, read that file and attach the
 /// parsed JSON as `subtitleData` (the sandboxed Lua side cannot read files).
-fn attach_subtitle_data(payload: &mut serde_json::Value) -> Result<(), String> {
+async fn attach_subtitle_data(payload: &mut serde_json::Value) -> Result<(), String> {
     let file_path = match payload.get("filePath").and_then(|v| v.as_str()) {
         Some(p) => p.to_string(),
         None => return Ok(()),
     };
-    let text = fs::read_to_string(&file_path).map_err(|e| {
+    let text = tokio::fs::read_to_string(&file_path).await.map_err(|e| {
         format!("could not read subtitle file {}: {}", file_path, e)
     })?;
     let data: serde_json::Value = serde_json::from_str(&text).map_err(|e| {
@@ -334,14 +334,17 @@ fn attach_subtitle_data(payload: &mut serde_json::Value) -> Result<(), String> {
     Ok(())
 }
 
-fn delete_request_file(path: &std::path::Path) {
+async fn delete_request_file(path: &std::path::Path) {
     // Retry a few times: on Windows the delete can fail while Lua still has
     // the file open.
     for _ in 0..5 {
-        if fs::remove_file(path).is_ok() || !path.exists() {
+        if tokio::fs::remove_file(path).await.is_ok() {
             return;
         }
-        std::thread::sleep(Duration::from_millis(50));
+        if !tokio::fs::try_exists(path).await.unwrap_or(false) {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
     }
 }
 
@@ -355,13 +358,14 @@ pub async fn send_resolve_payload(
     let _guard = REQUEST_LOCK.lock().await;
 
     let dir = mailbox_dir()?;
-    fs::create_dir_all(&dir)
+    tokio::fs::create_dir_all(&dir)
+        .await
         .map_err(|e| format!("could not create mailbox directory {}: {}", dir.display(), e))?;
     let request_path = dir.join("request.lua");
     // Drop any stale request left over from a previous app run.
-    delete_request_file(&request_path);
+    delete_request_file(&request_path).await;
 
-    attach_subtitle_data(&mut payload)?;
+    attach_subtitle_data(&mut payload).await?;
 
     let id = next_request_id();
     let body = serde_json::to_string(&payload)
@@ -370,13 +374,15 @@ pub async fn send_resolve_payload(
 
     // Write-then-rename so Lua never sees a half-written request.
     let tmp_path = dir.join("request.lua.tmp");
-    fs::write(&tmp_path, &chunk)
+    tokio::fs::write(&tmp_path, &chunk)
+        .await
         .map_err(|e| format!("could not write mailbox request: {}", e))?;
-    fs::rename(&tmp_path, &request_path)
+    tokio::fs::rename(&tmp_path, &request_path)
+        .await
         .map_err(|e| format!("could not publish mailbox request: {}", e))?;
 
     let result = wait_for_response(&id, timeout).await;
-    delete_request_file(&request_path);
+    delete_request_file(&request_path).await;
     result
 }
 
@@ -391,39 +397,62 @@ pub fn clear_stale_request() {
 }
 
 async fn wait_for_response(id: &str, timeout: Duration) -> Result<String, String> {
-    let prefs_path = fusion_prefs_path().ok_or_else(|| RESOLVE_OFFLINE_MESSAGE.to_string())?;
+    let prefs_path = tokio::task::spawn_blocking(fusion_prefs_path)
+        .await
+        .map_err(|e| format!("could not locate the Resolve preferences: {e}"))?
+        .ok_or_else(|| RESOLVE_OFFLINE_MESSAGE.to_string())?;
 
     let deadline = Instant::now() + timeout;
     let busy_cap = Instant::now() + MAX_BUSY_WAIT;
     let mut ack_deadline = Instant::now() + ACK_TIMEOUT;
     let mut acked = false;
+    let mut last_signature: Option<(SystemTime, u64)> = None;
+    let mut last_read: Option<Instant> = None;
 
     loop {
-        // Read bytes, not a UTF-8 string: Resolve writes prefs in the user's
-        // ANSI code page on Windows, so a non-ASCII profile path makes the
-        // file invalid UTF-8 and a strict read would report a healthy bridge
-        // as offline forever. Every key and value we parse is ASCII.
-        if let Ok(bytes) = fs::read(&prefs_path) {
-            let text = String::from_utf8_lossy(&bytes);
-            if let Some(value) = pref_value(&text, "Response") {
-                if let Some(result) = decode_response(value, id) {
-                    return result;
-                }
-            }
-            if !acked {
-                if let Some(ack) = pref_value(&text, "Ack") {
-                    if ack == id {
-                        acked = true;
+        // Polling the whole prefs file every 50 ms is wasteful on large profiles.
+        // Resolve rewrites it through SavePrefs, so mtime+length is enough to
+        // know whether anything changed. Fall back to reading when metadata is
+        // unavailable (for example during the first write), and force a read
+        // once a second in case a filesystem's timestamp resolution is too
+        // coarse to see the update.
+        let signature = tokio::fs::metadata(&prefs_path)
+            .await
+            .ok()
+            .and_then(|meta| meta.modified().ok().map(|modified| (modified, meta.len())));
+        let force_read = last_read.is_none_or(|read| read.elapsed() >= Duration::from_secs(1));
+        if last_signature.is_none() || signature != last_signature || force_read {
+            // Read bytes, not a UTF-8 string: Resolve writes prefs in the user's
+            // ANSI code page on Windows, so a non-ASCII profile path makes the
+            // file invalid UTF-8 and a strict read would report a healthy bridge
+            // as offline forever. Every key and value we parse is ASCII.
+            if let Ok(bytes) = tokio::fs::read(&prefs_path).await {
+                // Only remember the signature after a successful read: a failed
+                // read during a write must be retried even if metadata has
+                // already settled on its final value.
+                last_signature = signature;
+                last_read = Some(Instant::now());
+                let text = String::from_utf8_lossy(&bytes);
+                if let Some(value) = pref_value(&text, "Response") {
+                    if let Some(result) = decode_response(value, id) {
+                        return result;
                     }
                 }
-                // An ack for a different request with no response yet means
-                // the loop is busy inside a handler, not dead — our request
-                // is next in line. Keep waiting instead of reporting a false
-                // disconnect, but never past busy_cap: the same evidence is
-                // left behind when the bridge dies mid-handler, so an
-                // unbounded extension would mask a dead bridge too.
-                if request_in_flight(&text, id) {
-                    ack_deadline = (Instant::now() + BUSY_HOLD).min(busy_cap);
+                if !acked {
+                    if let Some(ack) = pref_value(&text, "Ack") {
+                        if ack == id {
+                            acked = true;
+                        }
+                    }
+                    // An ack for a different request with no response yet means
+                    // the loop is busy inside a handler, not dead — our request
+                    // is next in line. Keep waiting instead of reporting a false
+                    // disconnect, but never past busy_cap: the same evidence is
+                    // left behind when the bridge dies mid-handler, so an
+                    // unbounded extension would mask a dead bridge too.
+                    if request_in_flight(&text, id) {
+                        ack_deadline = (Instant::now() + BUSY_HOLD).min(busy_cap);
+                    }
                 }
             }
         }

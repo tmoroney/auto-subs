@@ -302,6 +302,7 @@ dependencies = [
  "dirs 5.0.1",
  "eyre",
  "futures-util",
+ "hound",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",

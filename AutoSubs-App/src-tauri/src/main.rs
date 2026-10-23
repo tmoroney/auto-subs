@@ -551,6 +551,14 @@ fn main() {
             // can't replay it before our first request.
             resolve_bridge::clear_stale_request();
 
+            // Normalized audio can be as large as the source; prune old entries
+            // off the startup path so the cache cannot grow without bound.
+            if let Ok(cache_dir) = app.path().app_cache_dir() {
+                std::thread::spawn(move || {
+                    transcription_api::cleanup_normalized_audio_cache(&cache_dir);
+                });
+            }
+
             // Release builds install/refresh the Resolve launcher themselves so
             // app updates land it without a reinstall (and remove the 3.10.0
             // startup scriptlib). Dev builds must not: setup-resolve owns the
