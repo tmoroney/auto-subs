@@ -183,6 +183,18 @@ const plainContent = buildSubtitleExportContent(
 );
 assert.equal(plainContent.includes("Alex"), false);
 
+// "SRT speaker colours" wraps each whole cue in its speaker's colour, which
+// Resolve imports as per-subtitle styling. Speakers styled "None" stay plain.
+assert.equal(subtitleExportDialogOptions("srt-colors", "clip").defaultPath, "clip.srt");
+const colorContent = buildSubtitleExportContent("srt-colors", spoken, [
+  { ...speaker("Alex"), style: "Fill", color: "#ff0000" },
+  speaker("Blair"),
+]);
+assert.match(colorContent, /<font color="#FF0000">Hello\nworld<\/font>/);
+assert.match(colorContent, /\nSecond cue\n/);
+assert.equal(colorContent.includes("Alex"), false, "colour export adds no labels");
+assert.equal(plainContent.includes("<font"), false, "plain SRT stays uncoloured");
+
 const txtOptions = subtitleExportDialogOptions("txt", "clip");
 assert.equal(txtOptions.defaultPath, "clip.txt");
 assert.deepEqual(txtOptions.filters, [

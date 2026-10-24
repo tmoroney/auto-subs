@@ -1,9 +1,11 @@
 import type { Speaker, Subtitle } from "../types";
-import { speakerIdBase, srtCueSpeakerLabel } from "./speaker-label.ts";
+import { speakerCueColor, speakerIdBase, srtCueSpeakerLabel } from "./speaker-label.ts";
 
 export interface GenerateSrtOptions {
     /** When true, prefix each cue that has an identified speaker. Defaults to plain text. */
     includeSpeakerLabels?: boolean;
+    /** When true, wrap each cue in `<font color>` with its speaker's colour. */
+    colorBySpeaker?: boolean;
     speakers?: Speaker[];
 }
 
@@ -91,6 +93,7 @@ export function generateSrt(subtitles: Subtitle[], options?: GenerateSrtOptions)
     }
 
     const includeSpeakerLabels = options?.includeSpeakerLabels === true;
+    const colorBySpeaker = options?.colorBySpeaker === true;
     const speakers = options?.speakers ?? [];
     const idBase = speakerIdBase(sanitized);
 
@@ -109,6 +112,11 @@ export function generateSrt(subtitles: Subtitle[], options?: GenerateSrtOptions)
 
             if (isNaN(start) || isNaN(end) || !text) {
                 return ''; // Skip invalid or empty entries
+            }
+
+            const color = colorBySpeaker ? speakerCueColor(sub.speaker_id, speakers, idBase) : null;
+            if (color) {
+                text = `<font color="${color}">${text}</font>`;
             }
 
             return `${i + 1}\n${formatTimecode(start)} --> ${formatTimecode(end)}\n${text}\n`;

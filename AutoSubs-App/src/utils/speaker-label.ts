@@ -39,6 +39,22 @@ export function resolveSpeakerLabel(
 }
 
 /**
+ * Text colour for a cue's speaker, or null when the speaker is unknown, has
+ * style "None", or has no valid `#RRGGBB` colour.
+ */
+export function speakerCueColor(
+  speakerId: string | undefined,
+  speakers: Speaker[],
+  idBase: number,
+): string | null {
+  const index = Number(speakerId?.trim()) - idBase;
+  const speaker = Number.isInteger(index) && index >= 0 ? speakers[index] : undefined;
+  if (!speaker || (speaker.style !== "Fill" && speaker.style !== "Outline")) return null;
+  const color = speaker.color?.trim() ?? "";
+  return /^#[0-9a-f]{6}$/i.test(color) ? color.toUpperCase() : null;
+}
+
+/**
  * Speaker prefix for one SRT cue. Missing and unknown (`?`) speakers stay
  * unlabeled so a caption file is not filled with placeholder names.
  */

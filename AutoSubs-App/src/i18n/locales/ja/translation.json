@@ -141,6 +141,7 @@
     "dropHere": "ファイルをここにドロップするかクリックして選択",
     "exportAsSrt": "SRT としてエクスポート",
     "exportAsSrtSpeakers": "話者付きSRT",
+    "exportAsSrtColors": "話者カラー付きSRT",
     "exportAsTxt": "TXT としてエクスポート",
     "exportAsJson": "JSON としてエクスポート",
     "exportFailed": "書き出しファイルを保存できませんでした。",
@@ -160,6 +161,10 @@
       "srtSpeakers": {
         "title": "話者付きSRT",
         "description": "各字幕の先頭に話者名を付けます。"
+      },
+      "srtColors": {
+        "title": "話者カラーSRT",
+        "description": "1行につき1字幕、話者の色で表示。"
       },
       "txt": {
         "title": "文字起こし (.txt)",

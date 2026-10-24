@@ -69,6 +69,7 @@
     "importFile": "导入文件",
     "exportAsSrt": "导出为 SRT",
     "exportAsSrtSpeakers": "带说话人的SRT",
+    "exportAsSrtColors": "说话人颜色SRT",
     "exportAsTxt": "导出为 TXT",
     "exportAsJson": "导出为 JSON",
     "exportFailed": "无法保存导出文件。",
@@ -83,6 +84,10 @@
       "srtSpeakers": {
         "title": "带说话人的SRT",
         "description": "每条字幕前加上说话人名字。"
+      },
+      "srtColors": {
+        "title": "说话人颜色 SRT",
+        "description": "每行一条字幕，按说话人着色。"
       },
       "txt": {
         "title": "转录文本 (.txt)",
