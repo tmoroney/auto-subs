@@ -146,10 +146,12 @@ fn activate() -> Result<(), String> {
 // ---------------------------------------------------------------------------
 
 fn run_watcher() -> ! {
+    // Taken before waiting for the lock, so a stop request written while we
+    // wait (e.g. the installer stopping the current owner) covers us too.
+    let started = SystemTime::now();
     let Some(_lock) = acquire_lock(LOCK_WAIT) else {
         std::process::exit(0); // another watcher is running
     };
-    let started = SystemTime::now();
     let exe = std::env::current_exe().ok();
     let exe_stamp = exe.as_deref().and_then(modified);
 
@@ -166,10 +168,11 @@ fn run_watcher() -> ! {
         if let Some(prefs) = fusion_prefs_path() {
             let mtime = modified(&prefs);
             if mtime.is_some() && mtime != seen_mtime {
-                seen_mtime = mtime;
                 // Bytes, not UTF-8: Resolve writes prefs in the ANSI code page
-                // on Windows (see wait_for_response).
+                // on Windows (see wait_for_response). The mtime is recorded
+                // only after a read succeeds, so a failed read retries.
                 if let Ok(bytes) = fs::read(&prefs) {
+                    seen_mtime = mtime;
                     let text = String::from_utf8_lossy(&bytes);
                     if let Some(request) = pref_value(&text, "LaunchRequest") {
                         if request != last_request {

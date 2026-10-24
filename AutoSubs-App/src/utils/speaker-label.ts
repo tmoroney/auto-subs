@@ -47,7 +47,9 @@ export function speakerCueColor(
   speakers: Speaker[],
   idBase: number,
 ): string | null {
-  const index = Number(speakerId?.trim()) - idBase;
+  const id = speakerId?.trim();
+  if (!id || id === "?") return null;
+  const index = Number(id) - idBase;
   const speaker = Number.isInteger(index) && index >= 0 ? speakers[index] : undefined;
   if (!speaker || (speaker.style !== "Fill" && speaker.style !== "Outline")) return null;
   const color = speaker.color?.trim() ?? "";

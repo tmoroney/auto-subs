@@ -4,6 +4,7 @@ import {
   buildSubtitleExportContent,
   subtitleExportDialogOptions,
 } from "../src/utils/export-file.ts";
+import { speakerCueColor } from "../src/utils/speaker-label.ts";
 import { subtitleToBackendSegment } from "../src/api/formatting-api.ts";
 import type { Speaker, Subtitle } from "../src/types.ts";
 
@@ -194,6 +195,15 @@ assert.match(colorContent, /<font color="#FF0000">Hello\nworld<\/font>/);
 assert.match(colorContent, /\nSecond cue\n/);
 assert.equal(colorContent.includes("Alex"), false, "colour export adds no labels");
 assert.equal(plainContent.includes("<font"), false, "plain SRT stays uncoloured");
+
+// A blank or "?" speaker is unknown, even in a zero-based transcript where
+// Number("") would otherwise pick speaker 0.
+const red = [{ ...speaker("Alex"), style: "Fill", color: "#ff0000" }] as Speaker[];
+assert.equal(speakerCueColor("0", red, 0), "#FF0000");
+assert.equal(speakerCueColor("", red, 0), null);
+assert.equal(speakerCueColor("  ", red, 0), null);
+assert.equal(speakerCueColor("?", red, 0), null);
+assert.equal(speakerCueColor(undefined, red, 0), null);
 
 const txtOptions = subtitleExportDialogOptions("txt", "clip");
 assert.equal(txtOptions.defaultPath, "clip.txt");

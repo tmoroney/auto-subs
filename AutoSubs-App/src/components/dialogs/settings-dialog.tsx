@@ -155,6 +155,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setOpenFromResolve(await invoke<OpenFromResolveStatus>("set_open_from_resolve", { enabled }));
     } catch (err) {
       console.error("[SettingsDialog] failed to change Open from Resolve:", err);
+      // The backend doesn't undo steps that already happened (e.g. the
+      // disabled marker), so show what is actually in effect now.
+      await invoke<OpenFromResolveStatus>("open_from_resolve_status")
+        .then(setOpenFromResolve)
+        .catch(() => setOpenFromResolve(null));
       await message(String(err), { title: t("settings.openFromResolve.title"), kind: "error" });
     } finally {
       setOpenFromResolveBusy(false);
@@ -250,6 +255,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </ItemContent>
                     <ItemActions>
                       <Switch
+                        aria-label={t("settings.openFromResolve.title")}
                         checked={openFromResolve.enabled}
                         disabled={openFromResolveBusy}
                         onCheckedChange={handleOpenFromResolveToggle}
