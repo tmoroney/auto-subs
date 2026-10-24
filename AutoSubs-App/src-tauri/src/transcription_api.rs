@@ -271,7 +271,7 @@ pub async fn ensure_models<R: Runtime>(
     let cfg = engine
         .prepare_models(&options, Some(&progress), Some(&is_cancelled))
         .await
-        .map_err(|e| format!("Failed to prepare models: {e}"))?;
+        .map_err(|e| format!("Failed to prepare models: {e:#}"))?;
 
     Ok(EnsureModelsResponse {
         asr_model_path: cfg.asr_model_path.ok_or_else(|| "ASR model path missing".to_string())?,

@@ -79,6 +79,7 @@ async fn translate_text_with_client(
 
     let max_retries = 5u32;
     let mut attempt = 0u32;
+    let mut last_err: String;
     loop {
         let resp_result = client
             .get(url)
@@ -96,6 +97,7 @@ async fn translate_text_with_client(
                         .to_string();
                     return Ok(translated_text);
                 } else if resp.status().as_u16() == 429 || resp.status().is_server_error() {
+                    last_err = format!("HTTP {}", resp.status());
                     if attempt >= max_retries { break; }
                     sleep(backoff(attempt)).await;
                     attempt += 1;
@@ -108,8 +110,9 @@ async fn translate_text_with_client(
                 }
             }
             Err(e) => {
+                last_err = e.to_string();
                 if attempt >= max_retries {
-                    return Err(ServiceUnavailable(e.to_string()).into());
+                    break;
                 }
                 sleep(backoff(attempt)).await;
                 attempt += 1;
@@ -118,7 +121,7 @@ async fn translate_text_with_client(
         }
     }
 
-    Err(ServiceUnavailable("translate_text failed after retries".to_string()).into())
+    Err(ServiceUnavailable(format!("translate_text failed after retries: {last_err}")).into())
 }
 
 /// Translate a collection of texts concurrently while preserving order.
