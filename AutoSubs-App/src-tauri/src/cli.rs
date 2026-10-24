@@ -131,6 +131,9 @@ pub async fn run<R: Runtime>(app: AppHandle<R>) -> ! {
     // app also refreshes them on every startup, which keeps them current
     // across updates.
     if arg_flag(&matches, "install-resolve-scripts") {
+        // Also start Open from Resolve now (unless the user turned it off), so
+        // clicking the script opens the app before it has ever been launched.
+        crate::resolve_launcher::ensure_enabled();
         match crate::resolve_scripts::install_resolve_scripts_now(&app) {
             Ok(()) => flush_and_exit(0),
             Err(e) => fail(&e),

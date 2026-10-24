@@ -30,6 +30,10 @@
       "notFound": "Introuvable",
       "errorTitle": "Outil en ligne de commande"
     },
+    "openFromResolve": {
+      "title": "Ouvrir depuis Resolve",
+      "description": "Ouvre l'app depuis le menu Scripts de Resolve"
+    },
     "openLogsFolder": "Ouvrir le dossier des logs",
     "reset": {
       "button": "Réinitialiser les paramètres",

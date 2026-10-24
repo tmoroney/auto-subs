@@ -30,6 +30,10 @@
       "notFound": "Not found",
       "errorTitle": "Command-line tool"
     },
+    "openFromResolve": {
+      "title": "Open from Resolve",
+      "description": "Clicking AutoSubs in Resolve's Scripts menu opens the app"
+    },
     "openLogsFolder": "Open Logs Folder",
     "reset": {
       "button": "Reset Settings",

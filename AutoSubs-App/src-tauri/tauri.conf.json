@@ -55,6 +55,7 @@
         ],
         "files": {
           "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "gen-resolve-linux/AutoSubs.lua",
+          "/etc/xdg/autostart/com.autosubs.resolve-launcher.desktop": "gen-resolve-linux/com.autosubs.resolve-launcher.desktop",
           "/usr/lib/autosubs/resources/AutoSubs.lua": "resources/AutoSubs.lua",
           "/usr/lib/autosubs/resources/modules": "resources/modules/"
         }
@@ -73,6 +74,7 @@
         ],
         "files": {
           "/opt/resolve/Fusion/Scripts/Utility/AutoSubs.lua": "gen-resolve-linux/AutoSubs.lua",
+          "/etc/xdg/autostart/com.autosubs.resolve-launcher.desktop": "gen-resolve-linux/com.autosubs.resolve-launcher.desktop",
           "/usr/lib/autosubs/resources/AutoSubs.lua": "resources/AutoSubs.lua",
           "/usr/lib/autosubs/resources/modules": "resources/modules/"
         }

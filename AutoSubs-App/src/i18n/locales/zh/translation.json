@@ -30,6 +30,10 @@
       "notFound": "未找到",
       "errorTitle": "命令行工具"
     },
+    "openFromResolve": {
+      "title": "从 Resolve 打开",
+      "description": "在 Resolve 的脚本菜单中点击 AutoSubs 即可打开应用"
+    },
     "openLogsFolder": "打开日志文件夹",
     "reset": {
       "button": "重置设置",

@@ -30,6 +30,10 @@
       "notFound": "Не найдено",
       "errorTitle": "Инструмент командной строки"
     },
+    "openFromResolve": {
+      "title": "Открывать из Resolve",
+      "description": "Открывает приложение из меню Scripts в Resolve"
+    },
     "openLogsFolder": "Открыть папку с логами",
     "reset": {
       "button": "Сбросить настройки",

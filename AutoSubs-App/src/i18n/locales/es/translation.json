@@ -30,6 +30,10 @@
       "notFound": "No encontrado",
       "errorTitle": "Herramienta de línea de comandos"
     },
+    "openFromResolve": {
+      "title": "Abrir desde Resolve",
+      "description": "Abre la app desde el menú Scripts de Resolve"
+    },
     "openLogsFolder": "Abrir carpeta de registros",
     "reset": {
       "button": "Restablecer ajustes",

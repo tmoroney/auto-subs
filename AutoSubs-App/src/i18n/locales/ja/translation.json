@@ -445,6 +445,10 @@
       "notFound": "未検出",
       "errorTitle": "コマンドラインツール"
     },
+    "openFromResolve": {
+      "title": "Resolveから開く",
+      "description": "Resolveのスクリプトメニューからアプリを開きます"
+    },
     "openLogsFolder": "ログフォルダを開く",
     "gpu": {
       "description": "GPUを使用して高速な文字起こし",

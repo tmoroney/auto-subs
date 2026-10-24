@@ -30,6 +30,10 @@
       "notFound": "Nicht gefunden",
       "errorTitle": "Befehlszeilentool"
     },
+    "openFromResolve": {
+      "title": "Aus Resolve öffnen",
+      "description": "Öffnet die App über das Skriptmenü von Resolve"
+    },
     "openLogsFolder": "Logs-Ordner öffnen",
     "preset": {
       "button": "Einstellungen zurücksetzen",

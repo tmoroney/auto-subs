@@ -149,6 +149,18 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
     local mode = (opts and opts.mode) or "manual"
     local fu = fusion_object()
     local can_signal = fu and type(fu.SetPrefs) == "function"
+    if can_signal and opts and opts.open_app then
+        -- Open from Resolve: this state can't launch programs, so ask the
+        -- app's login-item watcher (resolve_launcher.rs) to do it. The
+        -- watcher reads Fusion.prefs from disk, so this is the one SavePrefs
+        -- a launch makes. It happens on the user's click, never from the idle
+        -- loop. Done first so the app opens while the takeover below waits.
+        pcall(function()
+            fu:SetPrefs("Global.AutoSubsBridge.LaunchRequest",
+                tostring(os.time()) .. " " .. tostring({}))
+            fu:SavePrefs()
+        end)
+    end
     if mode == "manual" and can_signal then
         -- Takeover: ask any running loop to exit, then start fresh. Stop is
         -- set unconditionally — a stale heartbeat means the old loop is dead

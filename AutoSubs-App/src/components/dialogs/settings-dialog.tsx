@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Gauge, Terminal } from "lucide-react";
+import { Gauge, MousePointerClick, Terminal } from "lucide-react";
 import { DeleteIcon, type DeleteIconHandle } from "@/components/ui/icons/delete";
 import { useSettingsStore } from "@/stores/settings-store";
 import { ask, message } from "@tauri-apps/plugin-dialog";
@@ -133,6 +133,34 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
   }, [cliStatus, refreshCliStatus, t]);
 
+  // "Open from Resolve" login-item watcher (resolve_launcher.rs). The state
+  // lives in the backend, not the settings store: the watcher process reads it.
+  type OpenFromResolveStatus = { supported: boolean; enabled: boolean };
+  const [openFromResolve, setOpenFromResolve] = React.useState<OpenFromResolveStatus | null>(null);
+  const [openFromResolveBusy, setOpenFromResolveBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    invoke<OpenFromResolveStatus>("open_from_resolve_status")
+      .then(setOpenFromResolve)
+      .catch((err) => {
+        console.error("[SettingsDialog] failed to read Open from Resolve status:", err);
+        setOpenFromResolve(null);
+      });
+  }, [open]);
+
+  const handleOpenFromResolveToggle = React.useCallback(async (enabled: boolean) => {
+    setOpenFromResolveBusy(true);
+    try {
+      setOpenFromResolve(await invoke<OpenFromResolveStatus>("set_open_from_resolve", { enabled }));
+    } catch (err) {
+      console.error("[SettingsDialog] failed to change Open from Resolve:", err);
+      await message(String(err), { title: t("settings.openFromResolve.title"), kind: "error" });
+    } finally {
+      setOpenFromResolveBusy(false);
+    }
+  }, [t]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <form>
@@ -207,6 +235,29 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   </ItemActions>
                 </Item>
               </Field>
+
+              {openFromResolve?.supported && (
+                <Field>
+                  <Item variant="outline" size="sm">
+                    <ItemMedia variant="icon" className="bg-orange-100 dark:bg-orange-900/30">
+                      <MousePointerClick className="size-4 text-orange-600 dark:text-orange-400" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{t("settings.openFromResolve.title")}</ItemTitle>
+                      <ItemDescription className="text-xs leading-tight line-clamp-1">
+                        {t("settings.openFromResolve.description")}
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Switch
+                        checked={openFromResolve.enabled}
+                        disabled={openFromResolveBusy}
+                        onCheckedChange={handleOpenFromResolveToggle}
+                      />
+                    </ItemActions>
+                  </Item>
+                </Field>
+              )}
 
               {cliStatus && (
                 <Field>

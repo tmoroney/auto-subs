@@ -39,4 +39,21 @@ for (const name of ['AutoSubs.lua']) {
   fs.writeFileSync(path.join(outDir, name), out);
 }
 
+// "Open from Resolve" login item (resolve_launcher.rs), installed to
+// /etc/xdg/autostart so the watcher starts at the next login even before the
+// app is first opened. Must match `autostart_entry` for /usr/bin/autosubs: a
+// unit test there reads this block back. The app turns it off per user with a
+// Hidden=true copy in ~/.config/autostart.
+const AUTOSTART_ENTRY = `[Desktop Entry]
+Type=Application
+Name=AutoSubs
+Comment=Opens AutoSubs when you run it from DaVinci Resolve
+Exec="/usr/bin/autosubs" --resolve-watcher
+Icon=autosubs
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+`;
+fs.writeFileSync(path.join(outDir, 'com.autosubs.resolve-launcher.desktop'), AUTOSTART_ENTRY);
+
 console.log(`generated Resolve scripts in ${path.relative(process.cwd(), outDir)}`);
