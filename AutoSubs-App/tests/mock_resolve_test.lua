@@ -679,5 +679,73 @@ do
     check(r.mode == 0, "render mode restored", tostring(r.mode))
 end
 
+-- W1: Moving a word marker before the preceding word's stored end survives
+-- marker application and timing normalization, with and without lead-in.
+do
+    local macro_file = assert(io.open("../Resolve-Integration/autosubs-macro.setting", "r"))
+    local macro_source = macro_file:read("*a")
+    macro_file:close()
+
+    local function macro_script(name)
+        local key = name .. " = [["
+        local start = assert(macro_source:find(key, 1, true), name) + #key
+        local finish = assert(macro_source:find("]],", start, true), name)
+        return macro_source:sub(start, finish - 1)
+    end
+
+    local apply_word_markers = assert(loadstring(macro_script("ApplyWordMarkers")))()
+    local scale_word_timing = macro_script("ScaleWordTiming")
+
+    local function check_marker_move(animation_mode, stored_end, expected_start, label)
+        local markers = {
+            [110] = { customData = "AutoSubs", note = tostring(stored_end) },
+            [126] = { customData = "AutoSubs" },
+        }
+        local item = {}
+        function item:GetMarkers() return markers end
+        function item:DeleteMarkerByCustomData(custom_data)
+            for frame, marker in pairs(markers) do
+                if marker.customData == custom_data then
+                    markers[frame] = nil
+                    return true
+                end
+            end
+            return false
+        end
+
+        local comp = { __timelineItem = item }
+        function comp:GetAttrs(name)
+            if name == "COMPN_RenderStart" then return 100 end
+            if name == "COMPN_RenderEnd" then return 500 end
+        end
+        function comp:GetPrefs(name)
+            if name == "Comp.FrameFormat.Rate" then return "24" end
+        end
+
+        local tool = {
+            _inputs = { Text = "one two", AnimationLength = 1, AnimationMode = animation_mode },
+            _data = {
+                GetTimelineItem = "return function(comp) return comp.__timelineItem end",
+                GetDelaySpline = "return function() return {} end",
+                ScaleWordTiming = scale_word_timing,
+                ApplyWordTiming = "return function(comp, tool, timing) tool._wordTiming = timing end",
+            },
+        }
+        function tool:GetInput(name) return self._inputs[name] end
+        function tool:GetData(name) return self._data[name] end
+
+        apply_word_markers(comp, tool)
+        check(tool._wordTiming and tool._wordTiming[2].startFrame == expected_start,
+            label .. " keeps the moved start",
+            tostring(tool._wordTiming and tool._wordTiming[2].startFrame))
+        check(tool._wordTiming and tool._wordTiming[1].endFrame == expected_start,
+            label .. " caps the preceding end",
+            tostring(tool._wordTiming and tool._wordTiming[1].endFrame))
+    end
+
+    check_marker_move(1, 38, 26, "marker move without lead-in")
+    check_marker_move(2, 50, 38, "marker move with lead-in")
+end
+
 print(string.format("\n%d passed, %d failed", PASS, FAIL))
 os.exit(FAIL == 0 and 0 or 1)
