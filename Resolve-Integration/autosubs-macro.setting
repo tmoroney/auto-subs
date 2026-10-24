@@ -6,6 +6,21 @@
 			CustomData = {
 				IsEditing = false,
 				DelaySpline = "Follower1DelaybyCharacterPosition",
+				GetDelaySpline = [[
+					return function(comp, tool)
+						local spline = comp:FindTool(tool:GetData("DelaySpline"))
+						if spline then return spline end
+						-- Localized Resolve builds give the auto-created spline a translated name,
+						-- so fall back to whatever is connected to the follower's delay input.
+						local follower = comp:FindTool("Follower1")
+						local output = follower and follower.DelayByCharacterPosition:GetConnectedOutput()
+						spline = output and output:GetTool()
+						if not spline then
+							error("AutoSubs: word timing spline not found (Follower1.DelayByCharacterPosition)")
+						end
+						return spline
+					end
+				]],
 				WordTiming = {
 					-- Written by Lua server. Each entry: { startIndex, endIndex, startFrame, endFrame }
 					-- Indices are 0-based character positions; frames are relative to the subtitle's own start (frame 0), not the timeline.
@@ -436,7 +451,7 @@
 						end
 
 						-- Get current spline settings to be modified
-						local spline = comp:FindTool(tool:GetData("DelaySpline"))
+						local spline = loadstring(tool:GetData("GetDelaySpline"))()(comp, tool)
 						local settings = spline:SaveSettings()
 
 						if tool:GetInput("AnimationLevel") == 1 then
@@ -485,7 +500,7 @@
 						-- spoken start frame and the current animation lead-in.
 						wordTiming = loadstring(tool:GetData("ComputeRevealFrames"))()(comp, tool, wordTiming)
 
-						local spline = comp:FindTool(tool:GetData("DelaySpline"))
+						local spline = loadstring(tool:GetData("GetDelaySpline"))()(comp, tool)
 
 						-- Get current spline data so we can modify the keyframes
 						local settings = spline:SaveSettings()
@@ -653,7 +668,7 @@
 						if not item then return end
 
 						-- Get follower delay spline
-						local spline = comp:FindTool(tool:GetData("DelaySpline"))
+						local spline = loadstring(tool:GetData("GetDelaySpline"))()(comp, tool)
 
 						-- Get comp offset
 						local offset = comp:GetAttrs("COMPN_RenderStart")
@@ -721,6 +736,10 @@
 								endFrame = markerFrames[i + 1].frame + leadInFrames
 							else
 								endFrame = maxFrame
+							end
+
+							if i < count then
+								endFrame = math.min(endFrame, math.min(markerFrames[i + 1].frame + leadInFrames, maxFrame))
 							end
 						
 							table.insert(wordTiming, {
