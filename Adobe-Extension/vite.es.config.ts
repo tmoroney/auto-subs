@@ -9,6 +9,23 @@ import path from "path";
 
 const GLOBAL_THIS = "thisObj";
 
+// ExtendScript's $.evalFile decodes with the system codepage, so any
+// non-ASCII byte breaks loading on e.g. Chinese Windows (#1016).
+// Runs in generateBundle, after jsxPonyfill/jsxInclude and before jsxBin.
+const asciiOnly = () => ({
+  name: "ascii-only",
+  generateBundle(_output: unknown, bundle: Record<string, { type: string; code?: string }>) {
+    for (const chunk of Object.values(bundle)) {
+      if (chunk.type === "chunk" && chunk.code) {
+        chunk.code = chunk.code.replace(
+          /[^\x00-\x7f]/g,
+          (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"),
+        );
+      }
+    }
+  },
+});
+
 export const extendscriptConfig = (
   extendscriptEntry: string,
   outPath: string,
@@ -48,6 +65,7 @@ export const extendscriptConfig = (
         iife: true,
         globalThis: GLOBAL_THIS,
       }),
+      asciiOnly(),
       jsxBin(isPackage ? cepConfig.zxp.jsxBin : cepConfig.build?.jsxBin),
     ],
   };
