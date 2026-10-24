@@ -79,6 +79,7 @@ async fn translate_text_with_client(
 
     let max_retries = 5u32;
     let mut attempt = 0u32;
+    let mut last_err: String;
     loop {
         let resp_result = client
             .get(url)
@@ -96,6 +97,7 @@ async fn translate_text_with_client(
                         .to_string();
                     return Ok(translated_text);
                 } else if resp.status().as_u16() == 429 || resp.status().is_server_error() {
+                    last_err = format!("HTTP {}", resp.status());
                     if attempt >= max_retries { break; }
                     sleep(backoff(attempt)).await;
                     attempt += 1;
@@ -108,8 +110,9 @@ async fn translate_text_with_client(
                 }
             }
             Err(e) => {
+                last_err = e.to_string();
                 if attempt >= max_retries {
-                    return Err(ServiceUnavailable(e.to_string()).into());
+                    break;
                 }
                 sleep(backoff(attempt)).await;
                 attempt += 1;
@@ -118,7 +121,7 @@ async fn translate_text_with_client(
         }
     }
 
-    Err(ServiceUnavailable("translate_text failed after retries".to_string()).into())
+    Err(ServiceUnavailable(format!("translate_text failed after retries: {last_err}")).into())
 }
 
 /// Translate a collection of texts concurrently while preserving order.
@@ -156,6 +159,7 @@ pub async fn translate_batch(
     let attempted = texts.iter().filter(|t| !t.trim().is_empty()).count();
     let mut failed = 0usize;
     let mut outage_failures = 0usize;
+    let mut outage_cause: Option<String> = None;
 
     let mut stream = stream::iter(texts.iter().cloned().enumerate())
         .map(|(i, txt)| {
@@ -178,6 +182,7 @@ pub async fn translate_batch(
                     failed += 1;
                     if e.downcast_ref::<ServiceUnavailable>().is_some() {
                         outage_failures += 1;
+                        outage_cause.get_or_insert_with(|| e.to_string());
                     }
                     tracing::warn!("translation failed for segment {}, keeping original text: {}", i, e);
                 }
@@ -188,8 +193,9 @@ pub async fn translate_batch(
 
     if attempted > 0 && failed == attempted && outage_failures == attempted {
         return Err(eyre!(
-            "translation failed for all {} segments in batch; service appears unreachable",
-            attempted
+            "translation failed for all {} segments in batch; service appears unreachable: {}",
+            attempted,
+            outage_cause.as_deref().unwrap_or("unknown service error")
         ));
     }
 
