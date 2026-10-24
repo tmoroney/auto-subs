@@ -9,6 +9,27 @@ import path from "path";
 
 const GLOBAL_THIS = "thisObj";
 
+const asciiOnly = () => {
+  const escapeNonAscii = (code: string) =>
+    code.replace(/[^\x00-\x7f]/g, (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+
+  return {
+    name: "ascii-only",
+    renderChunk(code: string) {
+      return {
+        code: escapeNonAscii(code),
+        map: null,
+      };
+    },
+    generateBundle(_output, bundle) {
+      const chunk = bundle["index.js"];
+      if (chunk?.type === "chunk") {
+        chunk.code = escapeNonAscii(chunk.code);
+      }
+    },
+  };
+};
+
 export const extendscriptConfig = (
   extendscriptEntry: string,
   outPath: string,
@@ -48,6 +69,7 @@ export const extendscriptConfig = (
         iife: true,
         globalThis: GLOBAL_THIS,
       }),
+      asciiOnly(),
       jsxBin(isPackage ? cepConfig.zxp.jsxBin : cepConfig.build?.jsxBin),
     ],
   };
