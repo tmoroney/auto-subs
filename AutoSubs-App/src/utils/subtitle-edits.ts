@@ -81,6 +81,33 @@ export function preserveSubtitleEdits(
     }
     const aligned = sourceWords.length === flat;
 
+    // A word moved together with its timing leaves text and words in step, so
+    // the move shows up as a caption holding words from two source groups.
+    // Formatted captions never span groups on their own.
+    const groupsOf = (entry: typeof displayCues[number]) =>
+        sourceWords.slice(entry.from, entry.to).map(word => word.group);
+    if (aligned) {
+        for (const entry of displayCues) {
+            const groups = groupsOf(entry);
+            if (groups.some(group => group !== groups[0])) entry.changed = true;
+        }
+    }
+    // The source group a caption belongs to. For a caption that gained words
+    // from its neighbours, that is a group neither neighbour shares.
+    const homeGroup = (cueIndex: number) => {
+        const groups = groupsOf(displayCues[cueIndex]);
+        if (groups.every(group => group === groups[0])) return groups[0];
+        const previous = displayCues.slice(0, cueIndex).reverse().find(entry => entry.to > entry.from);
+        const following = displayCues.slice(cueIndex + 1).find(entry => entry.to > entry.from);
+        const shared = new Set<number>();
+        if (previous) shared.add(sourceWords[previous.to - 1].group);
+        if (following) shared.add(sourceWords[following.from].group);
+        const own = groups.filter(group => !shared.has(group));
+        const candidates = own.length ? own : groups;
+        const count = (group: number) => candidates.filter(value => value === group).length;
+        return candidates.reduce((best, group) => (count(group) > count(best) ? group : best));
+    };
+
     // Maximal runs of consecutive edited cues get patched as one unit so a word
     // moved between cues keeps its timing.
     const runs: typeof displayCues[] = [];
@@ -109,7 +136,7 @@ export function preserveSubtitleEdits(
         const edited = run.flatMap(entry => {
             const destGroup = aligned
                 ? entry.to > entry.from
-                    ? sourceWords[entry.from].group
+                    ? homeGroup(entry.cueIndex)
                     : (lastGroup ?? sourceWords[a]?.group ?? sourceWords[a - 1]?.group ?? 0)
                 : 0;
             lastGroup = destGroup;

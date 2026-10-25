@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SpeakerSettings } from "@/components/common/speaker-settings"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { moveEdgeWord, type WordMoveDirection } from "@/utils/word-move"
 
 const ESTIMATED_SUBTITLE_ROW_HEIGHT = 96;
 const SUBTITLE_ROW_OVERSCAN = 8;
@@ -229,11 +230,10 @@ const SubtitleList = ({
         return trimmed.split(/\s+/g);
     };
 
-    const joinWords = (words: string[]) => words.join(" ");
-
     const showSubtitles = (next: typeof subtitles, index: number) => {
         subtitlesRef.current = next;
         updateSubtitles(next);
+        if (index !== selectedIndex) setSelectedIndex(index);
         const text = next[index]?.text ?? "";
         setDraftText(text);
         setOriginalText(text);
@@ -273,51 +273,21 @@ const SubtitleList = ({
         showSubtitles(next, index);
     };
 
-    const handleMoveFirstWordToPrev = (index: number) => {
-        if (index <= 0) return false;
-        const words = splitIntoWords(inlineEditorRef.current?.innerText ?? draftText);
-        if (words.length === 0) return false;
-
-        const first = words.shift();
-        if (!first) return false;
-
-        const newSubtitles = [...subtitlesRef.current];
-        const prev = newSubtitles[index - 1];
-        const curr = newSubtitles[index];
-        if (!prev || !curr) return false;
-
-        const prevWords = splitIntoWords(prev.text ?? "");
-        prevWords.push(first);
-
-        const nextCurrText = joinWords(words);
-        newSubtitles[index - 1] = { ...prev, text: joinWords(prevWords) };
-        newSubtitles[index] = { ...curr, text: nextCurrText };
-        recordMove(newSubtitles, index);
+    const moveWord = (index: number, direction: WordMoveDirection) => {
+        const result = moveEdgeWord(
+            subtitlesRef.current,
+            index,
+            direction,
+            inlineEditorRef.current?.innerText ?? draftText,
+        );
+        if (!result) return false;
+        recordMove(result.subtitles, result.selectedIndex);
         return true;
     };
 
-    const handleMoveLastWordToNext = (index: number) => {
-        if (index >= subtitlesRef.current.length - 1) return false;
-        const words = splitIntoWords(inlineEditorRef.current?.innerText ?? draftText);
-        if (words.length === 0) return false;
+    const handleMoveFirstWordToPrev = (index: number) => moveWord(index, "previous");
 
-        const last = words.pop();
-        if (!last) return false;
-
-        const newSubtitles = [...subtitlesRef.current];
-        const next = newSubtitles[index + 1];
-        const curr = newSubtitles[index];
-        if (!next || !curr) return false;
-
-        const nextWords = splitIntoWords(next.text ?? "");
-        nextWords.unshift(last);
-
-        const nextCurrText = joinWords(words);
-        newSubtitles[index] = { ...curr, text: nextCurrText };
-        newSubtitles[index + 1] = { ...next, text: joinWords(nextWords) };
-        recordMove(newSubtitles, index);
-        return true;
-    };
+    const handleMoveLastWordToNext = (index: number) => moveWord(index, "next");
 
     const renderHighlightedText = (text: string, query: string) => {
         if (!query.trim() || !text) return text;
