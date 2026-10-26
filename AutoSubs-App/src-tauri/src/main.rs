@@ -452,8 +452,9 @@ fn main() {
 
             // Normalized audio can be as large as the source, and the cache is
             // keyed by source identity, so every distinct input leaves an entry
-            // behind. Prune on every startup, GUI and CLI alike, before any work
-            // begins so the job about to run can never be a deletion candidate.
+            // behind. Prune on every startup, GUI and CLI alike. CLI runs can
+            // overlap the GUI or another CLI, so entries a running job holds are
+            // protected by an in-use lease in the cache rather than by ordering.
             // Headless prunes synchronously: the CLI exits via std::process::exit,
             // which would cut a detached cleanup thread short.
             if let Ok(cache_dir) = app.path().app_cache_dir() {

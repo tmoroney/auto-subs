@@ -87,9 +87,20 @@ const NORMALIZED_AUDIO_CACHE_VERSION: &str = "v1";
 const NORMALIZED_AUDIO_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 const NORMALIZED_AUDIO_TMP_MAX_AGE: Duration = Duration::from_secs(60 * 60);
 const NORMALIZED_AUDIO_MAX_FILES: usize = 12;
+/// Subdirectory of `normalized-audio/` holding one directory per cache entry
+/// that a running job is using; see [`NormalizedAudioInUse`].
+const NORMALIZED_AUDIO_IN_USE_DIR: &str = "in-use";
+const NORMALIZED_AUDIO_IN_USE_HEARTBEAT: Duration = Duration::from_secs(5 * 60);
+/// A marker older than this belongs to a job that died without releasing it.
+/// Long enough to survive a machine sleeping while a transcription is paused.
+const NORMALIZED_AUDIO_IN_USE_STALE_AFTER: Duration = Duration::from_secs(60 * 60);
 
 fn normalized_audio_dir(cache_dir: &Path) -> PathBuf {
     cache_dir.join(NORMALIZED_AUDIO_DIR)
+}
+
+fn normalized_in_use_dir(cache_dir: &Path) -> PathBuf {
+    normalized_audio_dir(cache_dir).join(NORMALIZED_AUDIO_IN_USE_DIR)
 }
 
 /// Whether the file already has the mono/16 kHz/16-bit PCM WAV shape that
@@ -172,12 +183,168 @@ fn age_of(modified: SystemTime, now: SystemTime) -> Duration {
     now.duration_since(modified).unwrap_or_default()
 }
 
+fn write_in_use_marker(marker: &Path) {
+    if let Err(error) = fs::write(marker, std::process::id().to_string()) {
+        tracing::warn!(
+            "normalized audio: could not refresh in-use marker {}: {error}",
+            marker.display()
+        );
+    }
+}
+
+/// Keeps a cache entry alive for as long as a job may still open it.
+///
+/// The normalized-audio cache is shared by the GUI and every CLI process, and
+/// each of them prunes it at startup. Without a marker, a job that reused an
+/// older entry could lose the WAV to another process' cleanup while it is still
+/// downloading or loading a model: the engine only reads the file afterwards
+/// (`Engine::transcribe_audio`). Starting cleanup before the job's own work only
+/// protects entries this process just created, not ones it reused.
+///
+/// Each owner writes `normalized-audio/in-use/<wav name>/<pid>.<counter>` and a
+/// heartbeat thread refreshes it, so a transcription that runs for hours cannot
+/// outlive its own protection. Cleanup skips entries with a fresh marker and
+/// reaps markers left behind by a process that died.
+struct NormalizedAudioInUse {
+    marker: PathBuf,
+    owner_dir: PathBuf,
+    stop: Option<std::sync::mpsc::Sender<()>>,
+    heartbeat: Option<std::thread::JoinHandle<()>>,
+}
+
+impl NormalizedAudioInUse {
+    /// Best effort: if the marker cannot be created the job still runs, it just
+    /// falls back to the previous unprotected behaviour.
+    fn acquire(cache_file: &Path) -> Option<Self> {
+        let name = cache_file.file_name()?;
+        let owner_dir = cache_file
+            .parent()?
+            .join(NORMALIZED_AUDIO_IN_USE_DIR)
+            .join(name);
+        if let Err(error) = fs::create_dir_all(&owner_dir) {
+            tracing::warn!(
+                "normalized audio: could not create in-use marker dir {}: {error}",
+                owner_dir.display()
+            );
+            return None;
+        }
+
+        let counter = NORMALIZED_AUDIO_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let marker = owner_dir.join(format!("{}.{}", std::process::id(), counter));
+        write_in_use_marker(&marker);
+
+        let (stop, stop_rx) = std::sync::mpsc::channel::<()>();
+        let heartbeat_marker = marker.clone();
+        let heartbeat = std::thread::Builder::new()
+            .name("normalized-audio-in-use".into())
+            .spawn(move || {
+                while let Err(std::sync::mpsc::RecvTimeoutError::Timeout) =
+                    stop_rx.recv_timeout(NORMALIZED_AUDIO_IN_USE_HEARTBEAT)
+                {
+                    write_in_use_marker(&heartbeat_marker);
+                }
+            });
+        let heartbeat = match heartbeat {
+            Ok(handle) => Some(handle),
+            Err(error) => {
+                tracing::warn!("normalized audio: could not start in-use heartbeat: {error}");
+                None
+            }
+        };
+
+        Some(Self {
+            marker,
+            owner_dir,
+            stop: Some(stop),
+            heartbeat,
+        })
+    }
+}
+
+impl Drop for NormalizedAudioInUse {
+    fn drop(&mut self) {
+        // Close the channel before deleting the marker so the heartbeat cannot
+        // recreate it after we are gone.
+        drop(self.stop.take());
+        if let Some(handle) = self.heartbeat.take() {
+            let _ = handle.join();
+        }
+        let _ = fs::remove_file(&self.marker);
+        // Only succeeds once no other job shares this entry; otherwise cleanup
+        // reaps the directory later.
+        let _ = fs::remove_dir(&self.owner_dir);
+    }
+}
+
+/// Whether this entry is leased by a running job. Used as a last check right
+/// before deleting, because a job can take its lease after cleanup scanned the
+/// directory; stale markers are reaped by [`live_in_use_entries`].
+fn entry_is_leased(cache_file: &Path, now: SystemTime) -> bool {
+    let (Some(parent), Some(name)) = (cache_file.parent(), cache_file.file_name()) else {
+        return false;
+    };
+    let Ok(markers) = fs::read_dir(parent.join(NORMALIZED_AUDIO_IN_USE_DIR).join(name)) else {
+        return false;
+    };
+    markers.flatten().any(|marker| {
+        marker
+            .metadata()
+            .and_then(|metadata| metadata.modified())
+            .map(|modified| age_of(modified, now) <= NORMALIZED_AUDIO_IN_USE_STALE_AFTER)
+            .unwrap_or(false)
+    })
+}
+
+/// Cache entries a running job is using, keyed by WAV file name. Stale markers
+/// (their owner crashed) are removed so those entries can be pruned again.
+fn live_in_use_entries(cache_dir: &Path, now: SystemTime) -> std::collections::HashSet<String> {
+    let mut live = std::collections::HashSet::new();
+    let Ok(owners) = fs::read_dir(normalized_in_use_dir(cache_dir)) else {
+        return live;
+    };
+
+    for owner in owners.flatten() {
+        let owner_path = owner.path();
+        if !owner_path.is_dir() {
+            continue;
+        }
+        let Some(name) = owner_path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+
+        let mut has_live_marker = false;
+        if let Ok(markers) = fs::read_dir(&owner_path) {
+            for marker in markers.flatten() {
+                let modified = marker
+                    .metadata()
+                    .and_then(|metadata| metadata.modified())
+                    .unwrap_or(UNIX_EPOCH);
+                if age_of(modified, now) <= NORMALIZED_AUDIO_IN_USE_STALE_AFTER {
+                    has_live_marker = true;
+                } else {
+                    let _ = fs::remove_file(marker.path());
+                }
+            }
+        }
+
+        if has_live_marker {
+            live.insert(name.to_owned());
+        } else {
+            let _ = fs::remove_dir(&owner_path);
+        }
+    }
+
+    live
+}
+
 /// Remove stale cache entries and legacy single-file normalizations. Runs at
 /// startup so a long-lived cache cannot grow without bound; the most recent
-/// entries survive to keep repeated transcriptions fast.
+/// entries survive to keep repeated transcriptions fast, and entries another
+/// process is still using are left alone.
 pub fn cleanup_normalized_audio_cache(cache_dir: &Path) {
     let now = SystemTime::now();
     let dir = normalized_audio_dir(cache_dir);
+    let in_use = live_in_use_entries(cache_dir, now);
     let mut retained: Vec<(SystemTime, PathBuf)> = Vec::new();
 
     if let Ok(entries) = fs::read_dir(&dir) {
@@ -195,11 +362,21 @@ pub fn cleanup_normalized_audio_cache(cache_dir: &Path) {
                 .metadata()
                 .and_then(|metadata| metadata.modified())
                 .unwrap_or(UNIX_EPOCH);
-            if is_temp && age_of(modified, now) > NORMALIZED_AUDIO_TMP_MAX_AGE {
-                let _ = fs::remove_file(&path);
-            } else if !is_temp && age_of(modified, now) > NORMALIZED_AUDIO_MAX_AGE {
-                let _ = fs::remove_file(&path);
-            } else if !is_temp {
+            if is_temp {
+                if age_of(modified, now) > NORMALIZED_AUDIO_TMP_MAX_AGE {
+                    let _ = fs::remove_file(&path);
+                }
+            } else if in_use.contains(name) {
+                // A running job may be about to open this entry, so neither the
+                // age rule nor the file cap may take it away.
+                tracing::debug!("normalized audio: keeping {} (in use)", path.display());
+            } else if age_of(modified, now) > NORMALIZED_AUDIO_MAX_AGE {
+                // Re-check at the last moment: a job can lease the entry after
+                // `live_in_use_entries` ran.
+                if !entry_is_leased(&path, now) {
+                    let _ = fs::remove_file(&path);
+                }
+            } else {
                 retained.push((modified, path));
             }
         }
@@ -209,6 +386,9 @@ pub fn cleanup_normalized_audio_cache(cache_dir: &Path) {
         retained.sort_by_key(|(modified, _)| *modified);
         let remove_count = retained.len() - NORMALIZED_AUDIO_MAX_FILES;
         for (_, path) in retained.into_iter().take(remove_count) {
+            if entry_is_leased(&path, now) {
+                continue;
+            }
             let _ = fs::remove_file(path);
         }
     }
@@ -475,19 +655,23 @@ pub async fn transcribe_audio<R: Runtime>(
     report_progress(0, ProgressType::Prepare, "progressSteps.prepare.normalize");
 
     let source_audio: PathBuf = options.audio_path.clone().into();
-    let audio_path = if should_normalize(&source_audio, None) {
-        create_normalized_audio(app.clone(), source_audio.clone(), None)
+    // Hold the in-use lease for the whole run: another AutoSubs process (GUI or
+    // CLI) prunes this shared cache at startup, and the engine only opens the
+    // WAV after it has downloaded and loaded its models.
+    let (audio_path, _audio_in_use) = if should_normalize(&source_audio, None) {
+        let (path, in_use) = create_normalized_audio(app.clone(), source_audio.clone(), None)
             .await
             .map_err(|e| {
                 tracing::error!("audio normalization failed: {}", e);
                 format!("Failed to normalize audio: {}", e)
-            })?
+            })?;
+        (path, in_use)
     } else {
         tracing::info!(
             "audio normalization skipped: {} is already mono 16 kHz PCM16 WAV",
             source_audio.display()
         );
-        source_audio
+        (source_audio, None)
     };
 
     report_progress(100, ProgressType::Prepare, "progressSteps.prepare.normalize");
@@ -820,7 +1004,7 @@ pub async fn create_normalized_audio<R: Runtime>(
     app: AppHandle<R>,
     source: PathBuf,
     additional_ffmpeg_args: Option<Vec<String>>,
-) -> Result<PathBuf> {
+) -> Result<(PathBuf, Option<NormalizedAudioInUse>)> {
     // Expand ~ to home directory (Windows doesn't expand tilde natively)
     let source = expand_tilde(source);
     tracing::info!("audio normalization: start input={}", source.display());
@@ -830,7 +1014,7 @@ pub async fn create_normalized_audio<R: Runtime>(
             "audio normalization: source is already normalized, reusing {}",
             source.display()
         );
-        return Ok(source);
+        return Ok((source, None));
     }
 
     let path_resolver = app.path();
@@ -843,7 +1027,8 @@ pub async fn create_normalized_audio<R: Runtime>(
 
     if is_normalized_wav(&out_path) {
         tracing::info!("audio normalization: cache hit {}", out_path.display());
-        return Ok(out_path);
+        let in_use = NormalizedAudioInUse::acquire(&out_path);
+        return Ok((out_path, in_use));
     }
 
     fs::create_dir_all(normalized_audio_dir(&cache_dir))
@@ -872,7 +1057,8 @@ pub async fn create_normalized_audio<R: Runtime>(
         )
     })?;
 
-    Ok(out_path)
+    let in_use = NormalizedAudioInUse::acquire(&out_path);
+    Ok((out_path, in_use))
 }
 
 /// Convert a `transcription_engine` segment to the app's `Segment` type.
@@ -1186,6 +1372,11 @@ mod normalized_audio_cache_tests {
         writer.finalize().unwrap();
     }
 
+    fn set_modified(path: &Path, modified: SystemTime) {
+        let file = fs::OpenOptions::new().write(true).open(path).unwrap();
+        file.set_modified(modified).unwrap();
+    }
+
     #[test]
     fn probe_requires_mono_16k_pcm16() {
         let dir = tempdir().unwrap();
@@ -1273,5 +1464,99 @@ mod normalized_audio_cache_tests {
             .count();
         assert!(remaining <= NORMALIZED_AUDIO_MAX_FILES);
         assert!(!legacy.exists());
+    }
+
+    #[test]
+    fn cleanup_keeps_entries_a_running_job_still_uses() {
+        let dir = tempdir().unwrap();
+        let cache = normalized_audio_dir(dir.path());
+        fs::create_dir_all(&cache).unwrap();
+        let now = SystemTime::now();
+
+        let mut paths = Vec::new();
+        for index in 0..(NORMALIZED_AUDIO_MAX_FILES + 3) {
+            let path = cache.join(format!("{index}.wav"));
+            write_wav(&path, 1, 16_000, 16);
+            set_modified(&path, now - Duration::from_secs(1_000 - index as u64));
+            paths.push(path);
+        }
+        // Old enough for the age rule *and* the oldest entry, so the file cap
+        // would pick it too.
+        set_modified(
+            &paths[0],
+            now - NORMALIZED_AUDIO_MAX_AGE - Duration::from_secs(60),
+        );
+
+        let lease = NormalizedAudioInUse::acquire(&paths[0]).unwrap();
+        cleanup_normalized_audio_cache(dir.path());
+
+        assert!(paths[0].exists(), "in-use entry must survive cleanup");
+        assert!(!paths[1].exists(), "cleanup must still prune idle entries");
+        assert!(!paths[2].exists());
+
+        let remaining = fs::read_dir(&cache)
+            .unwrap()
+            .flatten()
+            .filter(|entry| entry.path().extension().and_then(|ext| ext.to_str()) == Some("wav"))
+            .count();
+        // The capped entries plus the one that is protected by the lease.
+        assert_eq!(remaining, NORMALIZED_AUDIO_MAX_FILES + 1);
+
+        let markers = fs::read_dir(normalized_in_use_dir(dir.path()).join("0.wav"))
+            .unwrap()
+            .count();
+        assert_eq!(markers, 1, "live marker must survive cleanup");
+
+        drop(lease);
+    }
+
+    #[test]
+    fn cleanup_reaps_stale_in_use_markers() {
+        let dir = tempdir().unwrap();
+        let cache = normalized_audio_dir(dir.path());
+        fs::create_dir_all(&cache).unwrap();
+
+        let path = cache.join("stale.wav");
+        write_wav(&path, 1, 16_000, 16);
+        set_modified(
+            &path,
+            SystemTime::now() - NORMALIZED_AUDIO_MAX_AGE - Duration::from_secs(60),
+        );
+
+        // A crashed process left its marker behind long ago.
+        let owner_dir = normalized_in_use_dir(dir.path()).join("stale.wav");
+        fs::create_dir_all(&owner_dir).unwrap();
+        let marker = owner_dir.join(format!("{}.0", std::process::id()));
+        fs::write(&marker, b"crashed").unwrap();
+        set_modified(
+            &marker,
+            SystemTime::now() - NORMALIZED_AUDIO_IN_USE_STALE_AFTER - Duration::from_secs(60),
+        );
+
+        cleanup_normalized_audio_cache(dir.path());
+
+        assert!(!marker.exists());
+        assert!(!owner_dir.exists());
+        assert!(!path.exists(), "stale marker must stop protecting the entry");
+    }
+
+    #[test]
+    fn dropping_the_lease_releases_the_entry() {
+        let dir = tempdir().unwrap();
+        let cache = normalized_audio_dir(dir.path());
+        fs::create_dir_all(&cache).unwrap();
+        let path = cache.join("leased.wav");
+        write_wav(&path, 1, 16_000, 16);
+
+        let owner_dir = normalized_in_use_dir(dir.path()).join("leased.wav");
+        let lease = NormalizedAudioInUse::acquire(&path).unwrap();
+        assert!(owner_dir.is_dir());
+        assert_eq!(fs::read_dir(&owner_dir).unwrap().count(), 1);
+        assert!(entry_is_leased(&path, SystemTime::now()));
+
+        drop(lease);
+
+        assert!(!entry_is_leased(&path, SystemTime::now()));
+        assert!(!owner_dir.exists());
     }
 }
