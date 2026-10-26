@@ -1,13 +1,18 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { platform } from "@tauri-apps/plugin-os";
-import { CaptionStyle, Settings } from "@/types";
+import { CaptionStyle, ImportedModel, Settings } from "@/types";
 import { getPreferredUiLanguage, normalizeUiLanguage, initI18n } from "@/i18n";
 import {
   models,
+  withImportedModels,
   modelSupportsLanguage,
   getFirstRecommendedModelForLanguage,
 } from "@/lib/models";
+import {
+  restoreImportedSelection,
+  selectionAfterRemoval,
+} from "@/lib/imported-models";
 import { DEFAULT_PRESET_ID } from "@/presets/built-in-presets";
 import { createTauriStorage, hasStoredValue } from "@/lib/tauri-storage";
 
@@ -40,6 +45,10 @@ export const DEFAULT_SETTINGS: Settings = {
 
   // Processing settings
   model: 0,
+  importedModels: [],
+  // Always the current catalogue size, so the saved value tells the next
+  // version which built-in count the saved `model` index was based on.
+  importedModelsBase: models.length,
   language: "auto",
   translate: false,
   targetLanguage: "en",
@@ -105,6 +114,19 @@ export function normalizePersistedSettings(persisted: unknown): Partial<Settings
 
   const next = rest as Partial<Settings>;
 
+  // Imported models arrived after the index format, so older files have none.
+  // The built-in count may differ from the version that saved the file.
+  const restored = restoreImportedSelection(
+    next.model,
+    next.importedModels,
+    next.importedModelsBase,
+    models.length,
+    DEFAULT_SETTINGS.model,
+  );
+  next.importedModels = restored.importedModels;
+  next.importedModelsBase = models.length;
+  if ("model" in next) next.model = restored.model;
+
   if (isCaptionStyle(captionStyle)) {
     next.captionStyle = captionStyle;
     return next;
@@ -149,6 +171,11 @@ interface SettingsStore extends Settings {
   // Actions
   updateSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
   resetSettings: () => void;
+  /** Append an imported model; it lands after every existing model. */
+  addImportedModel: (model: ImportedModel) => void;
+  renameImportedModel: (id: string, name: string) => void;
+  /** Forget an imported model (its file stays) and keep the selection valid. */
+  removeImportedModel: (id: string) => void;
   /** Mark the store as hydrated. */
   setHydrated: () => void;
 }
@@ -172,8 +199,8 @@ export const useSettingsStore = create<SettingsStore>()(
           // If language changed and the current model doesn't support it,
           // auto-switch to the first recommended model that does.
           if (key === "language" && value !== state.language) {
-            const currentModel = models[state.model];
-            if (!modelSupportsLanguage(currentModel, value as string)) {
+            const currentModel = withImportedModels(state.importedModels)[state.model];
+            if (currentModel && !modelSupportsLanguage(currentModel, value as string)) {
               const recommended = getFirstRecommendedModelForLanguage(value as string);
               if (recommended) {
                 const idx = models.findIndex((m) => m.value === recommended.value);
@@ -196,6 +223,28 @@ export const useSettingsStore = create<SettingsStore>()(
           timesDismissedSurvey: state.timesDismissedSurvey,
           lastSurveyDate: state.lastSurveyDate,
           lastSeenVersion: state.lastSeenVersion,
+          // Imported models are the user's files, not preferences.
+          importedModels: state.importedModels,
+        })),
+
+      addImportedModel: (model) =>
+        set((state) => ({ importedModels: [...state.importedModels, model] })),
+
+      renameImportedModel: (id, name) =>
+        set((state) => ({
+          importedModels: state.importedModels.map((m) => (m.id === id ? { ...m, name } : m)),
+        })),
+
+      removeImportedModel: (id) =>
+        set((state) => ({
+          model: selectionAfterRemoval(
+            state.model,
+            state.importedModels,
+            id,
+            models.length,
+            DEFAULT_SETTINGS.model,
+          ),
+          importedModels: state.importedModels.filter((m) => m.id !== id),
         })),
 
       setHydrated: () => set({ isHydrated: true }),
@@ -213,6 +262,9 @@ export const useSettingsStore = create<SettingsStore>()(
           isHydrated,
           updateSetting,
           resetSettings,
+          addImportedModel,
+          renameImportedModel,
+          removeImportedModel,
           setHydrated,
           ...settings
         } = state;

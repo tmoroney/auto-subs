@@ -405,6 +405,32 @@
       "description": "ローカル処理、欧州25言語",
       "details": "Parakeet より高速で高精度。CC BY-SA 4.0。",
       "badge": "CC BY-SA 4.0"
+    },
+    "imported": {
+      "importButton": "モデルファイルを読み込む…",
+      "groupTitle": "読み込み済み",
+      "builtInTitle": "標準モデル",
+      "badge": "読み込み済み",
+      "englishBadge": "英語",
+      "details": "読み込んだ Whisper ファイル。保存場所からそのまま使います。",
+      "fileFilter": "Whisper モデル (GGML)",
+      "nameTitle": "モデル名を付ける",
+      "nameLabel": "モデル名",
+      "nameHint": "空欄の場合は {{name}} になります。",
+      "noWordTiming": "このモデルでは{{feature}}はオフです。",
+      "confirm": "読み込む",
+      "rename": "名前を変更",
+      "remove": "一覧から外す",
+      "removeConfirmTitle": "このモデルを外しますか？",
+      "removeConfirmBody": "{{model}} を AutoSubs の一覧から外します。ファイルはコンピューターに残ります:\n\n{{path}}",
+      "errors": {
+        "title": "このファイルは使えません",
+        "missingTitle": "モデルファイルが見つかりません",
+        "notFound": "モデルファイルが移動または削除されました:\n\n{{path}}\n\n新しい場所から読み込み直してください。",
+        "notGgml": "whisper.cpp のモデルファイルではありません。model.bin や pytorch_model.bin ではなく、ggml-model.bin のような名前のファイルを選んでください。",
+        "unreadable": "AutoSubs はこのファイルを読み込めませんでした:\n\n{{path}}\n\nファイルを開く権限があるか確認してください。",
+        "incomplete": "このモデルファイルは不完全か破損しています。ダウンロードが途中で止まった可能性があります:\n\n{{path}}\n\nもう一度ダウンロードしてから読み込んでください。"
+      }
     }
   },
   "progressSteps": {

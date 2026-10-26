@@ -681,6 +681,7 @@ fn main() {
             transcription_api::density_char_limits,
             models::get_downloaded_models,
             models::delete_model,
+            models::inspect_whisper_model,
             logging::get_backend_logs,
             logging::clear_backend_logs,
             logging::get_log_dir,

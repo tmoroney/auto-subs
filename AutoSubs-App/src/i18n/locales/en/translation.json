@@ -444,6 +444,32 @@
       "description": "Local, 25 European languages",
       "details": "Faster and more accurate than Parakeet. CC BY-SA 4.0.",
       "badge": "CC BY-SA 4.0"
+    },
+    "imported": {
+      "importButton": "Import model file…",
+      "groupTitle": "Imported",
+      "builtInTitle": "Built-in",
+      "badge": "Imported",
+      "englishBadge": "English",
+      "details": "A Whisper file you imported, used where it is saved.",
+      "fileFilter": "Whisper model (GGML)",
+      "nameTitle": "Name this model",
+      "nameLabel": "Model name",
+      "nameHint": "Leave blank to name it {{name}}.",
+      "noWordTiming": "{{feature}} is off for this model.",
+      "confirm": "Import",
+      "rename": "Rename",
+      "remove": "Remove",
+      "removeConfirmTitle": "Remove this model?",
+      "removeConfirmBody": "{{model}} will be removed from AutoSubs. The file stays on your computer:\n\n{{path}}",
+      "errors": {
+        "title": "Can't use this file",
+        "missingTitle": "Model file not found",
+        "notFound": "The model file was moved or deleted:\n\n{{path}}\n\nImport it again from where it is now.",
+        "notGgml": "This isn't a whisper.cpp model file. Choose the one named like ggml-model.bin, not model.bin or pytorch_model.bin.",
+        "unreadable": "AutoSubs couldn't read this file:\n\n{{path}}\n\nCheck that you have permission to open it.",
+        "incomplete": "This model file is incomplete or damaged, often because a download didn't finish:\n\n{{path}}\n\nDownload it again, then import it."
+      }
     }
   },
   "completion": {

@@ -17,6 +17,8 @@ import type { TranscriptionOptions, EnsureModelsRequest, EnsureModelsResponse } 
 import { getActiveCensorWords } from "@/censor/merge";
 import { TranscriptionPanelView } from "./transcription-panel-view";
 import { describeError } from "./utils";
+import { inspectWhisperModel } from "@/components/settings/import-model-dialog";
+import { tryClaimRun } from "@/lib/run-lock";
 
 interface TranscriptionPanelProps {
   onViewSubtitles?: () => void;
@@ -273,7 +275,28 @@ export function TranscriptionPanel({
     setFileInput,
   ]);
 
+  // One run at a time, from the click until the run has fully settled. That
+  // covers the imported-model file check before isProcessing is set, and a
+  // cancelled export that is still waiting for the editor after isProcessing
+  // is cleared; a new run started then would share progress and cleanup with
+  // the old one. runPending mirrors the lock so Generate shows it is busy
+  // instead of ignoring clicks.
+  const startLockRef = React.useRef(false);
+  const [runPending, setRunPending] = React.useState(false);
+
   const handleStartTranscription = async () => {
+    const release = tryClaimRun(startLockRef);
+    if (!release) return;
+    setRunPending(true);
+    try {
+      await runTranscription();
+    } finally {
+      release();
+      setRunPending(false);
+    }
+  };
+
+  const runTranscription = async () => {
     if (effectiveMode === "timeline" && !timelineInfo.timelineId) {
       console.error("No timeline selected");
       return;
@@ -291,6 +314,18 @@ export function TranscriptionPanel({
         message: tErr("errorDialog.sameLanguageSourceAndTarget.message", "Please choose a different source or target language before translating."),
       });
       return;
+    }
+
+    // An imported model is used where it was saved, so it can have been moved
+    // or deleted since. Check before anything starts, in the user's language.
+    const selectedModel = modelsState[model];
+    if (selectedModel?.importedPath) {
+      const info = await inspectWhisperModel(
+        selectedModel.importedPath,
+        tErr,
+        tErr("models.imported.errors.missingTitle"),
+      );
+      if (!info) return;
     }
 
     setIsProcessing(true);
@@ -318,6 +353,7 @@ export function TranscriptionPanel({
         enableForcedAlignment: willUseForcedAlignment,
         maxSpeakers: speakerLimit,
         diarizeBackend,
+        asrModelPath: selectedModel?.importedPath,
       };
 
       const [audioInfo, modelPaths] = await Promise.all([
@@ -494,6 +530,7 @@ export function TranscriptionPanel({
             selectedFile={fileInput}
             onSelectedFileChange={handleSelectedFileChange}
             onStart={handleStartTranscription}
+            isStarting={runPending}
             onCancel={handleCancelTranscription}
             onStartNewTranscription={handleStartNewTranscription}
             onRefreshAudioTracks={refreshAudioTracks}

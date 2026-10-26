@@ -440,6 +440,32 @@
       "description": "Lokal, 25 europäische Sprachen",
       "details": "Schneller und genauer als Parakeet. CC BY-SA 4.0.",
       "badge": "CC BY-SA 4.0"
+    },
+    "imported": {
+      "importButton": "Modelldatei importieren…",
+      "groupTitle": "Importiert",
+      "builtInTitle": "Integriert",
+      "badge": "Importiert",
+      "englishBadge": "Englisch",
+      "details": "Importierte Whisper-Datei, genutzt an ihrem Speicherort.",
+      "fileFilter": "Whisper-Modell (GGML)",
+      "nameTitle": "Modell benennen",
+      "nameLabel": "Modellname",
+      "nameHint": "Leer lassen, um es {{name}} zu nennen.",
+      "noWordTiming": "{{feature}} ist hier aus.",
+      "confirm": "Importieren",
+      "rename": "Umbenennen",
+      "remove": "Entfernen",
+      "removeConfirmTitle": "Modell entfernen?",
+      "removeConfirmBody": "{{model}} wird aus AutoSubs entfernt. Die Datei bleibt auf deinem Computer:\n\n{{path}}",
+      "errors": {
+        "title": "Datei nicht nutzbar",
+        "missingTitle": "Modell nicht gefunden",
+        "notFound": "Die Modelldatei wurde verschoben oder gelöscht:\n\n{{path}}\n\nImportiere sie erneut von ihrem neuen Ort.",
+        "notGgml": "Das ist keine whisper.cpp-Modelldatei. Wähle die Datei mit einem Namen wie ggml-model.bin, nicht model.bin oder pytorch_model.bin.",
+        "unreadable": "AutoSubs konnte diese Datei nicht lesen:\n\n{{path}}\n\nPrüfe, ob du sie öffnen darfst.",
+        "incomplete": "Diese Modelldatei ist unvollständig oder beschädigt, oft weil ein Download abgebrochen ist:\n\n{{path}}\n\nLade sie erneut herunter und importiere sie dann."
+      }
     }
   },
   "completion": {

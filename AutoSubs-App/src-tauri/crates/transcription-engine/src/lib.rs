@@ -10,6 +10,7 @@ pub mod translation_client;
 pub mod translation_pipeline;
 pub mod utils;
 pub mod formatting;
+pub mod ggml_header;
 pub mod post_process;
 
 // Re-exports (crate users only need these)

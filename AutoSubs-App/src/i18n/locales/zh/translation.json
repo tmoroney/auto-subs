@@ -440,6 +440,32 @@
       "description": "本地处理，支持25种欧洲语言",
       "details": "比 Parakeet 更快、更准确。CC BY-SA 4.0。",
       "badge": "CC BY-SA 4.0"
+    },
+    "imported": {
+      "importButton": "导入模型文件…",
+      "groupTitle": "已导入",
+      "builtInTitle": "内置模型",
+      "badge": "已导入",
+      "englishBadge": "英语",
+      "details": "您导入的 Whisper 文件，直接从保存位置使用。",
+      "fileFilter": "Whisper 模型 (GGML)",
+      "nameTitle": "为此模型命名",
+      "nameLabel": "模型名称",
+      "nameHint": "留空则命名为 {{name}}。",
+      "noWordTiming": "此模型已关闭{{feature}}。",
+      "confirm": "导入",
+      "rename": "重命名",
+      "remove": "移除",
+      "removeConfirmTitle": "移除此模型？",
+      "removeConfirmBody": "{{model}} 将从 AutoSubs 中移除。文件仍保留在您的电脑上：\n\n{{path}}",
+      "errors": {
+        "title": "无法使用此文件",
+        "missingTitle": "找不到模型文件",
+        "notFound": "模型文件已被移动或删除：\n\n{{path}}\n\n请从新位置重新导入。",
+        "notGgml": "这不是 whisper.cpp 模型文件。请选择名称类似 ggml-model.bin 的文件，而不是 model.bin 或 pytorch_model.bin。",
+        "unreadable": "AutoSubs 无法读取此文件：\n\n{{path}}\n\n请检查您是否有权限打开它。",
+        "incomplete": "此模型文件不完整或已损坏，通常是因为下载未完成：\n\n{{path}}\n\n请重新下载后再导入。"
+      }
     }
   },
   "completion": {
