@@ -528,7 +528,7 @@ mod tests {
         // The Lua side escapes every byte ≥0x80 as \uE0xx. A UTF-8 string's
         // bytes decode back to UTF-8; ANSI bytes fall back to the ANSI decode
         // (chars on Windows, U+FFFD elsewhere).
-        let doc = "{\"a\":\"\\uE0C3\\uE0A9\",\"b\":\"\\uE0C0\\uE0D1\\uE0D2\"}";
+        let doc = "{\"a\":\"caf\\uE0C3\\uE0A9\",\"b\":\"\\uE0C0\\uE0D1\\uE0D2\"}";
         let v = format!("7:{}", base64::engine::general_purpose::STANDARD.encode(doc));
         let text = decode_response(&v, "7").unwrap().unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();

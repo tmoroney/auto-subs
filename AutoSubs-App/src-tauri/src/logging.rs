@@ -192,6 +192,21 @@ pub fn init_logging<R: Runtime>(app: &AppHandle<R>) {
         *inited = true;
     }
 
+    // Route panics (any thread) through tracing so they reach the log file,
+    // then defer to the default hook so stderr output is unchanged.
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let thread = std::thread::current();
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        tracing::error!(
+            "panic in thread '{}': {}\n{}",
+            thread.name().unwrap_or("<unnamed>"),
+            info,
+            backtrace
+        );
+        default_hook(info);
+    }));
+
     // Initialize home directory for path redaction
     if let Ok(mut home_guard) = HOME_DIR.write() {
         if let Ok(home) = app.path().home_dir() {

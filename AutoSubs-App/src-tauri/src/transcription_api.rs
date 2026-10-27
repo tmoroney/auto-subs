@@ -525,7 +525,8 @@ pub async fn transcribe_audio<R: Runtime>(
         // `raw_segments` preserves the engine's pre-formatting word data (used as
         // `originalSegments` for reformatting). `segments` are fully formatted for display.
         tracing::info!("transcription pipeline started");
-        let (raw_segments, segments, output_language) = engine
+        let (raw_segments, segments, output_language) = futures_util::FutureExt::catch_unwind(
+            std::panic::AssertUnwindSafe(engine
             .transcribe_audio(
                 &audio_path.to_string_lossy(),
                 transcribe_options,
@@ -535,8 +536,20 @@ pub async fn transcribe_audio<R: Runtime>(
                 options.custom_max_words_per_line, // custom_max_words_per_line
                 Some(content_formatting),
                 Some(callbacks),
-            )
-            .await
+            )),
+        )
+        .await
+        .unwrap_or_else(|payload| {
+            // A panic inside the pipeline must reach the UI as an error,
+            // otherwise the frontend waits forever.
+            let msg = payload
+                .downcast_ref::<&str>()
+                .map(|s| s.to_string())
+                .or_else(|| payload.downcast_ref::<String>().cloned())
+                .unwrap_or_else(|| "unknown panic".to_string());
+            tracing::error!("transcription panicked: {}", msg);
+            Err(eyre::eyre!("internal error (panic): {}", msg))
+        })
             .map_err(|e| {
                 // Check if this was a cancellation error
                 if let Ok(should_cancel) = SHOULD_CANCEL.lock() {
