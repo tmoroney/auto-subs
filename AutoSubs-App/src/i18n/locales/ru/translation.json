@@ -131,10 +131,10 @@
       "customCharsDescription": "Символов в строке",
       "customPromptButton": "Подсказка",
       "customPromptTitle": "Термины и контекст",
-      "customPromptDescription": "Добавьте термины, имена или контекст, чтобы подсказать Whisper.",
+      "customPromptDescription": "Добавьте термины или имена для точной транскрипции.",
       "customPromptPlaceholder": "Например: OpenAI, DaVinci Resolve — урок по монтажу субтитров.",
       "customPromptLanguageWarning": "Пишите на языке аудио: подсказка на другом языке может привести к ошибкам распознавания.",
-      "customPromptWhisperOnly": "Поддерживается только моделями Whisper.",
+      "customPromptHint": "Разделяйте имена или термины запятыми.",
       "customWordsTitle": "Максимум слов",
       "customWordsDescription": "Слов в строке"
     },

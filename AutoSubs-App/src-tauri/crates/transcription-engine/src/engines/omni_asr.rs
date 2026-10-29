@@ -7,24 +7,27 @@
 //! chunk. Forced alignment (when enabled) refines those timings afterwards.
 
 use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
+use crate::keyword_boost::{self, KeywordGraph};
 use crate::types::{LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions};
 use eyre::{bail, eyre, Context, Result};
-use ndarray::{Array2, Array3};
+use ndarray::Array3;
 use ort::session::Session;
 use std::collections::HashMap;
 use std::path::Path;
-use transcribe_rs::onnx::session::create_session_with_threads;
-use transcribe_rs::TranscriptionResult;
+use crate::vendor::onnx::session::create_session_with_threads;
+use crate::vendor::TranscriptionResult;
 
 pub struct OmniAsrEngine {
     session: Session,
     id_to_token: HashMap<i64, String>,
     blank_id: i64,
+    space_id: i64,
+    boost: Option<KeywordGraph>,
 }
 
 impl OmniAsrEngine {
     /// Load the model from a directory containing `model.onnx` and `tokens.txt`.
-    fn load(model_dir: &Path) -> Result<Self> {
+    fn load_with_keywords(model_dir: &Path, keywords: &[String]) -> Result<Self> {
         let model_path = model_dir.join("model.onnx");
         let tokens_path = model_dir.join("tokens.txt");
 
@@ -42,12 +45,34 @@ impl OmniAsrEngine {
             .map_err(|e| eyre!("Failed to load Omni-ASR ONNX model: {e}"))?;
 
         let id_to_token = Self::load_tokens(&tokens_path)?;
+        let space_id = id_to_token
+            .iter()
+            .find(|(_, token)| token.as_str() == " ")
+            .map(|(id, _)| *id)
+            .unwrap_or(-1);
+        let boost = if keywords.is_empty() {
+            None
+        } else {
+            KeywordGraph::from_keywords(&Self::vocab_pieces(&id_to_token), keywords)
+        };
 
         Ok(Self {
             session,
             id_to_token,
             blank_id: 0,
+            space_id,
+            boost,
         })
+    }
+
+    /// Vocabulary as an id-indexed piece list for keyword tokenization.
+    fn vocab_pieces(id_to_token: &HashMap<i64, String>) -> Vec<String> {
+        let max_id = id_to_token.keys().copied().max().unwrap_or(-1);
+        let mut pieces = vec![String::new(); (max_id + 1).max(0) as usize];
+        for (id, token) in id_to_token {
+            pieces[*id as usize] = token.clone();
+        }
+        pieces
     }
 
     /// Parse the `symbol id` tokens file used by sherpa-onnx.
@@ -95,7 +120,7 @@ impl OmniAsrEngine {
     }
 
     /// Greedy CTC decoding: argmax per frame, collapse repeats, skip blanks.
-    fn decode(&self, logits: &Array2<f32>) -> String {
+    fn decode(&self, logits: ndarray::ArrayView2<f32>) -> String {
         let mut prev_id: i64 = -1;
         let mut text = String::new();
 
@@ -128,7 +153,38 @@ impl OmniAsrEngine {
             prev_id = id;
         }
 
-        // Trim and collapse any consecutive whitespace introduced by CTC.
+        Self::tokens_to_text(&text)
+    }
+
+    /// Keyword-boosted variant of `decode`: the per-frame argmax runs over
+    /// `log_softmax(logits) + alpha * bonus` from the keyword trie.
+    fn decode_boosted(&self, logits: &Array3<f32>, graph: &KeywordGraph) -> String {
+        let view = logits.view();
+        let lengths = vec![logits.shape()[1] as i64];
+        let boundary = (self.space_id >= 0).then_some(self.space_id as i32);
+        let results = keyword_boost::ctc_greedy_decode_boosted(
+            &view,
+            &lengths,
+            self.blank_id,
+            graph,
+            keyword_boost::DEFAULT_BOOST_ALPHA,
+            boundary,
+        );
+
+        let mut text = String::new();
+        for &id in &results[0].tokens {
+            if let Some(token) = self.id_to_token.get(&id) {
+                if token.starts_with('<') && token.ends_with('>') {
+                    continue;
+                }
+                text.push_str(token);
+            }
+        }
+        Self::tokens_to_text(&text)
+    }
+
+    /// Trim and collapse any consecutive whitespace introduced by CTC.
+    fn tokens_to_text(text: &str) -> String {
         text.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 }
@@ -138,7 +194,7 @@ impl OnnxEngine for OmniAsrEngine {
     const MAX_SEGMENT_SECONDS: f64 = 30.0;
 
     fn load(model_path: &Path) -> Result<Self> {
-        Self::load(model_path)
+        Self::load_with_keywords(model_path, &[])
     }
 
     fn transcribe_chunk(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
@@ -175,12 +231,14 @@ impl OnnxEngine for OmniAsrEngine {
 
         let logits_3d = Array3::from_shape_vec((n, frames, vocab), data.to_vec())
             .map_err(|e| eyre!("Failed to reshape logits: {e}"))?;
-        let logits_2d = logits_3d.index_axis_move(ndarray::Axis(0), 0);
 
         // `outputs` borrows `self.session`, so release it before the decode step.
         drop(outputs);
 
-        let text = self.decode(&logits_2d);
+        let text = match &self.boost {
+            Some(graph) => self.decode_boosted(&logits_3d, graph),
+            None => self.decode(logits_3d.index_axis(ndarray::Axis(0), 0)),
+        };
 
         Ok(TranscriptionResult {
             text,
@@ -215,7 +273,14 @@ pub async fn transcribe_omni_asr(
     if let Some(cb) = progress_callback {
         cb(0, ProgressType::Analyze, "progressSteps.analyze.loading");
     }
-    let engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || OmniAsrEngine::load(model_path))?;
+    let keywords = options
+        .advanced
+        .as_ref()
+        .and_then(|a| a.keywords.clone())
+        .unwrap_or_default();
+    let engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || {
+        OmniAsrEngine::load_with_keywords(model_path, &keywords)
+    })?;
     if let Some(cb) = progress_callback {
         cb(100, ProgressType::Analyze, "progressSteps.analyze.loading");
     }

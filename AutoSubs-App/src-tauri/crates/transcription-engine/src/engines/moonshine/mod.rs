@@ -1,12 +1,75 @@
+//! Moonshine speech recognition backend.
+
+mod model;
+
 use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
 use crate::types::{LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions};
 use eyre::{eyre, Result};
 use std::path::Path;
-use transcribe_rs::onnx::{
-    moonshine::{MoonshineModel, MoonshineParams, MoonshineVariant},
-    Quantization,
-};
-use transcribe_rs::{TranscriptionResult};
+use crate::vendor::onnx::Quantization;
+use crate::vendor::TranscriptionResult;
+
+use self::model::{MoonshineModel, MoonshineParams};
+
+pub const SAMPLE_RATE: u32 = 16000;
+
+/// Moonshine model variant (vendored from `transcribe-rs` v0.3.11).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MoonshineVariant {
+    Tiny,
+    TinyAr,
+    TinyZh,
+    TinyJa,
+    TinyKo,
+    TinyUk,
+    TinyVi,
+    Base,
+    BaseEs,
+}
+
+impl MoonshineVariant {
+    pub fn num_layers(&self) -> usize {
+        match self {
+            MoonshineVariant::Tiny
+            | MoonshineVariant::TinyAr
+            | MoonshineVariant::TinyZh
+            | MoonshineVariant::TinyJa
+            | MoonshineVariant::TinyKo
+            | MoonshineVariant::TinyUk
+            | MoonshineVariant::TinyVi => 6,
+            MoonshineVariant::Base | MoonshineVariant::BaseEs => 8,
+        }
+    }
+
+    pub fn num_key_value_heads(&self) -> usize {
+        8
+    }
+
+    pub fn head_dim(&self) -> usize {
+        match self {
+            MoonshineVariant::Tiny
+            | MoonshineVariant::TinyAr
+            | MoonshineVariant::TinyZh
+            | MoonshineVariant::TinyJa
+            | MoonshineVariant::TinyKo
+            | MoonshineVariant::TinyUk
+            | MoonshineVariant::TinyVi => 36,
+            MoonshineVariant::Base | MoonshineVariant::BaseEs => 52,
+        }
+    }
+
+    pub fn token_rate(&self) -> usize {
+        match self {
+            MoonshineVariant::Tiny | MoonshineVariant::Base | MoonshineVariant::BaseEs => 6,
+            MoonshineVariant::TinyUk => 8,
+            MoonshineVariant::TinyAr
+            | MoonshineVariant::TinyZh
+            | MoonshineVariant::TinyJa
+            | MoonshineVariant::TinyKo
+            | MoonshineVariant::TinyVi => 13,
+        }
+    }
+}
 
 pub fn moonshine_variant_from_model_name(model_name: &str) -> Option<(MoonshineVariant, Option<&'static str>)> {
     let m = model_name.to_lowercase();
@@ -49,16 +112,20 @@ pub struct MoonshineEngine {
 }
 
 impl MoonshineEngine {
-    pub fn load(model_path: &Path, variant: MoonshineVariant) -> Result<Self> {
-        let model = MoonshineModel::load(model_path, variant, &Quantization::default())
+    pub fn load_with_keywords(
+        model_path: &Path,
+        variant: MoonshineVariant,
+        keywords: &[String],
+    ) -> Result<Self> {
+        let mut model = MoonshineModel::load(model_path, variant, &Quantization::default())
             .map_err(|e| eyre!("Failed to load Moonshine model: {}", e))?;
+        if !keywords.is_empty() {
+            model.set_keywords(keywords, None);
+        }
 
         Ok(Self {
             model,
-            params: MoonshineParams {
-                max_length: None,
-                ..Default::default()
-            },
+            params: MoonshineParams::default(),
             detected_lang: moonshine_lang_from_variant(variant).map(|s| s.to_string()),
         })
     }
@@ -75,7 +142,7 @@ impl OnnxEngine for MoonshineEngine {
         let (variant, _) = moonshine_variant_from_model_name(model_name)
             .ok_or_else(|| eyre!("Unknown Moonshine model: {}", model_name))?;
 
-        MoonshineEngine::load(model_path, variant)
+        MoonshineEngine::load_with_keywords(model_path, variant, &[])
     }
 
     fn transcribe_chunk(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
@@ -93,6 +160,7 @@ impl OnnxEngine for MoonshineEngine {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn transcribe_moonshine(
     model_path: &Path,
     variant: MoonshineVariant,
@@ -112,7 +180,14 @@ pub async fn transcribe_moonshine(
     if let Some(cb) = progress_callback {
         cb(0, ProgressType::Analyze, "progressSteps.analyze.loading");
     }
-    let engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || MoonshineEngine::load(model_path, variant))?;
+    let keywords = options
+        .advanced
+        .as_ref()
+        .and_then(|a| a.keywords.clone())
+        .unwrap_or_default();
+    let engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || {
+        MoonshineEngine::load_with_keywords(model_path, variant, &keywords)
+    })?;
     if let Some(cb) = progress_callback {
         cb(100, ProgressType::Analyze, "progressSteps.analyze.loading");
     }

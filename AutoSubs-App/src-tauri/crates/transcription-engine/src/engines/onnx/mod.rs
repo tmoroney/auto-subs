@@ -3,9 +3,9 @@ use crate::types::{
 };
 use crate::utils::{interpolate_word_timestamps, push_segment_clamped, split_speech_segment};
 use eyre::{bail, Result};
-use transcribe_rs::{TranscriptionResult, TranscriptionSegment};
+use crate::vendor::{TranscriptionResult, TranscriptionSegment};
 #[cfg(all(target_os = "windows", feature = "directml"))]
-use transcribe_rs::{get_ort_accelerator, set_ort_accelerator, OrtAccelerator};
+use crate::vendor::{get_ort_accelerator, set_ort_accelerator, OrtAccelerator};
 
 /// How an engine derives word timestamps.
 #[derive(Clone, Copy)]

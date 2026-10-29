@@ -7,7 +7,7 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
-use transcribe_rs::onnx::session::create_session_with_threads;
+use crate::vendor::onnx::session::create_session_with_threads;
 use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
 use uroman::{Uroman, rom_format};
 
