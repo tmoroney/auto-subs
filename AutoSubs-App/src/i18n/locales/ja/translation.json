@@ -720,10 +720,16 @@
     "newTranscriptTitle": "新しい文字起こし",
     "fileTypes": "長さ制限なしの音声・動画",
     "audioTrackCount": "音声トラック {{count}}",
-    "trackSummary": "{{count}} トラック選択、{{tracks}}",
     "sameAsSpoken": "音声と同じ",
     "waiting": "接続を待機中",
     "clear": "クリア",
-    "selectAll": "すべて選択"
+    "selectAll": "すべて選択",
+    "spokenIn": "音声の言語",
+    "subtitlesIn": "字幕の言語",
+    "speakers": "話者",
+    "tracks_one": "トラック{{count}}本",
+    "tracks_other": "トラック{{count}}本",
+    "autoDetect": "自動検出",
+    "off": "オフ"
   }
 }

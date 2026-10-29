@@ -720,10 +720,16 @@
     "newTranscriptTitle": "新建转录",
     "fileTypes": "音频或视频，无时长限制",
     "audioTrackCount": "{{count}} 条音轨",
-    "trackSummary": "已选 {{count}} 条：{{tracks}}",
     "sameAsSpoken": "与口语相同",
     "waiting": "等待连接",
     "clear": "清除",
-    "selectAll": "全选"
+    "selectAll": "全选",
+    "spokenIn": "口述语言",
+    "subtitlesIn": "字幕语言",
+    "speakers": "说话人",
+    "tracks_one": "{{count}} 条音轨",
+    "tracks_other": "{{count}} 条音轨",
+    "autoDetect": "自动检测",
+    "off": "关闭"
   }
 }

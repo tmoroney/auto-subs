@@ -1,6 +1,5 @@
 import * as React from "react";
 import {
-  AudioLines,
   Check,
   ChevronDown,
   Plus,
@@ -171,16 +170,9 @@ export function TranscriptionPanelView({
           ? t("redesign.modelLanguageUnsupported")
           : "";
   const canStart = !running && !warning && !isDisconnected;
-  const trackSummary = selectedTracks
-    .map((id) => {
-      const track = tracks.find((item) => item.value === id);
-      const name = track ? displayTrackName(track) : "";
-      return name ? `${id} ${name}` : id;
-    })
-    .join(", ");
   const sourceLanguageLabel =
     selectedLanguage === "auto"
-      ? t("actionBar.common.auto")
+      ? t("redesign.autoDetect")
       : languages.find((language) => language.value === selectedLanguage)?.label ??
         selectedLanguage;
   const targetLanguageLabel = translate
@@ -188,7 +180,7 @@ export function TranscriptionPanelView({
       targetLanguage
     : t("redesign.sameAsSpoken");
   const speakerLabel = !enableDiarize
-    ? t("actionBar.speakers.disabled")
+    ? t("redesign.off")
     : maxSpeakers == null
       ? t("actionBar.common.auto")
       : String(maxSpeakers);
@@ -212,6 +204,7 @@ export function TranscriptionPanelView({
             segments={livePreviewSegments}
             isComplete={false}
             progress={stepProgress}
+            hideProgress
             isFullScreen
           />
         </div>
@@ -224,7 +217,11 @@ export function TranscriptionPanelView({
                 {formatDuration(elapsedSeconds)} · {Math.round(stepProgress)}%
               </span>
             </div>
-            <Button variant="tone" className="as-stop-button" onClick={onCancel}>
+            <Button
+              variant="ghost"
+              className={`as-stop-button ${stepProgress >= 95 ? "as-stop-button--over-fill" : ""}`}
+              onClick={onCancel}
+            >
               <Square className="size-3.5 fill-current" />
               {t("redesign.stop")}
             </Button>
@@ -333,7 +330,7 @@ export function TranscriptionPanelView({
                             onClick={() => toggleTrack(track.value)}
                             className={`as-track ${selected ? "as-track--selected" : ""}`}
                           >
-                            <span className="as-track-id">{track.value}</span>
+                            <span className="as-track-id">A{track.value}</span>
                             {name && <span className="as-track-name">{name}</span>}
                           </button>
                         </Tooltip>
@@ -360,7 +357,7 @@ export function TranscriptionPanelView({
               <section className="as-section as-options-section">
                 <div className="as-options">
                   <OptionCard
-                    label={t("actionBar.language.title")}
+                    label={t("redesign.spokenIn")}
                     value={sourceLanguageLabel}
                   >
                     <Menu.RadioGroup
@@ -388,7 +385,7 @@ export function TranscriptionPanelView({
                     </Menu.RadioGroup>
                   </OptionCard>
                   <OptionCard
-                    label={t("actionBar.language.translate")}
+                    label={t("redesign.subtitlesIn")}
                     value={targetLanguageLabel}
                   >
                     <Menu.RadioGroup
@@ -419,7 +416,7 @@ export function TranscriptionPanelView({
                     </Menu.RadioGroup>
                   </OptionCard>
                   <OptionCard
-                    label={t("actionBar.speakers.title")}
+                    label={t("redesign.speakers")}
                     value={speakerLabel}
                   >
                     <Menu.RadioGroup
@@ -482,10 +479,7 @@ export function TranscriptionPanelView({
                   ? selectedFile
                     ? fileName(selectedFile)
                     : t("redesign.fileNotSelected")
-                  : t("redesign.trackSummary", {
-                      count: selectedTracks.length,
-                      tracks: trackSummary,
-                    }))}
+                  : t("redesign.tracks", { count: selectedTracks.length }))}
             </p>
             <Button
               variant="primary"
@@ -494,7 +488,6 @@ export function TranscriptionPanelView({
               className="as-transcribe-button"
               onClick={() => onStart?.()}
             >
-              <AudioLines className="size-4" />
               {t("redesign.transcribe")}
               <span className="as-kbd">⌘↵</span>
             </Button>

@@ -863,9 +863,9 @@ body.app-panel-resizing * {
 }
 
 .as-range-segmented {
-    min-height: 32px !important;
-    padding: 2px !important;
-    background: transparent !important;
+    min-height: 34px !important;
+    padding: 3px !important;
+    background: var(--as-card) !important;
 }
 
 .as-range-segmented button {
@@ -1096,6 +1096,11 @@ body.app-panel-resizing * {
     color: var(--as-fg-muted);
 }
 
+.as-action-bar--running .as-action-summary,
+.as-action-bar--running .as-progress-time {
+    color: #fff;
+}
+
 .as-transcribe-button,
 .as-stop-button {
     height: 40px !important;
@@ -1105,6 +1110,20 @@ body.app-panel-resizing * {
     border: 0 !important;
     border-radius: 10px !important;
     font-size: 13px !important;
+}
+
+.as-stop-button {
+    background: transparent !important;
+    color: var(--as-fg) !important;
+}
+
+.as-stop-button--over-fill {
+    color: #fff !important;
+}
+
+.as-stop-button:hover,
+.as-stop-button:focus-visible {
+    background: rgb(255 255 255 / 0.14) !important;
 }
 
 .as-transcribe-button:disabled {
@@ -1131,7 +1150,7 @@ body.app-panel-resizing * {
     position: absolute;
     inset: 0 auto 0 0;
     max-width: 100%;
-    background: color-mix(in srgb, var(--as-primary) 18%, transparent);
+    background: var(--as-primary);
     transition: width 400ms ease;
 }
 

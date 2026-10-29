@@ -720,10 +720,16 @@
     "newTranscriptTitle": "Nueva transcripción",
     "fileTypes": "Audio o vídeo, cualquier duración",
     "audioTrackCount": "{{count}} pistas de audio",
-    "trackSummary": "{{count}} pistas, {{tracks}}",
     "sameAsSpoken": "Igual que hablado",
     "waiting": "Esperando conexión",
     "clear": "Limpiar",
-    "selectAll": "Seleccionar todo"
+    "selectAll": "Seleccionar todo",
+    "spokenIn": "Hablado en",
+    "subtitlesIn": "Subtítulos en",
+    "speakers": "Hablantes",
+    "tracks_one": "{{count}} pista",
+    "tracks_other": "{{count}} pistas",
+    "autoDetect": "Detección automática",
+    "off": "Desactivado"
   }
 }

@@ -740,10 +740,16 @@
     "newTranscriptTitle": "New transcript",
     "fileTypes": "Audio or video, any length",
     "audioTrackCount": "{{count}} audio tracks",
-    "trackSummary": "{{count}} tracks selected, {{tracks}}",
     "sameAsSpoken": "Same as spoken",
     "waiting": "Waiting for connection",
     "clear": "Clear",
-    "selectAll": "Select all"
+    "selectAll": "Select all",
+    "spokenIn": "Spoken in",
+    "subtitlesIn": "Subtitles in",
+    "speakers": "Speakers",
+    "tracks_one": "{{count}} track",
+    "tracks_other": "{{count}} tracks",
+    "autoDetect": "Auto-detect",
+    "off": "Off"
   }
 }

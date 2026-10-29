@@ -730,10 +730,18 @@
     "newTranscriptTitle": "Новая расшифровка",
     "fileTypes": "Аудио или видео, без ограничений",
     "audioTrackCount": "Аудиодорожек: {{count}}",
-    "trackSummary": "Выбрано: {{count}}, {{tracks}}",
     "sameAsSpoken": "Как в речи",
     "waiting": "Ожидание подключения",
     "clear": "Очистить",
-    "selectAll": "Выбрать все"
+    "selectAll": "Выбрать все",
+    "spokenIn": "Язык речи",
+    "subtitlesIn": "Субтитры на",
+    "speakers": "Спикеры",
+    "tracks_one": "{{count}} дорожка",
+    "tracks_few": "{{count}} дорожки",
+    "tracks_many": "{{count}} дорожек",
+    "tracks_other": "{{count}} дорожек",
+    "autoDetect": "Автоопределение",
+    "off": "Выкл."
   }
 }

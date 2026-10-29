@@ -720,10 +720,16 @@
     "newTranscriptTitle": "새 전사",
     "fileTypes": "길이 제한 없는 오디오·비디오",
     "audioTrackCount": "오디오 트랙 {{count}}개",
-    "trackSummary": "{{count}}개 선택, {{tracks}}",
     "sameAsSpoken": "말한 언어와 같음",
     "waiting": "연결 대기 중",
     "clear": "지우기",
-    "selectAll": "모두 선택"
+    "selectAll": "모두 선택",
+    "spokenIn": "음성 언어",
+    "subtitlesIn": "자막 언어",
+    "speakers": "화자",
+    "tracks_one": "트랙 {{count}}개",
+    "tracks_other": "트랙 {{count}}개",
+    "autoDetect": "자동 감지",
+    "off": "끄기"
   }
 }
