@@ -26,6 +26,7 @@
     "setup-resolve": "node scripts/setup-resolve-dev.js"
   },
   "dependencies": {
+    "@base-ui/react": "^1.9.0",
     "@fontsource/figtree": "^5.2.10",
     "@fontsource/noto-sans-arabic": "^5.2.10",
     "@fontsource/noto-sans-armenian": "^5.2.8",
