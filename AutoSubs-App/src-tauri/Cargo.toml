@@ -96,3 +96,6 @@ mac-aarch = ["transcription-engine/mac-aarch"]
 mac-x86_64 = ["transcription-engine/mac-x86_64"]
 windows = ["transcription-engine/windows"]
 linux = ["transcription-engine/linux"]
+
+[patch.crates-io]
+whisper-rs-sys = { path = "vendor/whisper-rs-sys" }
