@@ -289,6 +289,7 @@ export function TranscriptionPanel({
       showError({
         title: tErr("errorDialog.sameLanguageSourceAndTarget.title", "Source and target language are the same"),
         message: tErr("errorDialog.sameLanguageSourceAndTarget.message", "Please choose a different source or target language before translating."),
+        reportable: false,
       });
       return;
     }
