@@ -30,6 +30,7 @@ mod transcript_types;
 mod logging;
 mod resolve_bridge;
 mod resolve_scripts;
+mod resolve_launcher;
 mod adobe_bridge;
 mod cli;
 #[cfg(target_os = "macos")]
@@ -393,6 +394,10 @@ fn ensure_caption_preview_dir(app: tauri::AppHandle) -> Result<String, String> {
 }
 
 fn main() {
+    // The "Open from Resolve" watcher runs before Tauri is built: no window,
+    // no webview, no dock icon (see resolve_launcher.rs).
+    resolve_launcher::handle_args();
+
     // Inject system proxy env vars before any thread or HTTP client is created so
     // that both ureq (hf-hub) and reqwest pick up the Windows system proxy set by
     // VPN software via WinINet.
@@ -426,8 +431,13 @@ fn main() {
 
     if !headless {
         builder = builder.plugin(single_instance_plugin(|app, _args, _cwd| {
-            // Focus the existing window when a second instance is launched
-            let _ = app.get_webview_window("main").map(|w| w.set_focus());
+            // Bring the existing window forward when a second instance is
+            // launched (including by the Open from Resolve watcher).
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
         }));
         if !cfg!(debug_assertions) {
             // Restore the previous window geometry on launch. VISIBLE is excluded:
@@ -561,6 +571,9 @@ fn main() {
                 std::thread::spawn(move || {
                     resolve_scripts::install_resolve_scripts(&handle);
                 });
+                // Open from Resolve is on by default; this also restarts the
+                // watcher after an update replaced its binary.
+                std::thread::spawn(resolve_launcher::ensure_enabled);
             }
 
             // If a Resolve server from a previous session is running, make sure it
@@ -693,7 +706,9 @@ fn main() {
             audio_preprocess::extract_audio_peaks,
             cli::cli_command_status,
             cli::install_cli_command,
-            cli::uninstall_cli_command
+            cli::uninstall_cli_command,
+            resolve_launcher::open_from_resolve_status,
+            resolve_launcher::set_open_from_resolve
         ])
         .build(tauri::generate_context!())
         .expect("error while building Tauri application")

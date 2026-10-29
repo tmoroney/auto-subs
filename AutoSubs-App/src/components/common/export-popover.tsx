@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Captions, FileJson, FileText, LucideIcon, Users } from "lucide-react"
+import { Captions, FileJson, FileText, LucideIcon, Palette, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useTranslation } from "react-i18next"
@@ -35,6 +35,13 @@ const EXPORT_FORMATS: ExportFormatConfig[] = [
         titleKey: 'importExport.exportFormats.srtSpeakers.title',
         descriptionKey: 'importExport.exportFormats.srtSpeakers.description',
         ariaLabelKey: 'importExport.exportAsSrtSpeakers',
+    },
+    {
+        format: 'srt-colors',
+        icon: Palette,
+        titleKey: 'importExport.exportFormats.srtColors.title',
+        descriptionKey: 'importExport.exportFormats.srtColors.description',
+        ariaLabelKey: 'importExport.exportAsSrtColors',
     },
     {
         format: 'txt',

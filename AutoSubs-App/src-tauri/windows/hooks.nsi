@@ -1,3 +1,21 @@
+!macro NSIS_HOOK_PREINSTALL
+  ; Stop the Open from Resolve watcher (resolve_launcher.rs) before the
+  ; "AutoSubs is running" check, which would otherwise ask the user to close an
+  ; app they never see. Versions without the flag just exit.
+  IfFileExists "$INSTDIR\AutoSubs.exe" 0 +2
+    ExecWait '"$INSTDIR\AutoSubs.exe" --stop-resolve-watcher' $0
+!macroend
+
+!macro NSIS_HOOK_PREUNINSTALL
+  IfFileExists "$INSTDIR\AutoSubs.exe" 0 +2
+    ExecWait '"$INSTDIR\AutoSubs.exe" --stop-resolve-watcher' $0
+  ; Updates run the old uninstaller with /UPDATE; keep the login entry then,
+  ; the new version's postinstall rewrites it.
+  ${If} $UpdateMode <> 1
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "AutoSubs"
+  ${EndIf}
+!macroend
+
 !macro NSIS_HOOK_POSTINSTALL
   ; Remove old v2 entries to prevent duplicate Resolve Scripts menu items.
   Delete "$APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility\AutoSubs V2.lua"
@@ -10,7 +28,8 @@
   ; runs (a headless flag reuses the app's own install path, including
   ; ANSI/8.3 path handling). The same path deletes the AutoSubs.scriptlib that
   ; 3.10.0 installed. The app also does both on startup (resolve_scripts.rs),
-  ; so a failure here is recoverable — don't check $0.
+  ; so a failure here is recoverable — don't check $0. It also adds and starts
+  ; the Open from Resolve watcher, so the script opens the app right away.
   ExecWait '"$INSTDIR\AutoSubs.exe" --install-resolve-scripts' $0
 
   ; Remove redundant v3 modules copy (now loaded from install dir via package.path).

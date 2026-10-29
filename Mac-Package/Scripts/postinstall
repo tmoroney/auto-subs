@@ -46,6 +46,43 @@ rm -f "$SCRIPTS_DIR/AutoSubs.scriptlib"
 # Remove legacy user-level Lua scripts if present
 rm -f "$UTILITY_PATH/AutoSubs V2.lua"
 
+# Open from Resolve (resolve_launcher.rs): a login item that opens the app when
+# the Resolve script runs. On by default; the app writes the marker below when
+# the user turns it off. Same plist the app writes, so it doesn't rewrite it.
+# bootstrap starts it now (RunAtLoad); bootout first replaces a loaded copy.
+LAUNCHER_DISABLED="$USER_HOME/Library/Application Support/com.autosubs/resolve-launcher-disabled"
+AGENT_LABEL="com.autosubs.resolve-launcher"
+AGENT_PATH="$USER_HOME/Library/LaunchAgents/$AGENT_LABEL.plist"
+if [ ! -e "$LAUNCHER_DISABLED" ]; then
+    CONSOLE_UID="$(id -u "$CONSOLE_USER")"
+    "${AS_USER[@]}" mkdir -p "$USER_HOME/Library/LaunchAgents"
+    "${AS_USER[@]}" tee "$AGENT_PATH" > /dev/null <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>$AGENT_LABEL</string>
+    <key>AssociatedBundleIdentifiers</key>
+    <array>
+        <string>com.autosubs</string>
+    </array>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$APP_PATH/Contents/MacOS/autosubs</string>
+        <string>--resolve-watcher</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+</dict>
+</plist>
+PLIST
+    launchctl bootout "gui/$CONSOLE_UID/$AGENT_LABEL" 2>/dev/null || true
+    launchctl bootstrap "gui/$CONSOLE_UID" "$AGENT_PATH" 2>/dev/null || true
+fi
+
 # Adobe Extension Installation
 PREMIERE_PATH="$USER_HOME/Library/Application Support/Adobe/CEP/extensions"
 "${AS_USER[@]}" mkdir -p "$PREMIERE_PATH"
