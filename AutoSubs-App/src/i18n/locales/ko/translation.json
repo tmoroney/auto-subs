@@ -712,6 +712,18 @@
     "modelLanguageUnsupported": "이 모델은 이 언어를 지원하지 않습니다",
     "audioTracks": "오디오 트랙",
     "wholeTimeline": "전체 타임라인",
-    "inToOut": "인아웃 지점"
+    "inToOut": "인아웃 지점",
+    "newTranscriptFrom": "새 전사 만들기",
+    "transcriptionModel": "전사 모델",
+    "showSidebar": "사이드바 표시",
+    "hideSidebar": "사이드바 숨기기",
+    "newTranscriptTitle": "새 전사",
+    "fileTypes": "길이 제한 없는 오디오·비디오",
+    "audioTrackCount": "오디오 트랙 {{count}}개",
+    "trackSummary": "{{count}}개 선택, {{tracks}}",
+    "sameAsSpoken": "말한 언어와 같음",
+    "waiting": "연결 대기 중",
+    "clear": "지우기",
+    "selectAll": "모두 선택"
   }
 }

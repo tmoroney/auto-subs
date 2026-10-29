@@ -722,6 +722,18 @@
     "modelLanguageUnsupported": "Эта модель не поддерживает язык",
     "audioTracks": "Аудиодорожки",
     "wholeTimeline": "Вся временная шкала",
-    "inToOut": "Точки входа и выхода"
+    "inToOut": "Точки входа и выхода",
+    "newTranscriptFrom": "Новая расшифровка из",
+    "transcriptionModel": "Модель расшифровки",
+    "showSidebar": "Показать боковую панель",
+    "hideSidebar": "Скрыть боковую панель",
+    "newTranscriptTitle": "Новая расшифровка",
+    "fileTypes": "Аудио или видео, без ограничений",
+    "audioTrackCount": "Аудиодорожек: {{count}}",
+    "trackSummary": "Выбрано: {{count}}, {{tracks}}",
+    "sameAsSpoken": "Как в речи",
+    "waiting": "Ожидание подключения",
+    "clear": "Очистить",
+    "selectAll": "Выбрать все"
   }
 }

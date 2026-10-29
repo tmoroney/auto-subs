@@ -712,6 +712,18 @@
     "modelLanguageUnsupported": "このモデルはこの言語に対応していません",
     "audioTracks": "音声トラック",
     "wholeTimeline": "タイムライン全体",
-    "inToOut": "イン点からアウト点"
+    "inToOut": "イン点からアウト点",
+    "newTranscriptFrom": "新しい文字起こし元",
+    "transcriptionModel": "文字起こしモデル",
+    "showSidebar": "サイドバーを表示",
+    "hideSidebar": "サイドバーを隠す",
+    "newTranscriptTitle": "新しい文字起こし",
+    "fileTypes": "長さ制限なしの音声・動画",
+    "audioTrackCount": "音声トラック {{count}}",
+    "trackSummary": "{{count}} トラック選択、{{tracks}}",
+    "sameAsSpoken": "音声と同じ",
+    "waiting": "接続を待機中",
+    "clear": "クリア",
+    "selectAll": "すべて選択"
   }
 }

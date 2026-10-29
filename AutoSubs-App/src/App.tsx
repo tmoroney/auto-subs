@@ -1,10 +1,8 @@
 import * as React from "react";
 import {
-  AudioLines,
-  Clock3,
+  ChevronRight,
   FileAudio,
-  FolderOpen,
-  Menu as MenuIcon,
+  PanelLeft,
   MonitorPlay,
   Settings as SettingsIcon,
 } from "lucide-react";
@@ -121,31 +119,35 @@ function AppContentBody() {
 
   return (
     <TooltipProvider>
-      <div className="relative flex h-screen overflow-hidden bg-[var(--as-bg)] text-[var(--as-fg)]">
+      <div className="as-shell">
         {sidebarOpen && smallScreen && (
           <button
             type="button"
             aria-label={t("common.close")}
-            className="fixed inset-0 z-20 bg-black/25"
+            className="as-sidebar-scrim"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {sidebarOpen && (
-          <aside className="absolute inset-y-0 left-0 z-30 flex w-60 shrink-0 flex-col border-r border-[var(--as-line)] bg-[var(--as-side)] sm:relative">
-            <div className="flex h-14 items-center gap-2 border-b border-[var(--as-line)] px-4">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-[var(--as-primary)] text-white">
-                <AudioLines className="size-4" />
-              </div>
-              <span className="font-semibold tracking-tight">AutoSubs</span>
+          <aside className={`as-sidebar ${smallScreen ? "as-sidebar--mobile" : ""}`}>
+            <div className="as-sidebar-head" data-tauri-drag-region>
+              <Button
+                variant="icon"
+                aria-label={t("redesign.hideSidebar")}
+                className="as-sidebar-toggle"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <PanelLeft className="size-4" />
+              </Button>
             </div>
 
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4">
+            <div className="as-sidebar-flow">
               <section>
-                <h2 className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--as-fg-muted)]">
-                  {t("redesign.sources")}
+                <h2 className="as-side-label">
+                  {t("redesign.newTranscriptFrom")}
                 </h2>
-                <div className="space-y-1">
+                <div className="as-source-list">
                   <SourceButton
                     active={activeSource === "resolve"}
                     icon={<MonitorPlay className="size-4" />}
@@ -169,11 +171,41 @@ function AppContentBody() {
                 </div>
               </section>
 
-              {/* TODO(redesign stage 2) */}
-              <section className="rounded-xl border border-[var(--as-line)] bg-[var(--as-bg)] p-3">
-                <h2 className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--as-fg-muted)]">
-                  {t("actionBar.model")}
-                </h2>
+              <section className="as-recent-section">
+                <h2 className="as-side-label">{t("redesign.recent")}</h2>
+                {!documentsLoaded ? (
+                  <p className="as-recent-empty">
+                    {t("titlebar.subtitleHistory.loading")}
+                  </p>
+                ) : documents.length ? (
+                  <div className="as-recent-list">
+                    {documents.slice(0, 6).map((document) => (
+                      <button
+                        key={document.filename}
+                        type="button"
+                        onClick={() => void openDocument(document)}
+                        className="as-recent-item"
+                      >
+                        <span className="as-recent-name">
+                          {document.displayName}
+                        </span>
+                        <span className="as-recent-meta">
+                          {recentDocumentMeta(document, i18n.language)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="as-recent-empty">
+                    {t("titlebar.subtitleHistory.empty")}
+                  </p>
+                )}
+              </section>
+            </div>
+
+            <div className="as-sidebar-footer">
+              <section className="as-model-section">
+                {/* TODO(redesign stage 2) */}
                 <ModelPicker
                   modelsState={modelsState}
                   selectedModelIndex={model}
@@ -184,97 +216,58 @@ function AppContentBody() {
                   open={modelPickerOpen}
                   onOpenChange={setModelPickerOpen}
                   isSmallScreen={smallScreen}
-                  triggerClassName="h-10 w-full justify-between rounded-lg border border-[var(--as-line)] bg-[var(--as-card)] px-2.5"
+                  triggerSubtitle={t("redesign.transcriptionModel")}
+                  triggerClassName="as-model-card-trigger"
                 />
               </section>
-
-              <section>
-                <h2 className="mb-2 flex items-center gap-2 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--as-fg-muted)]">
-                  <Clock3 className="size-3.5" />
-                  {t("redesign.recent")}
-                </h2>
-                {!documentsLoaded ? (
-                  <p className="px-2 py-2 text-xs text-[var(--as-fg-muted)]">
-                    {t("titlebar.subtitleHistory.loading")}
-                  </p>
-                ) : documents.length ? (
-                  <div className="space-y-0.5">
-                    {documents.slice(0, 6).map((document) => (
-                      <button
-                        key={document.filename}
-                        type="button"
-                        onClick={() => void openDocument(document)}
-                        className="flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-left text-xs text-[var(--as-fg-secondary)] transition-colors hover:bg-[var(--as-card-hover)] hover:text-[var(--as-fg)]"
-                      >
-                        <FolderOpen className="size-3.5 shrink-0" />
-                        <span className="min-w-0 flex-1 truncate">
-                          {document.displayName}
-                        </span>
-                        <span className="shrink-0 text-[10px] text-[var(--as-fg-muted)]">
-                          {document.createdAt.toLocaleDateString(i18n.language, {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="px-2 py-2 text-xs text-[var(--as-fg-muted)]">
-                    {t("titlebar.subtitleHistory.empty")}
-                  </p>
-                )}
-              </section>
-            </div>
-
-            <div className="border-t border-[var(--as-line)] p-3">
               {/* TODO(redesign stage 2) */}
               <Button
                 variant="ghost"
-                className="w-full justify-start px-2.5"
+                className="as-settings-button"
                 onClick={() => setSettingsOpen(true)}
               >
                 <SettingsIcon className="size-4" />
                 {t("settings.title")}
+                <ChevronRight className="as-settings-chevron" />
               </Button>
             </div>
           </aside>
         )}
 
-        <main className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b border-[var(--as-line)] px-3 sm:px-4">
-            <Button
-              variant="icon"
-              aria-label={t("redesign.sources")}
-              onClick={() => setSidebarOpen((open) => !open)}
-            >
-              <MenuIcon className="size-4" />
-            </Button>
-            <div className="min-w-0 flex-1 font-serif text-lg text-[var(--as-fg)]" style={{ fontFamily: "var(--as-font-title)" }}>
-              {page === "setup" ? t("common.startNewTranscription") : t("titlebar.subtitleHistory.title")}
-            </div>
-            {page === "transcript" && (
-              <Button variant="tone" size="sm" onClick={() => setPage("setup")}>
-                {t("common.back")}
+        <main className="as-main">
+          <header className={`as-topstrip ${sidebarOpen ? "as-topstrip--sidebar-open" : ""}`} data-tauri-drag-region>
+            {(!sidebarOpen || smallScreen) && (
+              <Button
+                variant="icon"
+                aria-label={t("redesign.showSidebar")}
+                className="as-sidebar-toggle"
+                onClick={() => setSidebarOpen((open) => !open)}
+              >
+                <PanelLeft className="size-4" />
               </Button>
             )}
           </header>
 
-          <div className="relative min-h-0 flex-1">
-            <div className={page === "setup" ? "h-full" : "hidden"}>
+          <div className="as-main-content">
+            <div className={page === "setup" ? "as-page as-page--active" : "as-page as-page--hidden"}>
               <TranscriptionPanel
                 onViewSubtitles={() => setPage("transcript")}
                 onTranscriptCreated={loadDocuments}
               />
             </div>
-            <div className={page === "transcript" ? "h-full" : "hidden"}>
-              <SubtitleViewerPanel
-                isFullScreen
-                onClose={() => setPage("setup")}
-                transcriptDocuments={documents}
-                isLoadingTranscriptDocuments={!documentsLoaded}
-                onTranscriptDocumentsRefresh={loadDocuments}
-              />
+            <div className={page === "transcript" ? "as-page as-page--active as-transcript-page" : "as-page as-page--hidden"}>
+              <button type="button" className="as-back-link" onClick={() => setPage("setup")}>
+                ‹ {t("common.back")}
+              </button>
+              <div className="as-transcript-view">
+                <SubtitleViewerPanel
+                  isFullScreen
+                  onClose={() => setPage("setup")}
+                  transcriptDocuments={documents}
+                  isLoadingTranscriptDocuments={!documentsLoaded}
+                  onTranscriptDocumentsRefresh={loadDocuments}
+                />
+              </div>
             </div>
           </div>
         </main>
@@ -306,28 +299,33 @@ function SourceButton({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
-        active
-          ? "bg-[var(--as-card)] text-[var(--as-fg)]"
-          : "text-[var(--as-fg-secondary)] hover:bg-[var(--as-card-hover)] hover:text-[var(--as-fg)]"
-      }`}
+      className={`as-source-button ${active ? "as-source-button--active" : ""}`}
     >
-      <span className="shrink-0">{icon}</span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="as-source-icon">{icon}</span>
+      <span className="as-source-label">{label}</span>
       {typeof connected === "boolean" && (
-        <span
-          className={`size-1.5 shrink-0 rounded-full ${
-            connected ? "bg-emerald-500" : "bg-[var(--as-fg-muted)]"
-          }`}
-          title={t(
-            connected
-              ? "titlebar.resolve.tooltip.connected"
-              : "titlebar.status.disconnected",
-          )}
-        />
+        <span className={`as-source-status ${connected ? "as-source-status--connected" : ""}`} title={t(connected ? "titlebar.resolve.tooltip.connected" : "titlebar.status.disconnected")} />
       )}
     </button>
   );
+}
+
+function recentDocumentMeta(document: SubtitleDocumentListItem, language: string) {
+  const date = document.createdAt.toLocaleDateString(language, {
+    month: "short",
+    day: "numeric",
+  });
+  const duration =
+    document.markOut == null
+      ? ""
+      : formatDuration(Math.max(0, document.markOut - (document.markIn ?? 0)));
+  return [date, duration || document.timelineName].filter(Boolean).join(" · ");
+}
+
+function formatDuration(seconds: number) {
+  const wholeSeconds = Math.floor(seconds);
+  const minutes = Math.floor(wholeSeconds / 60);
+  return `${minutes}:${String(wholeSeconds % 60).padStart(2, "0")}`;
 }
 
 function AppContent() {

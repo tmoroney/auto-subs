@@ -712,6 +712,18 @@
     "modelLanguageUnsupported": "Este modelo no admite este idioma",
     "audioTracks": "Pistas de audio",
     "wholeTimeline": "Línea de tiempo completa",
-    "inToOut": "Puntos de entrada y salida"
+    "inToOut": "Puntos de entrada y salida",
+    "newTranscriptFrom": "Nueva transcripción de",
+    "transcriptionModel": "Modelo de transcripción",
+    "showSidebar": "Mostrar panel lateral",
+    "hideSidebar": "Ocultar panel lateral",
+    "newTranscriptTitle": "Nueva transcripción",
+    "fileTypes": "Audio o vídeo, cualquier duración",
+    "audioTrackCount": "{{count}} pistas de audio",
+    "trackSummary": "{{count}} pistas, {{tracks}}",
+    "sameAsSpoken": "Igual que hablado",
+    "waiting": "Esperando conexión",
+    "clear": "Limpiar",
+    "selectAll": "Seleccionar todo"
   }
 }

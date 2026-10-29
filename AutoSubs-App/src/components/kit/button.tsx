@@ -16,13 +16,13 @@ export type ButtonProps = Omit<
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "border border-[var(--as-primary)] bg-[var(--as-primary)] text-white hover:brightness-95 disabled:opacity-50",
+    "bg-[var(--as-primary)] text-white hover:brightness-95 disabled:opacity-50",
   tone:
-    "border border-[var(--as-line)] bg-[var(--as-card)] text-[var(--as-fg)] hover:bg-[var(--as-card-hover)] disabled:opacity-50",
+    "bg-[var(--as-card)] text-[var(--as-fg)] hover:bg-[var(--as-card-hover)] disabled:opacity-50",
   ghost:
-    "border border-transparent bg-transparent text-[var(--as-fg-secondary)] hover:bg-[var(--as-card-hover)] hover:text-[var(--as-fg)] disabled:opacity-50",
+    "bg-transparent text-[var(--as-fg-secondary)] hover:bg-[var(--as-card-hover)] hover:text-[var(--as-fg)] disabled:opacity-50",
   icon:
-    "size-9 border border-transparent bg-transparent p-0 text-[var(--as-fg-secondary)] hover:bg-[var(--as-card-hover)] hover:text-[var(--as-fg)] disabled:opacity-50",
+    "size-9 bg-transparent p-0 text-[var(--as-fg-secondary)] hover:bg-[var(--as-card-hover)] hover:text-[var(--as-fg)] disabled:opacity-50",
 };
 
 const sizes: Record<ButtonSize, string> = {
@@ -41,7 +41,7 @@ export function Button({
     <BaseButton
       {...props}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--as-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--as-bg)] disabled:pointer-events-none",
+        "inline-flex shrink-0 items-center justify-center font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none",
         variants[variant],
         variant === "icon" ? "size-9 rounded-[var(--as-radius)]" : sizes[size],
         className,

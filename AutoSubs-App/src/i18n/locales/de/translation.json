@@ -712,6 +712,18 @@
     "modelLanguageUnsupported": "Dieses Modell unterstützt diese Sprache nicht",
     "audioTracks": "Audiospuren",
     "wholeTimeline": "Ganze Zeitleiste",
-    "inToOut": "In-/Out-Punkte"
+    "inToOut": "In-/Out-Punkte",
+    "newTranscriptFrom": "Neues Transkript aus",
+    "transcriptionModel": "Transkriptionsmodell",
+    "showSidebar": "Seitenleiste zeigen",
+    "hideSidebar": "Seitenleiste ausblenden",
+    "newTranscriptTitle": "Neues Transkript",
+    "fileTypes": "Audio oder Video, beliebige Länge",
+    "audioTrackCount": "{{count}} Audiospuren",
+    "trackSummary": "{{count}} Spuren ausgewählt, {{tracks}}",
+    "sameAsSpoken": "Wie gesprochen",
+    "waiting": "Warte auf Verbindung",
+    "clear": "Leeren",
+    "selectAll": "Alle auswählen"
   }
 }

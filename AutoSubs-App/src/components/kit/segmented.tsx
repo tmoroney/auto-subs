@@ -28,7 +28,7 @@ export function Segmented({
       onValueChange={(nextValue: string) => onValueChange(nextValue)}
       aria-label={ariaLabel}
       className={cn(
-        "inline-flex min-h-9 items-center gap-0.5 rounded-[var(--as-radius)] border border-[var(--as-line)] bg-[var(--as-side)] p-0.5",
+        "inline-flex min-h-9 items-center gap-0.5 rounded-[var(--as-radius)] bg-[var(--as-card)] p-[3px]",
         className,
       )}
     >
@@ -36,7 +36,7 @@ export function Segmented({
         <Radio.Root
           key={option.value}
           value={option.value}
-          className="inline-flex min-h-8 cursor-pointer items-center justify-center rounded-lg px-3 text-xs font-medium text-[var(--as-fg-secondary)] outline-none transition-colors data-[checked]:bg-[var(--as-card)] data-[checked]:text-[var(--as-fg)] data-[checked]:shadow-sm focus-visible:ring-2 focus-visible:ring-[var(--as-primary)]"
+          className="inline-flex min-h-8 cursor-pointer items-center justify-center rounded-lg px-3 text-xs font-medium text-[var(--as-fg-secondary)] outline-none transition-colors data-[checked]:bg-[var(--as-seg-on)] data-[checked]:text-[var(--as-fg)] data-[checked]:shadow-sm"
         >
           {option.label}
         </Radio.Root>

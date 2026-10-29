@@ -712,6 +712,18 @@
     "modelLanguageUnsupported": "此模型不支持该语言",
     "audioTracks": "音轨",
     "wholeTimeline": "整个时间线",
-    "inToOut": "入点到出点"
+    "inToOut": "入点到出点",
+    "newTranscriptFrom": "新建转录来源",
+    "transcriptionModel": "转录模型",
+    "showSidebar": "显示侧边栏",
+    "hideSidebar": "隐藏侧边栏",
+    "newTranscriptTitle": "新建转录",
+    "fileTypes": "音频或视频，无时长限制",
+    "audioTrackCount": "{{count}} 条音轨",
+    "trackSummary": "已选 {{count}} 条：{{tracks}}",
+    "sameAsSpoken": "与口语相同",
+    "waiting": "等待连接",
+    "clear": "清除",
+    "selectAll": "全选"
   }
 }

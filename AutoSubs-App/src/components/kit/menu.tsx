@@ -16,7 +16,7 @@ export function MenuPopup({
       <Menu.Positioner sideOffset={5}>
         <Menu.Popup
           className={cn(
-            "z-50 min-w-40 overflow-hidden rounded-[var(--as-radius)] border border-[var(--as-line)] bg-[var(--as-bg)] p-1 text-[var(--as-fg)] shadow-xl outline-none",
+            "z-50 min-w-40 overflow-hidden rounded-[var(--as-radius)] border border-[var(--as-line-strong)] bg-[var(--as-pop)] p-1 text-[var(--as-fg)] shadow-xl outline-none",
             className,
           )}
         >

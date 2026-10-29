@@ -732,6 +732,18 @@
     "modelLanguageUnsupported": "This model does not support this language",
     "audioTracks": "Audio tracks",
     "wholeTimeline": "Whole timeline",
-    "inToOut": "In to out"
+    "inToOut": "In to out",
+    "newTranscriptFrom": "New transcript from",
+    "transcriptionModel": "Transcription model",
+    "showSidebar": "Show sidebar",
+    "hideSidebar": "Hide sidebar",
+    "newTranscriptTitle": "New transcript",
+    "fileTypes": "Audio or video, any length",
+    "audioTrackCount": "{{count}} audio tracks",
+    "trackSummary": "{{count}} tracks selected, {{tracks}}",
+    "sameAsSpoken": "Same as spoken",
+    "waiting": "Waiting for connection",
+    "clear": "Clear",
+    "selectAll": "Select all"
   }
 }

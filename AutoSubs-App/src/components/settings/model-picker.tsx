@@ -81,6 +81,7 @@ interface ModelPickerProps {
   onOpenChange: (open: boolean) => void
   isSmallScreen: boolean
   triggerClassName?: string
+  triggerSubtitle?: string
 }
 
 export function ModelPicker({
@@ -94,6 +95,7 @@ export function ModelPicker({
   onOpenChange,
   isSmallScreen,
   triggerClassName,
+  triggerSubtitle,
 }: ModelPickerProps) {
   const { t } = useTranslation()
   const chevronsIconRef = React.useRef<ChevronsUpDownIconHandle>(null)
@@ -142,8 +144,11 @@ export function ModelPicker({
                 alt={t(modelsState[selectedModelIndex].label) + " icon"}
                 className="size-6 object-contain rounded"
               />
-              <div className="flex items-center gap-1">
-                <span className="truncate">{t(modelsState[selectedModelIndex].label)}</span>
+              <div className="flex min-w-0 flex-col items-start gap-0.5">
+                <span className="as-model-name truncate">{t(modelsState[selectedModelIndex].label)}</span>
+                {triggerSubtitle && (
+                  <span className="as-model-caption">{triggerSubtitle}</span>
+                )}
               </div>
             </div>
             <ChevronsUpDownIcon ref={chevronsIconRef} className="ml-auto" />
