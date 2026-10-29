@@ -698,5 +698,20 @@
     "addToTimelineFailed": "Untertitel konnten nicht zur Timeline hinzugefügt werden",
     "clipsBlocked": "Untertitel konnten nicht auf der Ausgabespur platziert werden. 'Add to New Track' wählen.",
     "reformatFailed": "Formatfehler"
+  },
+  "redesign": {
+    "sources": "Quellen",
+    "recent": "Zuletzt",
+    "connectResolve": "Resolve verbinden",
+    "useFile": "Stattdessen Datei nutzen",
+    "fileNotSelected": "Keine Datei ausgewählt",
+    "namesTerms": "Namen und Begriffe",
+    "promptHint": "Namen, Begriffe oder Kontext eingeben",
+    "transcribe": "Transkribieren",
+    "stop": "Stopp",
+    "modelLanguageUnsupported": "Dieses Modell unterstützt diese Sprache nicht",
+    "audioTracks": "Audiospuren",
+    "wholeTimeline": "Ganze Zeitleiste",
+    "inToOut": "In-/Out-Punkte"
   }
 }

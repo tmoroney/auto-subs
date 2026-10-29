@@ -1,33 +1,17 @@
 import * as React from "react";
-import { PlayCircle, X } from "lucide-react";
+import { AudioLines, Check, FileAudio, Languages, Mic2, MonitorPlay, Square } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ModelPicker } from "@/components/settings/model-picker";
 import { useSettingsStore } from "@/stores/settings-store";
-import { cn } from "@/lib/utils";
-import type {
-  Model,
-  TimelineInfo,
-  Track,
-} from "@/types";
-import { TranscriptionHeader } from "./transcription-header";
-import { CompletionStepItem } from "@/components/processing/completion-step-item";
-import { ProcessingStepsList } from "./processing-steps-list";
-import { RunSummaryCard } from "./run-summary";
-import { CompactSettingsRow, SectionHeader } from "./section-row";
-import {
-  FileDropArea,
-  SourceModeTabs,
-  TimelineTrackSelector,
-  formatLocalizedTrackNumber,
-} from "./source-section";
-import type { Integration } from "@/contexts/IntegrationContext";
+import { useIntegration } from "@/contexts/IntegrationContext";
+import { useProgress } from "@/contexts/ProgressContext";
+import { modelSupportsLanguage } from "@/lib/models";
+import type { Model, TimelineInfo, Track } from "@/types";
+import { DraftTranscriptPanel } from "@/components/subtitles/draft-transcript-panel";
+import { Button, Menu, MenuPopup, MenuRadioItem, Segmented, Switch, Tooltip } from "@/components/kit";
 import { LanguageButton } from "./language-button";
-import { FormatRow } from "./format-row";
-import { OptionsRow } from "./options-row";
-import { isSupportedMediaFile, type ProcessingStep } from "./utils";
+import { FileDropArea } from "./source-section";
+import type { ProcessingStep } from "./utils";
+import type { Integration } from "@/contexts/IntegrationContext";
 
 export interface TranscriptionPanelViewProps {
   modelsState: Model[];
@@ -57,315 +41,348 @@ export interface TranscriptionPanelViewProps {
   selectedIntegration: Integration;
 }
 
+function displayTrackLabel(track: Track) {
+  const number = track.value || "1";
+  const name = track.label.trim();
+  const defaultName = /^Audio\s+\d+$/i.test(name);
+  return `A${number}${name && !defaultName ? ` ${name}` : ""}`;
+}
+
+function fileName(path: string | null | undefined) {
+  return path?.split(/[/\\]/).pop() || "";
+}
+
 export function TranscriptionPanelView({
   modelsState,
   selectedModelIndex,
   selectedLanguage,
-  onSelectModel,
-  downloadingModel,
-  downloadProgress,
-  openModelSelector,
-  onOpenModelSelectorChange,
-  isSmallScreen,
   audioInputMode,
-  onAudioInputModeChange,
   processingSteps,
-  progressContainerRef,
-  onExportToFile,
-  onViewSubtitles,
-  isSubtitleViewerOpen = false,
   timelineInfo,
-  selectedFile: selectedFileProp,
+  selectedFile,
   onSelectedFileChange,
   onStart,
   onCancel,
-  onStartNewTranscription,
-  onRefreshAudioTracks,
-  isProcessing,
+  isProcessing = false,
   selectedIntegration,
+  isSmallScreen,
 }: TranscriptionPanelViewProps) {
-  const { t, i18n } = useTranslation();
-  const selectedInputTracksByApp = useSettingsStore((s) => s.selectedInputTracksByApp);
-  const updateSetting = useSettingsStore((s) => s.updateSetting);
-  const isCustomDensity = useSettingsStore((s) => s.textDensity === "custom");
+  const { t } = useTranslation();
+  const { setSelectedIntegration } = useIntegration();
+  const { isRunActive, livePreviewSegments } = useProgress();
+  const selectedTracksByApp = useSettingsStore((state) => state.selectedInputTracksByApp);
+  const exportRange = useSettingsStore((state) => state.exportRange ?? "inout");
+  const translate = useSettingsStore((state) => state.translate);
+  const enableDiarize = useSettingsStore((state) => state.enableDiarize);
+  const maxSpeakers = useSettingsStore((state) => state.maxSpeakers);
+  const customPrompt = useSettingsStore((state) => state.customPrompt);
+  const updateSetting = useSettingsStore((state) => state.updateSetting);
 
-  const [localSelectedFile, setLocalSelectedFile] = React.useState<
-    string | null
-  >(null);
-  const [isRefreshingTracks, setIsRefreshingTracks] = React.useState(false);
+  const isFileMode = audioInputMode === "file" || selectedIntegration === "standalone";
+  const tracks = timelineInfo.inputTracks ?? [];
+  const selectedTracks = selectedTracksByApp[selectedIntegration] ?? [];
+  const running = isProcessing || isRunActive;
+  const model = modelsState[selectedModelIndex];
+  const supportsLanguage = model ? modelSupportsLanguage(model, selectedLanguage) : true;
+  const isDisconnected = !isFileMode && !timelineInfo.timelineId;
+  const activeStep =
+    processingSteps.find((step) => step.isActive) ??
+    processingSteps.find((step) => !step.isCompleted);
+  const stepProgress = activeStep?.progress ?? 0;
+  const stepLabel = activeStep?.title ?? t("progressSteps.prepare");
 
-  // Distinguish "prop not provided" (undefined → fall back to local state)
-  // from "prop explicitly cleared" (null → respect the parent's reset).
-  // Using `??` would treat null as "not set" and resurrect a stale
-  // `localSelectedFile` after the parent clears the file, leaving the
-  // Generate button looking enabled while `handleStartTranscription`
-  // silently no-ops on a null `fileInput`.
-  const selectedFile =
-    selectedFileProp !== undefined ? selectedFileProp : localSelectedFile;
+  const toggleTrack = (trackId: string) => {
+    const next = selectedTracks.includes(trackId)
+      ? selectedTracks.filter((id) => id !== trackId)
+      : [...selectedTracks, trackId];
+    updateSetting("selectedInputTracksByApp", {
+      ...selectedTracksByApp,
+      [selectedIntegration]: next,
+    });
+  };
 
-  const setSelectedFile = React.useCallback(
-    (file: string | null) => {
-      setLocalSelectedFile(file);
-      onSelectedFileChange?.(file);
-    },
-    [onSelectedFileChange],
-  );
-
-  const inputTracks: Track[] = React.useMemo(() => {
-    if (!timelineInfo?.inputTracks) return [];
-    return timelineInfo.inputTracks;
-  }, [timelineInfo]);
+  const useFileSource = () => setSelectedIntegration("standalone");
+  const warning = !isFileMode
+    ? isDisconnected
+      ? selectedIntegration === "davinci"
+        ? t("redesign.connectResolve")
+        : t("titlebar.premiere.tooltip.openPremiere")
+      : tracks.length === 0
+        ? t("actionBar.tracks.noneFound")
+        : selectedTracks.length === 0
+          ? t("actionBar.tracks.noneSelected")
+          : !supportsLanguage
+            ? t("redesign.modelLanguageUnsupported")
+            : ""
+    : !selectedFile
+      ? t("redesign.fileNotSelected")
+      : !supportsLanguage
+        ? t("redesign.modelLanguageUnsupported")
+        : "";
+  const canStart = !running && !warning;
+  const trackSummary = selectedTracks
+    .map((id) => {
+      const track = tracks.find((item) => item.value === id);
+      return track ? displayTrackLabel(track) : `A${id}`;
+    })
+    .join(", ");
 
   React.useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    (async () => {
-      const webview = await getCurrentWebview();
-      unlisten = await webview.onDragDropEvent((event: any) => {
-        if (event.payload.type === "drop") {
-          const files = event.payload.paths as string[] | undefined;
-          if (files && files.length > 0) {
-            const supportedFile = files.find(isSupportedMediaFile);
-            if (supportedFile) {
-              setSelectedFile(supportedFile);
-            }
-          }
-        }
-      });
-    })();
-    return () => {
-      if (unlisten) unlisten();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && !running && canStart) {
+        event.preventDefault();
+        onStart?.();
+      }
     };
-  }, [setSelectedFile]);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canStart, onStart, running]);
 
-  const handleRefreshAudioTracks = React.useCallback(async () => {
-    if (!onRefreshAudioTracks || isRefreshingTracks) return;
-
-    try {
-      setIsRefreshingTracks(true);
-      await onRefreshAudioTracks();
-    } finally {
-      setIsRefreshingTracks(false);
-    }
-  }, [isRefreshingTracks, onRefreshAudioTracks]);
-
-  // Clean up selected tracks that no longer exist (runs on both manual and auto refresh)
-  React.useEffect(() => {
-    const currentSelectedTracks =
-      selectedInputTracksByApp[selectedIntegration] || [];
-    const validTrackIds = inputTracks.map((track) => track.value);
-
-    // Don't wipe persisted selections while the track list is still loading
-    // or when the host editor reports no audio tracks yet.
-    if (validTrackIds.length === 0) return;
-
-    const cleanedSelectedTracks = currentSelectedTracks.filter((trackId: string) =>
-      validTrackIds.includes(trackId)
-    );
-
-    if (cleanedSelectedTracks.length !== currentSelectedTracks.length) {
-      const nextMap = {
-        ...selectedInputTracksByApp,
-        [selectedIntegration]: cleanedSelectedTracks,
-      };
-      updateSetting("selectedInputTracksByApp", nextMap);
-    }
-  }, [inputTracks, selectedInputTracksByApp, selectedIntegration, updateSetting]);
-
-  const selectedTracks =
-    selectedInputTracksByApp[selectedIntegration] || [];
-  const selectedTrackCount = selectedTracks.length;
-  const hasProcessingSteps = processingSteps.some(
-    (step) => step.isActive || step.isCompleted,
-  );
-  const showProcessing = isProcessing || hasProcessingSteps;
-  const hasCompletedRun =
-    !isProcessing && processingSteps.some((step) => step.isCompleted);
-
-  const startDisabled =
-    isProcessing ||
-    (audioInputMode === "file" && !selectedFile) ||
-    (audioInputMode === "timeline" &&
-      (selectedTrackCount === 0 || inputTracks.length === 0));
-
-  const formatSectionNumber = React.useCallback(
-    (value: number) => formatLocalizedTrackNumber(value, i18n.language),
-    [i18n.language],
-  );
-
-  const startButtonLabel =
-    audioInputMode === "timeline" &&
-    selectedTrackCount > 0 &&
-    inputTracks.length > 0
-      ? `${t("common.generateSubtitles")} (${selectedTrackCount})`
-      : t("common.generateSubtitles");
-
-  return (
-    <div className="h-full flex flex-col relative">
-      <TranscriptionHeader
-        onViewSubtitles={onViewSubtitles}
-        isSubtitleViewerOpen={isSubtitleViewerOpen}
-      />
-
-      <div className="flex-1 min-h-0 flex flex-col p-3.5 pt-1.5 pb-4">
-        {showProcessing && (
-          <ProcessingStepsList
-            steps={processingSteps}
-            isProcessing={isProcessing}
-            containerRef={progressContainerRef}
+  if (running) {
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-[var(--as-bg)]">
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <DraftTranscriptPanel
+            segments={livePreviewSegments}
+            isComplete={false}
+            progress={stepProgress}
+            isFullScreen
           />
-        )}
-
-        {hasCompletedRun ? (
-          <div className="flex-shrink-0 pt-3 flex flex-col gap-2.5">
-            <CompletionStepItem
-              onExportToFile={onExportToFile}
-              onViewSubtitles={onViewSubtitles}
-              isSubtitleViewerOpen={isSubtitleViewerOpen}
-              timelineInfo={timelineInfo}
-              selectedIntegration={selectedIntegration}
-            />
-            <Button
-              type="button"
-              onClick={onStartNewTranscription}
-              size="lg"
-              variant="default"
-              className="w-full"
-            >
-              <PlayCircle className="size-4" />
-              {t("common.startNewTranscription", "Start new transcription")}
-            </Button>
-          </div>
-        ) : (
-          <div className={showProcessing ? "flex-shrink-0" : "min-h-0 flex-1"}>
-            <div
-              className="flex h-full w-full flex-col gap-2.5"
-            >
-              {isProcessing ? (
-                <RunSummaryCard
-                  modelsState={modelsState}
-                  selectedModelIndex={selectedModelIndex}
-                />
-              ) : (
-                <>
-                  <div className="z-50 flex min-h-0 flex-1 flex-col">
-                    <SectionHeader
-                      number={formatSectionNumber(1)}
-                      label={t("actionBar.source", "Source")}
-                    />
-                    {/* Standalone has no timeline: hide the mode toggle and
-                        never render the track selector (file mode only). */}
-                    {selectedIntegration !== "standalone" && (
-                      <div className="mb-2.5 w-full">
-                        <SourceModeTabs
-                          audioInputMode={audioInputMode}
-                          onAudioInputModeChange={onAudioInputModeChange}
-                          onSwitchToTimeline={handleRefreshAudioTracks}
-                        />
-                      </div>
-                    )}
-                    <div className="grid min-h-0 flex-1 grid-rows-1">
-                      {selectedIntegration !== "standalone" && (
-                        <TimelineTrackSelector
-                          inputTracks={inputTracks}
-                          selectedIntegration={selectedIntegration}
-                          onRefreshTracks={handleRefreshAudioTracks}
-                          isRefreshingTracks={isRefreshingTracks}
-                          className={cn(
-                            "row-start-1 col-start-1 transition-opacity",
-                            audioInputMode !== "timeline" && "opacity-0 pointer-events-none"
-                          )}
-                        />
-                      )}
-                      <FileDropArea
-                        selectedFile={selectedFile}
-                        onSelectedFileChange={setSelectedFile}
-                        className={cn(
-                          "row-start-1 col-start-1 transition-opacity",
-                          audioInputMode !== "file" && "opacity-0 pointer-events-none"
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <Card className="z-50 overflow-hidden rounded-2xl bg-background p-0 shadow-none">
-                    <CompactSettingsRow
-                      number={formatSectionNumber(2)}
-                      label={t("actionBar.language.title", "Language")}
-                      className="border-b"
-                    >
-                      <LanguageButton />
-                    </CompactSettingsRow>
-
-                    <CompactSettingsRow
-                      number={formatSectionNumber(3)}
-                      label={t("actionBar.model", "Model")}
-                      className="border-b"
-                    >
-                      <ModelPicker
-                        modelsState={modelsState}
-                        selectedModelIndex={selectedModelIndex}
-                        selectedLanguage={selectedLanguage}
-                        onSelectModel={onSelectModel}
-                        downloadingModel={downloadingModel}
-                        downloadProgress={downloadProgress}
-                        open={openModelSelector}
-                        onOpenChange={onOpenModelSelectorChange}
-                        isSmallScreen={isSmallScreen}
-                        triggerClassName="h-10 rounded-lg px-3 py-0"
-                      />
-                    </CompactSettingsRow>
-
-                    <CompactSettingsRow
-                      number={formatSectionNumber(4)}
-                      label={t("actionBar.rows.format", "Format")}
-                      alignTop={isCustomDensity}
-                      className="border-b"
-                    >
-                      <FormatRow />
-                    </CompactSettingsRow>
-
-                    <CompactSettingsRow
-                      number={formatSectionNumber(5)}
-                      label={t("actionBar.rows.options", "Options")}
-                    >
-                      <OptionsRow
-                        selectedModelEngine={
-                          modelsState[selectedModelIndex]?.engine
-                        }
-                      />
-                    </CompactSettingsRow>
-                  </Card>
-
-                  {/* Start Transcription */}
-                  <div className="z-50 shadow-none">
-                    <Button
-                      onClick={onStart}
-                      size="lg"
-                      variant="default"
-                      disabled={startDisabled}
-                      className="w-full"
-                    >
-                      <PlayCircle className="size-4" />
-                      {startButtonLabel}
-                    </Button>
-                  </div>
-                </>
-              )}
-              {isProcessing && (
-                <Button
-                  onClick={onCancel}
-                  size="lg"
-                  variant="destructive"
-                  className="w-full"
-                >
-                  <X className="size-4" />
-                  {t("common.cancel")}
-                </Button>
-              )}
+        </div>
+        <footer className="flex h-16 shrink-0 items-center gap-4 border-t border-[var(--as-line)] bg-[var(--as-bg)] px-4">
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-xs font-medium text-[var(--as-fg-secondary)]">
+              {stepLabel}
+            </div>
+            <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--as-line)]">
+              <div
+                className="h-full rounded-full bg-[var(--as-primary)] transition-[width] duration-300"
+                style={{ width: `${stepProgress}%` }}
+              />
             </div>
           </div>
-        )}
+          <Button variant="tone" onClick={onCancel}>
+            <Square className="size-3.5 fill-current" />
+            {t("redesign.stop")}
+          </Button>
+        </footer>
       </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-[var(--as-bg)]">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className={`mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-5 sm:px-7 sm:py-7 ${isSmallScreen ? "" : "lg:px-10"}`}>
+          <div>
+            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--as-fg-muted)]">
+              {isFileMode ? <FileAudio className="size-3.5" /> : <MonitorPlay className="size-3.5" />}
+              {isFileMode ? t("actionBar.mode.fileInput") : t("actionBar.mode.timeline")}
+            </div>
+            <h1 className="mt-2 truncate text-2xl text-[var(--as-fg)] sm:text-3xl" style={{ fontFamily: "var(--as-font-title)" }}>
+              {isFileMode
+                ? fileName(selectedFile) || t("redesign.fileNotSelected")
+                : timelineInfo.name || t("actionBar.tracks.createTrack")}
+            </h1>
+          </div>
+
+          {isFileMode ? (
+            <FileDropArea
+              selectedFile={selectedFile ?? null}
+              onSelectedFileChange={(file) => onSelectedFileChange?.(file)}
+              className="min-h-[220px] border-[var(--as-line-strong)] bg-[var(--as-card)]"
+            />
+          ) : isDisconnected ? (
+            <section className="rounded-2xl border border-[var(--as-line)] bg-[var(--as-card)] p-5 sm:p-7">
+              <div className="mb-4 flex size-10 items-center justify-center rounded-xl bg-[var(--as-primary-soft)] text-[var(--as-primary)]">
+                <MonitorPlay className="size-5" />
+              </div>
+              <h2 className="text-xl font-semibold" style={{ fontFamily: "var(--as-font-title)" }}>
+                {selectedIntegration === "davinci"
+                  ? t("redesign.connectResolve")
+                  : t("titlebar.premiere.productName")}
+              </h2>
+              <p className="mt-2 max-w-lg text-sm leading-6 text-[var(--as-fg-secondary)]">
+                {selectedIntegration === "davinci"
+                  ? t("gettingStarted.resolveNote.openResolve")
+                  : t("titlebar.premiere.tooltip.openPremiere")}
+              </p>
+              {selectedIntegration === "davinci" && (
+                <p className="mt-2 text-sm font-medium text-[var(--as-fg)]">
+                  {t("gettingStarted.resolveNote.workspace")} <span className="px-1 text-[var(--as-fg-muted)]">›</span>
+                  {t("gettingStarted.resolveNote.scripts")} <span className="px-1 text-[var(--as-fg-muted)]">›</span>
+                  {t("gettingStarted.resolveNote.autosubs")}
+                </p>
+              )}
+              <Button variant="tone" className="mt-5" onClick={useFileSource}>
+                <FileAudio className="size-4" />
+                {t("redesign.useFile")}
+              </Button>
+            </section>
+          ) : (
+            <section>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold text-[var(--as-fg)]">
+                  {t("redesign.audioTracks")}
+                </h2>
+                <Segmented
+                  value={exportRange}
+                  onValueChange={(value) => updateSetting("exportRange", value as "entire" | "inout")}
+                  ariaLabel={t("actionBar.tracks.exportRange.entire")}
+                  options={[
+                    { value: "entire", label: t("redesign.wholeTimeline") },
+                    { value: "inout", label: t("redesign.inToOut") },
+                  ]}
+                />
+              </div>
+              {tracks.length ? (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {tracks.map((track) => {
+                    const selected = selectedTracks.includes(track.value);
+                    const label = displayTrackLabel(track);
+                    return (
+                      <Tooltip key={track.value} content={track.label}>
+                        <button
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => toggleTrack(track.value)}
+                          className={`flex h-12 min-w-0 items-center gap-2 rounded-xl border px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--as-primary)] ${
+                            selected
+                              ? "border-[var(--as-fg)] bg-[var(--as-fg)] text-[var(--as-bg)]"
+                              : "border-[var(--as-line)] bg-[var(--as-card)] text-[var(--as-fg-secondary)] hover:bg-[var(--as-card-hover)]"
+                          }`}
+                        >
+                          {selected && <Check className="size-3.5 shrink-0" />}
+                          <span className="truncate">{label}</span>
+                        </button>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-[var(--as-line-strong)] px-4 py-6 text-sm text-[var(--as-fg-muted)]">
+                  {t("actionBar.tracks.noneFound")}
+                </div>
+              )}
+            </section>
+          )}
+
+          <section className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-[var(--as-line)] bg-[var(--as-card)] p-4">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-[var(--as-fg)]">
+                <Languages className="size-4 text-[var(--as-fg-muted)]" />
+                {t("actionBar.language.title")}
+              </div>
+              <LanguageButton />
+              <div className="mt-4 flex items-center justify-between border-t border-[var(--as-line)] pt-3">
+                <span className="text-xs text-[var(--as-fg-secondary)]">
+                  {t("actionBar.language.translate")}
+                </span>
+                <Switch
+                  checked={translate}
+                  onCheckedChange={(checked: boolean) => updateSetting("translate", checked)}
+                  aria-label={t("actionBar.language.translate")}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--as-line)] bg-[var(--as-card)] p-4">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-[var(--as-fg)]">
+                <Mic2 className="size-4 text-[var(--as-fg-muted)]" />
+                {t("actionBar.speakers.title")}
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-[var(--as-fg-secondary)]">
+                  {t("actionBar.speakers.description")}
+                </span>
+                <Switch
+                  checked={enableDiarize}
+                  onCheckedChange={(checked: boolean) => updateSetting("enableDiarize", checked)}
+                  aria-label={t("actionBar.speakers.title")}
+                />
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-[var(--as-line)] pt-3">
+                <span className="text-xs text-[var(--as-fg-muted)]">
+                  {t("actionBar.speakers.countTitle")}
+                </span>
+                <Menu.Root>
+                  <Menu.Trigger
+                    render={
+                      <Button variant="tone" size="sm">
+                        {enableDiarize
+                          ? maxSpeakers === null
+                            ? t("actionBar.common.auto")
+                            : maxSpeakers
+                          : t("actionBar.speakers.disabled")}
+                      </Button>
+                    }
+                  />
+                  <MenuPopup>
+                    <Menu.RadioGroup
+                      value={maxSpeakers === null ? "auto" : String(maxSpeakers)}
+                      onValueChange={(value: string) =>
+                        updateSetting("maxSpeakers", value === "auto" ? null : Number(value))
+                      }
+                    >
+                      {["auto", "2", "3", "4", "5", "6", "7", "8", "9", "10"].map((value) => (
+                        <MenuRadioItem key={value} value={value}>
+                          <Check className="size-3.5 opacity-0 data-[checked]:opacity-100" />
+                          {value === "auto" ? t("actionBar.common.auto") : value}
+                        </MenuRadioItem>
+                      ))}
+                    </Menu.RadioGroup>
+                  </MenuPopup>
+                </Menu.Root>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--as-line)] bg-[var(--as-card)] p-4 sm:col-span-2">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-[var(--as-fg)]">
+                <AudioLines className="size-4 text-[var(--as-fg-muted)]" />
+                {t("redesign.namesTerms")}
+              </div>
+              <textarea
+                value={customPrompt}
+                onChange={(event) => updateSetting("customPrompt", event.target.value)}
+                placeholder={t("redesign.promptHint")}
+                disabled={model?.engine !== "whisper"}
+                className="min-h-20 w-full resize-y rounded-xl border border-[var(--as-line)] bg-[var(--as-bg)] px-3 py-2.5 text-sm text-[var(--as-fg)] outline-none placeholder:text-[var(--as-fg-muted)] focus:border-[var(--as-primary)] disabled:cursor-not-allowed disabled:opacity-55"
+              />
+              {model?.engine !== "whisper" && (
+                <p className="mt-2 text-xs text-[var(--as-fg-muted)]">
+                  {t("actionBar.format.customPromptWhisperOnly")}
+                </p>
+              )}
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <footer className="flex min-h-16 shrink-0 items-center gap-3 border-t border-[var(--as-line)] bg-[var(--as-bg)] px-4 py-2.5 sm:px-6">
+        <div className="min-w-0 flex-1">
+          {warning ? (
+            <p className="truncate text-xs font-medium text-[var(--as-danger)]">
+              {warning}
+            </p>
+          ) : (
+            <p className="truncate text-xs text-[var(--as-fg-secondary)]">
+              {isFileMode ? fileName(selectedFile) : trackSummary}
+            </p>
+          )}
+        </div>
+        <Button
+          variant="primary"
+          size="lg"
+          disabled={!canStart}
+          onClick={() => onStart?.()}
+        >
+          <AudioLines className="size-4" />
+          {t("redesign.transcribe")}
+          <span className="ml-1 hidden rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-medium sm:inline">
+            ⌘↵
+          </span>
+        </Button>
+      </footer>
     </div>
   );
 }

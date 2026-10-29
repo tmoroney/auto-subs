@@ -718,5 +718,20 @@
     "addToTimelineFailed": "Couldn't add subtitles to timeline",
     "clipsBlocked": "Couldn't place captions on the output track. Try 'Add to New Track'.",
     "reformatFailed": "Reformat failed"
+  },
+  "redesign": {
+    "sources": "Sources",
+    "recent": "Recent",
+    "connectResolve": "Connect Resolve",
+    "useFile": "Use a file instead",
+    "fileNotSelected": "No file selected",
+    "namesTerms": "Names and terms",
+    "promptHint": "Enter names, terms, or context",
+    "transcribe": "Transcribe",
+    "stop": "Stop",
+    "modelLanguageUnsupported": "This model does not support this language",
+    "audioTracks": "Audio tracks",
+    "wholeTimeline": "Whole timeline",
+    "inToOut": "In to out"
   }
 }

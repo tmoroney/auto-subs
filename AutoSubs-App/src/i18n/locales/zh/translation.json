@@ -698,5 +698,20 @@
     "addToTimelineFailed": "无法将字幕添加到时间线",
     "clipsBlocked": "无法在输出轨道上放置字幕。请尝试“Add to New Track”。",
     "reformatFailed": "重新排版失败"
+  },
+  "redesign": {
+    "sources": "来源",
+    "recent": "最近",
+    "connectResolve": "连接 Resolve",
+    "useFile": "改用文件",
+    "fileNotSelected": "未选择文件",
+    "namesTerms": "名称和术语",
+    "promptHint": "输入名称、术语或背景",
+    "transcribe": "转录",
+    "stop": "停止",
+    "modelLanguageUnsupported": "此模型不支持该语言",
+    "audioTracks": "音轨",
+    "wholeTimeline": "整个时间线",
+    "inToOut": "入点到出点"
   }
 }

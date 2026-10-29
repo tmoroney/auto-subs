@@ -698,5 +698,20 @@
     "addToTimelineFailed": "No se pudieron añadir los subtítulos a la línea de tiempo",
     "clipsBlocked": "No se pudieron colocar los subtítulos en la pista de salida. Prueba 'Add to New Track'.",
     "reformatFailed": "Error al reformatear"
+  },
+  "redesign": {
+    "sources": "Fuentes",
+    "recent": "Recientes",
+    "connectResolve": "Conectar Resolve",
+    "useFile": "Usar un archivo",
+    "fileNotSelected": "Ningún archivo seleccionado",
+    "namesTerms": "Nombres y términos",
+    "promptHint": "Añade nombres, términos o contexto",
+    "transcribe": "Transcribir",
+    "stop": "Detener",
+    "modelLanguageUnsupported": "Este modelo no admite este idioma",
+    "audioTracks": "Pistas de audio",
+    "wholeTimeline": "Línea de tiempo completa",
+    "inToOut": "Puntos de entrada y salida"
   }
 }

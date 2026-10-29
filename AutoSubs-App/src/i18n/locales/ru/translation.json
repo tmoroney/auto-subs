@@ -708,5 +708,20 @@
     "addToTimelineFailed": "Не удалось добавить субтитры на таймлайн",
     "clipsBlocked": "Не удалось разместить титры на выходной дорожке. Попробуйте 'Add to New Track'.",
     "reformatFailed": "Ошибка форматирования"
+  },
+  "redesign": {
+    "sources": "Источники",
+    "recent": "Недавние",
+    "connectResolve": "Подключить Resolve",
+    "useFile": "Использовать файл",
+    "fileNotSelected": "Файл не выбран",
+    "namesTerms": "Имена и термины",
+    "promptHint": "Введите имена и термины",
+    "transcribe": "Транскрибировать",
+    "stop": "Остановить",
+    "modelLanguageUnsupported": "Эта модель не поддерживает язык",
+    "audioTracks": "Аудиодорожки",
+    "wholeTimeline": "Вся временная шкала",
+    "inToOut": "Точки входа и выхода"
   }
 }

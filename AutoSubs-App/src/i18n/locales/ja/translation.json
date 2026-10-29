@@ -698,5 +698,20 @@
     "addToTimelineFailed": "字幕をタイムラインに追加できませんでした",
     "clipsBlocked": "出力トラックにキャプションを配置できませんでした。「Add to New Track」を試してください。",
     "reformatFailed": "再整形に失敗"
+  },
+  "redesign": {
+    "sources": "ソース",
+    "recent": "最近使用",
+    "connectResolve": "Resolve に接続",
+    "useFile": "ファイルを使う",
+    "fileNotSelected": "ファイル未選択",
+    "namesTerms": "名前と用語",
+    "promptHint": "名前や用語を入力",
+    "transcribe": "文字起こし",
+    "stop": "停止",
+    "modelLanguageUnsupported": "このモデルはこの言語に対応していません",
+    "audioTracks": "音声トラック",
+    "wholeTimeline": "タイムライン全体",
+    "inToOut": "イン点からアウト点"
   }
 }

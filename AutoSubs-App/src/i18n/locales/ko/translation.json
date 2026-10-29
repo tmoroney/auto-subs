@@ -698,5 +698,20 @@
     "addToTimelineFailed": "자막을 타임라인에 추가할 수 없습니다",
     "clipsBlocked": "출력 트랙에 캡션을 배치할 수 없습니다. 'Add to New Track'을 시도해 보세요.",
     "reformatFailed": "서식 변경 실패"
+  },
+  "redesign": {
+    "sources": "소스",
+    "recent": "최근 항목",
+    "connectResolve": "Resolve 연결",
+    "useFile": "대신 파일 사용",
+    "fileNotSelected": "파일을 선택하지 않음",
+    "namesTerms": "이름 및 용어",
+    "promptHint": "이름이나 용어를 입력",
+    "transcribe": "받아쓰기",
+    "stop": "중지",
+    "modelLanguageUnsupported": "이 모델은 이 언어를 지원하지 않습니다",
+    "audioTracks": "오디오 트랙",
+    "wholeTimeline": "전체 타임라인",
+    "inToOut": "인아웃 지점"
   }
 }
