@@ -1,10 +1,9 @@
 import * as React from "react";
 import {
-  Film,
+  Ear,
   FileAudio,
   PanelLeft,
   Settings as SettingsIcon,
-  Video,
   ChevronRight,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -159,14 +158,26 @@ function AppContentBody() {
                 <div className="as-source-list">
                   <SourceButton
                     active={activeSource === "resolve"}
-                    icon={<Film className="size-4" />}
+                    icon={
+                      <img
+                        className="size-4"
+                        src="/davinci-resolve-logo.png"
+                        alt=""
+                      />
+                    }
                     label={t("titlebar.resolve.productName")}
                     connected={resolveConnected}
                     onClick={selectResolve}
                   />
                   <SourceButton
                     active={activeSource === "premiere"}
-                    icon={<Video className="size-4" />}
+                    icon={
+                      <img
+                        className="size-4"
+                        src="/premiere-logo.png"
+                        alt=""
+                      />
+                    }
                     label={t("titlebar.premiere.productName")}
                     connected={premiereConnected}
                     onClick={selectPremiere}
@@ -242,13 +253,13 @@ function AppContentBody() {
                     if (smallScreen) setSidebarOpen(false);
                   }}
                 >
-                  {modelsState[model]?.image && <img src={modelsState[model].image} alt="" />}
+                  <Ear className="as-model-card-icon" strokeWidth={1.9} />
                   <div>
-                    <div>
+                    <span className="as-model-name">
                       {modelsState[model]
                         ? t(modelsState[model].label)
                         : t("models.manage.title")}
-                    </div>
+                    </span>
                     <span className="as-model-caption">
                       {t("redesign.transcriptionModel")}
                     </span>

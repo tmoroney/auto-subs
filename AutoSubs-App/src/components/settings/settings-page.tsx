@@ -3,7 +3,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
-import { ExternalLink, FolderOpen, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronsUpDown, ExternalLink, FolderOpen } from "lucide-react";
 import { Button, Menu, MenuPopup, MenuRadioItem, Segmented, Switch } from "@/components/kit";
 import { BackLink } from "@/components/back-link";
 import { SupportDialog } from "@/components/dialogs/support-dialog";
@@ -234,10 +234,10 @@ export function SettingsPage({ onBack }: Props) {
               <Menu.Trigger className="as-settings-select">
                 {uiLanguages.find((language) => language.value === uiLanguage)
                   ?.label ?? uiLanguage}
-                <span>
-                  <ChevronUp size={12} />
-                  <ChevronDown size={12} />
-                </span>
+                <ChevronsUpDown
+                  className="text-[var(--as-fg-muted)]"
+                  size={14}
+                />
               </Menu.Trigger>
               <MenuPopup className="as-sort-menu">
                 <Menu.RadioGroup
@@ -270,6 +270,7 @@ export function SettingsPage({ onBack }: Props) {
               onValueChange={(value) =>
                 setTheme(value as "system" | "light" | "dark")
               }
+              className="as-settings-segmented"
               options={[
                 { value: "system", label: t("redesign.system", "System") },
                 { value: "light", label: t("redesign.light", "Light") },

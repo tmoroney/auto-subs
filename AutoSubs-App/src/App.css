@@ -547,14 +547,18 @@ body.app-panel-resizing * {
 
 .as-model-card-trigger {
     display: flex !important;
-    min-height: 56px !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
     align-items: center !important;
     gap: 10px !important;
     padding: 11px 12px !important;
-    border: 0 !important;
-    border-radius: 10px !important;
+    border: 0 none !important;
+    border-radius: 12px !important;
     background: var(--as-card) !important;
     color: var(--as-fg) !important;
+    font-size: 14px !important;
+    line-height: normal !important;
     text-align: left !important;
 }
 
@@ -563,28 +567,24 @@ body.app-panel-resizing * {
     background: var(--as-card-hover) !important;
 }
 
-.as-model-card-trigger img {
-    width: 18px !important;
-    height: 18px !important;
-    border-radius: 0 !important;
-}
-
 .as-model-card-trigger > div:first-of-type {
+    display: flex;
     min-width: 0;
     flex: 1;
-    align-items: center !important;
-    gap: 10px !important;
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0 !important;
 }
 
-.as-model-card-trigger > div:first-of-type > div {
+.as-model-card-trigger .as-model-name {
+    display: block;
     min-width: 0;
-}
-
-.as-model-card-trigger > div:first-of-type span {
     overflow: hidden;
     max-width: 160px;
     font-size: 14px;
     font-weight: 500;
+    line-height: normal;
+    color: var(--as-fg);
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -592,12 +592,14 @@ body.app-panel-resizing * {
 .as-model-caption {
     color: var(--as-fg-muted);
     font-size: 12px;
+    line-height: normal;
 }
 
 .as-model-card-trigger .as-model-caption {
     color: var(--as-fg-muted) !important;
     font-size: 12px !important;
     font-weight: 400 !important;
+    line-height: normal !important;
 }
 
 .as-model-card-trigger svg {
@@ -605,6 +607,12 @@ body.app-panel-resizing * {
     height: 14px !important;
     flex: none;
     color: var(--as-fg-muted);
+}
+
+.as-model-card-trigger > .as-model-card-icon {
+    width: 18px !important;
+    height: 18px !important;
+    color: var(--as-fg);
 }
 
 .as-settings-button {
@@ -919,7 +927,7 @@ body.app-panel-resizing * {
 }
 
 .as-range-segmented {
-    min-height: 33px !important;
+    min-height: 36px !important;
     padding: 3px !important;
     gap: 2px !important;
     border-radius: 10px !important;
@@ -927,10 +935,26 @@ body.app-panel-resizing * {
 }
 
 .as-range-segmented [role="radio"] {
-    min-height: 25px !important;
-    padding: 0 11px !important;
+    height: 26px !important;
+    padding: 5px 11px !important;
     border-radius: 7px !important;
     font-size: 13px !important;
+    line-height: normal !important;
+}
+
+.as-settings-segmented [role="radio"] {
+    height: 25px !important;
+    padding: 4px 9px !important;
+    font-size: 14px !important;
+    line-height: normal !important;
+}
+
+.as-segmented-option[data-checked] {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.as-switch-thumb {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .as-range-hint {
@@ -953,16 +977,18 @@ body.app-panel-resizing * {
     display: flex;
     width: 100%;
     min-width: 0;
-    min-height: 64px;
+    min-height: 58.5px;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     padding: 10px 14px 11px;
-    border: 0;
-    border-radius: 10px;
+    border: 1px solid transparent;
+    border-radius: 12px;
     background: var(--as-card);
     color: var(--as-fg);
     font: inherit;
+    font-size: 14px;
+    line-height: normal;
     text-align: left;
     cursor: pointer;
 }
@@ -986,13 +1012,15 @@ body.app-panel-resizing * {
     color: var(--as-fg-muted);
     font-size: 12.5px;
     font-weight: 400;
+    line-height: normal;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .as-option-value {
     overflow: hidden;
-    font-size: 16px;
+    font-size: 15.5px;
+    line-height: normal;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -1344,11 +1372,15 @@ body.app-panel-resizing * {
     }
 
     .as-option-label {
-        font-size: 11px;
+        font-size: 12.5px;
     }
 
     .as-option-value {
         font-size: 14px;
+    }
+
+    .as-option-chevron {
+        display: none;
     }
 
     .as-action-inner {
@@ -1494,13 +1526,15 @@ body.app-panel-resizing * {
 .as-model-search { display: flex; height: 42px; align-items: center; gap: 10px; margin-top: 18px; border: 0; border-radius: 12px; padding: 0 14px; background: transparent; color: var(--as-fg-muted); }
 .as-model-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--as-fg); font: inherit; }
 .as-model-filters { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 11px 0 8px; }
-.as-sort-trigger { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 999px; background: var(--as-card); color: var(--as-fg-secondary); font-size: 12px; }
+.as-sort-trigger { display: inline-flex; height: 36px; align-items: center; gap: 7px; border: none; border-radius: 10px; background: var(--as-card); padding: 0 12px; color: var(--as-fg-secondary); font-size: 13px; line-height: normal; }
 .as-sort-menu { z-index: 80; min-width: 170px; border: 1px solid var(--as-line); border-radius: 10px; background: var(--as-side); padding: 4px; box-shadow: 0 8px 24px #0002; }
 .as-model-list { container-type: inline-size; display: grid; gap: 2px; }
 .as-model-row { display: grid; grid-template: "radio name action meters" auto "radio tags action meters" auto / 20px minmax(0,1fr) 84px 104px; align-items: center; column-gap: 16px; row-gap: 4px; padding: 6px 18px; border: 0; border-radius: 10px; background: transparent; color: var(--as-fg); text-align: left; cursor: pointer; }
 .as-model-row:hover { background: var(--as-card); }
-.as-model-radio { grid-area: radio; width: 17px; height: 17px; border: 1.5px solid var(--as-fg-muted); border-radius: 50%; }
-.is-selected .as-model-radio { border: 5px solid var(--as-primary); }
+.as-model-radio { position: relative; grid-area: radio; width: 18px; height: 18px; border: 1.5px solid var(--as-fg-muted); border-radius: 50%; font-size: 14px; line-height: normal; }
+.as-model-radio::after { position: absolute; top: 50%; left: 50%; width: 9px; height: 9px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--as-primary); content: none; }
+.is-selected .as-model-radio { border-color: var(--as-primary); }
+.is-selected .as-model-radio::after { content: ""; }
 .as-model-name { grid-area: name; display: flex; min-width: 0; align-items: baseline; gap: 8px; white-space: nowrap; }
 .as-model-label { overflow: hidden; text-overflow: ellipsis; font-size: 15px; font-weight: 500; }
 .as-model-ram,.as-best-pick { flex: none; color: var(--as-fg-muted); font-size: 12px; }
@@ -1520,8 +1554,7 @@ body.app-panel-resizing * {
 .as-setting-title { font-size: 14px; }
 .as-setting-description { margin-top: 2px; color: var(--as-fg-muted); font-size: 12px; }
 .as-setting-control { flex: none; }
-.as-settings-select { display: inline-flex; align-items: center; gap: 8px; border-radius: 8px; background: var(--as-card); padding: 7px 10px; font-size: 13px; }
-.as-settings-select span { display: grid; color: var(--as-fg-muted); }
+.as-settings-select { display: inline-flex; height: 32px; align-items: center; gap: 6px; border: none; border-radius: 9px; background: var(--as-card); padding: 0 10px 0 12px; font-size: 13.5px; line-height: normal; }
 .as-settings-link { display: inline-flex; align-items: center; gap: 6px; color: var(--as-fg-secondary); font-size: 13px; }
 .as-danger { color: var(--as-danger) !important; }
 .as-addon-size { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; background: var(--as-card); padding: 6px 10px; font-size: 12px; }
@@ -1532,7 +1565,7 @@ body.app-panel-resizing * {
 @container (max-width: 560px) {
     .as-model-row { grid-template: "radio name action" auto "radio tags tags" auto "radio meters meters" auto / 20px minmax(0,1fr) 84px; row-gap: 6px; padding: 8px 14px; }
     .as-model-meters { display: flex; gap: 18px; }
-    .as-sort-label,.as-sort-chevron { display: none; }
+    .as-sort-label { display: none; }
 }
 @media (max-width: 560px) {
     .as-content-page { padding: 20px 18px 36px; }

@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import {
   ArrowUpDown,
   BookOpen,
-  ChevronDown,
   Download,
   Globe2,
   Search,
@@ -385,7 +384,6 @@ export function ModelsPage({ onBack }: Props) {
             <span className="as-sort-label">
               {t(`models.filters.${sort}`)}
             </span>
-            <ChevronDown className="as-sort-chevron" size={13} />
           </Menu.Trigger>
           <MenuPopup className="as-sort-menu">
             <Menu.RadioGroup
