@@ -187,8 +187,8 @@
     },
     "fileDrop": {
       "aria": "Suelta un archivo de audio aquí o haz clic para seleccionar",
-      "prompt": "Suelta o haz clic",
-      "supports": "La mayoría de formatos"
+      "prompt": "Suelta un archivo o haz clic para buscarlo",
+      "supports": "MP4, MOV, WAV, MP3 y más"
     },
     "fileDialog": {
       "mediaFiles": "Archivos multimedia (compatibles con ffmpeg)"
@@ -710,7 +710,7 @@
     "transcribe": "Transcribir",
     "stop": "Detener",
     "modelLanguageUnsupported": "Este modelo no admite este idioma",
-    "audioTracks": "Pistas de audio",
+    "audioTracks": "Audio para transcribir",
     "wholeTimeline": "Línea de tiempo completa",
     "inToOut": "Puntos de entrada y salida",
     "newTranscriptFrom": "Nueva transcripción de",
@@ -721,7 +721,7 @@
     "fileTypes": "Audio o vídeo, cualquier duración",
     "audioTrackCount": "{{count}} pistas de audio",
     "sameAsSpoken": "Igual que hablado",
-    "waiting": "Esperando conexión",
+    "waiting": "Esperando",
     "clear": "Limpiar",
     "selectAll": "Seleccionar todo",
     "spokenIn": "Hablado en",
@@ -730,6 +730,14 @@
     "tracks_one": "{{count}} pista",
     "tracks_other": "{{count}} pistas",
     "autoDetect": "Detección automática",
-    "off": "Desactivado"
+    "off": "Desactivado",
+    "chooseFile": "Elige un archivo",
+    "refreshTracks": "Actualizar pistas de audio",
+    "connectPremiere": "Conectar Premiere",
+    "resolveInstructions": "En Resolve, ejecuta",
+    "premiereInstructions": "En Premiere, abre",
+    "resolvePath": "Workspace › Scripts › AutoSubs",
+    "premierePath": "Window › Extensions › AutoSubs",
+    "transcribing": "Transcribiendo"
   }
 }

@@ -2,7 +2,9 @@ import * as React from "react";
 import {
   Check,
   ChevronDown,
+  FileAudio,
   Plus,
+  RefreshCw,
   Square,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -12,8 +14,8 @@ import { useIntegration } from "@/contexts/IntegrationContext";
 import { useProgress } from "@/contexts/ProgressContext";
 import { modelSupportsLanguage } from "@/lib/models";
 import type { Model, TimelineInfo, Track } from "@/types";
-import { DraftTranscriptPanel } from "@/components/subtitles/draft-transcript-panel";
 import { Button, Menu, MenuPopup, MenuRadioItem, Segmented, Tooltip } from "@/components/kit";
+import { LiveTranscript } from "./live-transcript";
 import { FileDropArea } from "./source-section";
 import type { ProcessingStep } from "./utils";
 import type { Integration } from "@/contexts/IntegrationContext";
@@ -98,6 +100,7 @@ export function TranscriptionPanelView({
   onSelectedFileChange,
   onStart,
   onCancel,
+  onRefreshAudioTracks,
   isProcessing = false,
   selectedIntegration,
 }: TranscriptionPanelViewProps) {
@@ -116,6 +119,8 @@ export function TranscriptionPanelView({
   const [elapsedSeconds, setElapsedSeconds] = React.useState(0);
 
   const isFileMode = audioInputMode === "file" || selectedIntegration === "standalone";
+  const isPremiereSource =
+    selectedIntegration === "premiere" || selectedIntegration === "aftereffects";
   const tracks = timelineInfo.inputTracks ?? [];
   const selectedTracks = selectedTracksByApp[selectedIntegration] ?? [];
   const running = isProcessing || isRunActive;
@@ -126,10 +131,13 @@ export function TranscriptionPanelView({
     processingSteps.find((step) => step.isActive) ??
     processingSteps.find((step) => !step.isCompleted);
   const stepProgress = activeStep?.progress ?? 0;
-  const stepLabel = activeStep?.title ?? t("progressSteps.prepare");
+  const stepLabel =
+    activeStep?.id === "transcribe"
+      ? t("redesign.transcribing")
+      : activeStep?.title ?? t("progressSteps.prepare");
   const sourceName = isFileMode
     ? t("actionBar.mode.fileInput")
-    : selectedIntegration === "premiere" || selectedIntegration === "aftereffects"
+    : isPremiereSource
       ? t("titlebar.premiere.productName")
       : t("titlebar.resolve.productName");
 
@@ -199,15 +207,20 @@ export function TranscriptionPanelView({
   if (running) {
     return (
       <div className="as-transcription-view as-running-view">
-        <div className="as-draft-content">
-          <DraftTranscriptPanel
-            segments={livePreviewSegments}
-            isComplete={false}
-            progress={stepProgress}
-            hideProgress
-            isFullScreen
-          />
-        </div>
+        <LiveTranscript
+          segments={livePreviewSegments}
+          sourceName={sourceName}
+          projectName={isFileMode ? undefined : timelineInfo.projectName}
+          title={
+            isFileMode
+              ? fileName(selectedFile) || t("redesign.newTranscriptTitle")
+              : timelineInfo.name || t("redesign.newTranscriptTitle")
+          }
+          language={sourceLanguageLabel}
+          modelName={model ? t(model.label) : ""}
+          isFileMode={isFileMode}
+          diarizationEnabled={enableDiarize}
+        />
         <footer className="as-action-bar as-action-bar--running">
           <div className="as-progress-fill" style={{ width: `${stepProgress}%` }} />
           <div className="as-action-inner">
@@ -219,11 +232,12 @@ export function TranscriptionPanelView({
             </div>
             <Button
               variant="ghost"
-              className={`as-stop-button ${stepProgress >= 95 ? "as-stop-button--over-fill" : ""}`}
+              aria-label={t("redesign.stop")}
+              title={t("redesign.stop")}
+              className="as-stop-button"
               onClick={onCancel}
             >
-              <Square className="size-3.5 fill-current" />
-              {t("redesign.stop")}
+              <Square className="size-3.5 fill-current" aria-hidden="true" />
             </Button>
           </div>
         </footer>
@@ -234,7 +248,9 @@ export function TranscriptionPanelView({
   return (
     <div className="as-transcription-view">
       <div className="as-setup-scroll">
-        <div className="as-setup-content">
+        <div
+          className={`as-setup-content ${isDisconnected ? "as-setup-content--disconnected" : ""}`}
+        >
           {isDisconnected ? (
             <div className="as-disconnected">
               <div className="as-eyebrow">
@@ -243,19 +259,23 @@ export function TranscriptionPanelView({
                 <span className="as-eyebrow-meta">· {t("redesign.waiting")}</span>
               </div>
               <h1 className="as-title as-title--muted">
-                {t("redesign.connectResolve")}
+                {isPremiereSource
+                  ? t("redesign.connectPremiere")
+                  : t("redesign.connectResolve")}
               </h1>
               <p className="as-disconnected-meta">
-                {t("gettingStarted.resolveNote.openResolve")}{" "}
+                {isPremiereSource
+                  ? t("redesign.premiereInstructions")
+                  : t("redesign.resolveInstructions")}{" "}
                 <span className="as-path">
-                  {t("gettingStarted.resolveNote.workspace")} ›{" "}
-                  {t("gettingStarted.resolveNote.scripts")} ›{" "}
-                  {t("gettingStarted.resolveNote.autosubs")}
+                  {isPremiereSource
+                    ? t("redesign.premierePath")
+                    : t("redesign.resolvePath")}
                 </span>
               </p>
               <button
                 type="button"
-                className="as-link"
+                className="as-link as-link--muted"
                 onClick={() => setSelectedIntegration("standalone")}
               >
                 {t("redesign.useFile")}
@@ -264,25 +284,45 @@ export function TranscriptionPanelView({
           ) : (
             <>
               <div className="as-eyebrow">
-                <span
-                  className={`as-source-dot ${isFileMode ? "as-source-dot--file" : ""}`}
-                />
+                {isFileMode ? (
+                  <FileAudio className="as-file-source-icon" aria-hidden="true" />
+                ) : (
+                  <span className="as-source-dot" />
+                )}
                 {sourceName}
                 {!isFileMode && timelineInfo.projectName && (
                   <span className="as-eyebrow-meta">· {timelineInfo.projectName}</span>
                 )}
               </div>
-              <h1 className="as-title">
+              <h1
+                className={`as-title ${isFileMode && !selectedFile ? "as-title--muted" : ""}`}
+              >
                 {isFileMode
                   ? fileName(selectedFile) || t("redesign.newTranscriptTitle")
                   : timelineInfo.name || t("redesign.newTranscriptTitle")}
               </h1>
               <div className="as-meta">
                 {isFileMode
-                  ? selectedFile
-                    ? fileName(selectedFile)
-                    : t("redesign.fileTypes")
-                  : t("redesign.audioTrackCount", { count: tracks.length })}
+                ? selectedFile
+                  ? fileName(selectedFile)
+                  : t("redesign.fileTypes")
+                  : null}
+                {!isFileMode && (
+                  <span className="as-track-meta">
+                    {t("redesign.audioTrackCount", { count: tracks.length })}
+                    {onRefreshAudioTracks && (
+                      <button
+                        type="button"
+                        className="as-refresh-button"
+                        aria-label={t("redesign.refreshTracks")}
+                        title={t("redesign.refreshTracks")}
+                        onClick={() => void onRefreshAudioTracks()}
+                      >
+                        <RefreshCw className="size-3.5" aria-hidden="true" />
+                      </button>
+                    )}
+                  </span>
+                )}
               </div>
 
               {isFileMode ? (
@@ -299,7 +339,7 @@ export function TranscriptionPanelView({
                     <h2>{t("redesign.audioTracks")}</h2>
                     <button
                       type="button"
-                      className="as-link"
+                      className="as-link as-link--muted"
                       onClick={() => {
                         updateSetting(
                           "selectedInputTracksByApp",
@@ -474,8 +514,10 @@ export function TranscriptionPanelView({
         <footer className="as-action-bar">
           <div className="as-action-inner">
             <p className={`as-action-summary ${warning ? "as-action-summary--warning" : ""}`}>
-              {warning ||
-                (isFileMode
+              {isFileMode && !selectedFile
+                ? t("redesign.chooseFile")
+                : warning ||
+                  (isFileMode
                   ? selectedFile
                     ? fileName(selectedFile)
                     : t("redesign.fileNotSelected")

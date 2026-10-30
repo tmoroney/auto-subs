@@ -1,10 +1,10 @@
 import * as React from "react";
 import {
-  ChevronRight,
+  Film,
   FileAudio,
   PanelLeft,
-  MonitorPlay,
   Settings as SettingsIcon,
+  Video,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -20,6 +20,7 @@ import { useAdobe } from "@/contexts/AdobeContext";
 import { EditorWorkspaceProviders } from "@/contexts/GlobalProvider";
 import { useIntegration } from "@/contexts/IntegrationContext";
 import { useModels } from "@/contexts/ModelsContext";
+import { useProgress } from "@/contexts/ProgressContext";
 import { useResolve } from "@/contexts/ResolveContext";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -38,6 +39,7 @@ function AppContentBody() {
   const { timelineInfo: resolveTimeline } = useResolve();
   const { isPremiereConnected, premiereTimeline } = useAdobe();
   const { modelsState } = useModels();
+  const { isRunActive, processingSteps } = useProgress();
   const {
     flushPendingSubtitleSave,
     openStoredSubtitleDocument,
@@ -116,6 +118,14 @@ function AppContentBody() {
   const resolveConnected = Boolean(resolveTimeline.timelineId);
   const premiereConnected = isPremiereConnected && Boolean(premiereTimeline.timelineId);
   const activeSource = isFileSource ? "file" : isPremiereSource ? "premiere" : "resolve";
+  const runningStep =
+    processingSteps.find((step) => step.isActive) ??
+    processingSteps.find((step) => !step.isCompleted);
+  const runningItemName = isFileSource
+    ? t("actionBar.mode.fileInput")
+    : isPremiereSource
+      ? premiereTimeline.name || t("titlebar.premiere.productName")
+      : resolveTimeline.name || t("titlebar.resolve.productName");
 
   return (
     <TooltipProvider>
@@ -150,14 +160,14 @@ function AppContentBody() {
                 <div className="as-source-list">
                   <SourceButton
                     active={activeSource === "resolve"}
-                    icon={<MonitorPlay className="size-4" />}
+                    icon={<Film className="size-4" />}
                     label={t("titlebar.resolve.productName")}
                     connected={resolveConnected}
                     onClick={selectResolve}
                   />
                   <SourceButton
                     active={activeSource === "premiere"}
-                    icon={<MonitorPlay className="size-4" />}
+                    icon={<Video className="size-4" />}
                     label={t("titlebar.premiere.productName")}
                     connected={premiereConnected}
                     onClick={selectPremiere}
@@ -173,12 +183,27 @@ function AppContentBody() {
 
               <section className="as-recent-section">
                 <h2 className="as-side-label">{t("redesign.recent")}</h2>
-                {!documentsLoaded ? (
+                {!documentsLoaded && !isRunActive ? (
                   <p className="as-recent-empty">
                     {t("titlebar.subtitleHistory.loading")}
                   </p>
-                ) : documents.length ? (
+                ) : documents.length || isRunActive ? (
                   <div className="as-recent-list">
+                    {isRunActive && (
+                      <div
+                        className="as-recent-item as-recent-item--running"
+                        aria-live="polite"
+                      >
+                        <span className="as-recent-name as-recent-name--running">
+                          <span className="as-running-spinner" />
+                          {runningItemName}
+                        </span>
+                        <span className="as-recent-meta">
+                          {t("redesign.transcribing")} ·{" "}
+                          {Math.round(runningStep?.progress ?? 0)}%
+                        </span>
+                      </div>
+                    )}
                     {documents.slice(0, 6).map((document) => (
                       <button
                         key={document.filename}
@@ -228,7 +253,6 @@ function AppContentBody() {
               >
                 <SettingsIcon className="size-4" />
                 {t("settings.title")}
-                <ChevronRight className="as-settings-chevron" />
               </Button>
             </div>
           </aside>

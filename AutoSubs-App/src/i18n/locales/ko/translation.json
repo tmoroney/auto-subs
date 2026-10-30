@@ -23,8 +23,8 @@
     },
     "fileDrop": {
       "aria": "오디오 파일을 여기에 놓거나 클릭하여 선택",
-      "prompt": "파일을 놓거나 클릭",
-      "supports": "대부분의 형식 지원"
+      "prompt": "파일을 놓거나 클릭해 선택",
+      "supports": "MP4, MOV, WAV, MP3 및 기타"
     },
     "fileDialog": {
       "mediaFiles": "미디어 파일 (ffmpeg 지원)"
@@ -710,7 +710,7 @@
     "transcribe": "받아쓰기",
     "stop": "중지",
     "modelLanguageUnsupported": "이 모델은 이 언어를 지원하지 않습니다",
-    "audioTracks": "오디오 트랙",
+    "audioTracks": "전사할 오디오",
     "wholeTimeline": "전체 타임라인",
     "inToOut": "인아웃 지점",
     "newTranscriptFrom": "새 전사 만들기",
@@ -721,7 +721,7 @@
     "fileTypes": "길이 제한 없는 오디오·비디오",
     "audioTrackCount": "오디오 트랙 {{count}}개",
     "sameAsSpoken": "말한 언어와 같음",
-    "waiting": "연결 대기 중",
+    "waiting": "대기 중",
     "clear": "지우기",
     "selectAll": "모두 선택",
     "spokenIn": "음성 언어",
@@ -730,6 +730,14 @@
     "tracks_one": "트랙 {{count}}개",
     "tracks_other": "트랙 {{count}}개",
     "autoDetect": "자동 감지",
-    "off": "끄기"
+    "off": "끄기",
+    "chooseFile": "파일 선택",
+    "refreshTracks": "오디오 트랙 새로고침",
+    "connectPremiere": "Premiere 연결",
+    "resolveInstructions": "Resolve에서 실행",
+    "premiereInstructions": "Premiere에서 열기",
+    "resolvePath": "Workspace › Scripts › AutoSubs",
+    "premierePath": "Window › Extensions › AutoSubs",
+    "transcribing": "전사 중"
   }
 }

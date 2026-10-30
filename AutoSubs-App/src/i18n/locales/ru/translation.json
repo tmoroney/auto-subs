@@ -189,8 +189,8 @@
     },
     "fileDrop": {
       "aria": "Перетащите аудиофайл сюда или нажмите для выбора",
-      "prompt": "Перетащите файл или нажмите",
-      "supports": "Поддерживается большинство форматов"
+      "prompt": "Перетащите файл или нажмите для выбора",
+      "supports": "MP4, MOV, WAV, MP3 и другие"
     },
     "fileDialog": {
       "mediaFiles": "Медиафайлы (поддерживаемые ffmpeg)"
@@ -720,7 +720,7 @@
     "transcribe": "Транскрибировать",
     "stop": "Остановить",
     "modelLanguageUnsupported": "Эта модель не поддерживает язык",
-    "audioTracks": "Аудиодорожки",
+    "audioTracks": "Аудио для расшифровки",
     "wholeTimeline": "Вся временная шкала",
     "inToOut": "Точки входа и выхода",
     "newTranscriptFrom": "Новая расшифровка из",
@@ -731,7 +731,7 @@
     "fileTypes": "Аудио или видео, без ограничений",
     "audioTrackCount": "Аудиодорожек: {{count}}",
     "sameAsSpoken": "Как в речи",
-    "waiting": "Ожидание подключения",
+    "waiting": "Ожидание",
     "clear": "Очистить",
     "selectAll": "Выбрать все",
     "spokenIn": "Язык речи",
@@ -742,6 +742,14 @@
     "tracks_many": "{{count}} дорожек",
     "tracks_other": "{{count}} дорожек",
     "autoDetect": "Автоопределение",
-    "off": "Выкл."
+    "off": "Выкл.",
+    "chooseFile": "Выберите файл",
+    "refreshTracks": "Обновить аудиодорожки",
+    "connectPremiere": "Подключить Premiere",
+    "resolveInstructions": "В Resolve запустите",
+    "premiereInstructions": "В Premiere откройте",
+    "resolvePath": "Workspace › Scripts › AutoSubs",
+    "premierePath": "Window › Extensions › AutoSubs",
+    "transcribing": "Расшифровка"
   }
 }

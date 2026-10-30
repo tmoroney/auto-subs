@@ -189,8 +189,8 @@
     },
     "fileDrop": {
       "aria": "Drop audio file here or click to select",
-      "prompt": "Drop file or click",
-      "supports": "Supports most formats"
+      "prompt": "Drop a file or click to browse",
+      "supports": "MP4, MOV, WAV, MP3 and more"
     },
     "fileDialog": {
       "mediaFiles": "Media Files (ffmpeg-supported)"
@@ -730,7 +730,7 @@
     "transcribe": "Transcribe",
     "stop": "Stop",
     "modelLanguageUnsupported": "This model does not support this language",
-    "audioTracks": "Audio tracks",
+    "audioTracks": "Audio to transcribe",
     "wholeTimeline": "Whole timeline",
     "inToOut": "In to out",
     "newTranscriptFrom": "New transcript from",
@@ -741,7 +741,7 @@
     "fileTypes": "Audio or video, any length",
     "audioTrackCount": "{{count}} audio tracks",
     "sameAsSpoken": "Same as spoken",
-    "waiting": "Waiting for connection",
+    "waiting": "Waiting",
     "clear": "Clear",
     "selectAll": "Select all",
     "spokenIn": "Spoken in",
@@ -750,6 +750,14 @@
     "tracks_one": "{{count}} track",
     "tracks_other": "{{count}} tracks",
     "autoDetect": "Auto-detect",
-    "off": "Off"
+    "off": "Off",
+    "chooseFile": "Choose a file",
+    "refreshTracks": "Refresh audio tracks",
+    "connectPremiere": "Connect Premiere",
+    "resolveInstructions": "In Resolve, run",
+    "premiereInstructions": "In Premiere, open",
+    "resolvePath": "Workspace › Scripts › AutoSubs",
+    "premierePath": "Window › Extensions › AutoSubs",
+    "transcribing": "Transcribing"
   }
 }

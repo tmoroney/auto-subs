@@ -23,8 +23,8 @@
     },
     "fileDrop": {
       "aria": "音声ファイルをここにドロップするかクリックして選択",
-      "prompt": "ファイルをドロップまたはクリック",
-      "supports": "ほとんどの形式に対応"
+      "prompt": "ファイルをドロップするかクリック",
+      "supports": "MP4、MOV、WAV、MP3 など"
     },
     "format": {
       "lineCountDescription": "字幕ごとの最大行数",
@@ -710,7 +710,7 @@
     "transcribe": "文字起こし",
     "stop": "停止",
     "modelLanguageUnsupported": "このモデルはこの言語に対応していません",
-    "audioTracks": "音声トラック",
+    "audioTracks": "文字起こしする音声",
     "wholeTimeline": "タイムライン全体",
     "inToOut": "イン点からアウト点",
     "newTranscriptFrom": "新しい文字起こし元",
@@ -721,7 +721,7 @@
     "fileTypes": "長さ制限なしの音声・動画",
     "audioTrackCount": "音声トラック {{count}}",
     "sameAsSpoken": "音声と同じ",
-    "waiting": "接続を待機中",
+    "waiting": "接続待ち",
     "clear": "クリア",
     "selectAll": "すべて選択",
     "spokenIn": "音声の言語",
@@ -730,6 +730,14 @@
     "tracks_one": "トラック{{count}}本",
     "tracks_other": "トラック{{count}}本",
     "autoDetect": "自動検出",
-    "off": "オフ"
+    "off": "オフ",
+    "chooseFile": "ファイルを選択",
+    "refreshTracks": "音声トラックを更新",
+    "connectPremiere": "Premiere に接続",
+    "resolveInstructions": "Resolve で実行",
+    "premiereInstructions": "Premiere で開く",
+    "resolvePath": "Workspace › Scripts › AutoSubs",
+    "premierePath": "Window › Extensions › AutoSubs",
+    "transcribing": "文字起こし中"
   }
 }

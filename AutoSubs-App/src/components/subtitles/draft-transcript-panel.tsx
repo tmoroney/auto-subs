@@ -16,7 +16,6 @@ interface DraftTranscriptPanelProps {
   isComplete?: boolean;
   /** Progress of the step currently running, 0-100. */
   progress?: number;
-  hideProgress?: boolean;
   isFullScreen?: boolean;
   onClose?: () => void;
 }
@@ -61,7 +60,6 @@ export function DraftTranscriptPanel({
   segments,
   isComplete = false,
   progress,
-  hideProgress = false,
   isFullScreen = false,
   onClose,
 }: DraftTranscriptPanelProps) {
@@ -274,17 +272,15 @@ export function DraftTranscriptPanel({
           </Button>
         </div>
         
-        {!hideProgress && (
-          <div className="absolute bottom-[-6px] left-0 right-0 h-1.5 w-full bg-border">
-            <div
-              className="h-full bg-primary"
-              style={{
-                width: `${Math.max(0, Math.min(100, progress ?? 0))}%`,
-                transition: `width ${SETTLE_MS}ms ${DRAFT_EASE}`,
-              }}
-            />
-          </div>
-        )}
+        <div className="absolute bottom-[-6px] left-0 right-0 h-1.5 w-full bg-border">
+          <div
+            className="h-full bg-primary"
+            style={{
+              width: `${Math.max(0, Math.min(100, progress ?? 0))}%`,
+              transition: `width ${SETTLE_MS}ms ${DRAFT_EASE}`,
+            }}
+          />
+        </div>
       </div>
 
       <div

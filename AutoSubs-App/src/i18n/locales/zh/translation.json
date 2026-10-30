@@ -187,8 +187,8 @@
     },
     "fileDrop": {
       "aria": "将音频文件拖放到此处或点击选择",
-      "prompt": "拖放文件或点击",
-      "supports": "支持大多数格式"
+      "prompt": "拖放文件或点击选择",
+      "supports": "MP4、MOV、WAV、MP3 等"
     },
     "fileDialog": {
       "mediaFiles": "媒体文件（ffmpeg 支持）"
@@ -710,7 +710,7 @@
     "transcribe": "转录",
     "stop": "停止",
     "modelLanguageUnsupported": "此模型不支持该语言",
-    "audioTracks": "音轨",
+    "audioTracks": "要转写的音频",
     "wholeTimeline": "整个时间线",
     "inToOut": "入点到出点",
     "newTranscriptFrom": "新建转录来源",
@@ -721,7 +721,7 @@
     "fileTypes": "音频或视频，无时长限制",
     "audioTrackCount": "{{count}} 条音轨",
     "sameAsSpoken": "与口语相同",
-    "waiting": "等待连接",
+    "waiting": "等待中",
     "clear": "清除",
     "selectAll": "全选",
     "spokenIn": "口述语言",
@@ -730,6 +730,14 @@
     "tracks_one": "{{count}} 条音轨",
     "tracks_other": "{{count}} 条音轨",
     "autoDetect": "自动检测",
-    "off": "关闭"
+    "off": "关闭",
+    "chooseFile": "选择文件",
+    "refreshTracks": "刷新音轨",
+    "connectPremiere": "连接 Premiere",
+    "resolveInstructions": "在 Resolve 中运行",
+    "premiereInstructions": "在 Premiere 中打开",
+    "resolvePath": "Workspace › Scripts › AutoSubs",
+    "premierePath": "Window › Extensions › AutoSubs",
+    "transcribing": "正在转写"
   }
 }
