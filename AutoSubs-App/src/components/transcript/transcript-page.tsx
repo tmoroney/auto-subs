@@ -1,6 +1,9 @@
 import * as React from "react";
 import {
+  AlignLeft,
+  ArrowLeftRight,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
@@ -12,6 +15,7 @@ import {
   MoreHorizontal,
   RefreshCw,
   Search,
+  Send,
   Type,
   X,
 } from "lucide-react";
@@ -46,7 +50,8 @@ import {
 import { describeError } from "@/components/transcription/utils";
 import { describeCaptionStyle, isStyleAvailable, resolveCaptionStyle } from "@/lib/caption-style";
 import { groupTranscriptSegments } from "@/utils/group-transcript-segments";
-import type { CaptionPreset, Settings, Speaker, Subtitle, Template, Track } from "@/types";
+import { buildSpeakerIndexMap, getSpeakerIndexForId } from "@/utils/speaker-index";
+import type { CaptionPreset, Settings, Template, Track } from "@/types";
 import type { SubtitleDocumentListItem, TranscriptSourceType } from "@/utils/file-utils";
 
 type TextDensity = Settings["textDensity"];
@@ -73,6 +78,20 @@ function relativeDate(date: Date | undefined, language: string) {
   return formatter.format(days, "day");
 }
 
+function presetSampleStyle(preset: CaptionPreset): React.CSSProperties {
+  const { Font: font, FillColorRed: red, FillColorGreen: green, FillColorBlue: blue } =
+    preset.macroSettings;
+  const channels = [red, green, blue];
+  const color = channels.every((channel) => typeof channel === "number")
+    ? `rgb(${channels.map((channel) => Math.round(Math.max(0, Math.min(1, channel as number)) * 255)).join(" ")})`
+    : "#fff";
+
+  return {
+    color,
+    fontFamily: typeof font === "string" && font ? font : undefined,
+  };
+}
+
 function sourceTypeFor(
   document: SubtitleDocumentListItem | null,
   integration: string,
@@ -83,15 +102,6 @@ function sourceTypeFor(
   if (integration === "aftereffects") return "aftereffects";
   if (integration === "davinci") return "resolve";
   return "unknown";
-}
-
-function speakerIndex(speakerId: string | undefined, subtitles: Subtitle[], speakers: Speaker[]) {
-  if (!speakerId || speakers.length === 0) return 0;
-  const hasZero = subtitles.some((subtitle) => subtitle.speaker_id === "0");
-  const numericId = Number(speakerId);
-  if (!Number.isFinite(numericId)) return 0;
-  const index = numericId - (hasZero ? 0 : 1);
-  return index >= 0 && index < speakers.length ? index : 0;
 }
 
 function buildFindRegExp(
@@ -122,7 +132,7 @@ export function TranscriptPage({
   onOpenStyles,
   templates,
 }: TranscriptPageProps) {
-    const { t, i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     subtitles,
     speakers,
@@ -185,8 +195,12 @@ export function TranscriptPage({
   const duration = document?.markOut != null
     ? Math.max(0, document.markOut - (document.markIn ?? 0))
     : null;
+  const languageName = currentSubtitleDocumentLanguage
+    ? new Intl.DisplayNames([i18n.resolvedLanguage || i18n.language], { type: "language" })
+        .of(currentSubtitleDocumentLanguage) ?? currentSubtitleDocumentLanguage
+    : "";
   const metadata = [
-    currentSubtitleDocumentLanguage,
+    languageName,
     duration !== null ? formatTime(duration) : "",
   ].filter(Boolean);
   const style = settings.captionStyle;
@@ -372,6 +386,7 @@ export function TranscriptPage({
         : t("titlebar.resolve.productName");
 
   const segmentGroups = groupTranscriptSegments(subtitles, speakers.length > 0);
+  const speakerIndices = React.useMemo(() => buildSpeakerIndexMap(subtitles), [subtitles]);
 
   return (
     <div className="as-transcript-page as-transcript-root">
@@ -400,9 +415,9 @@ export function TranscriptPage({
             <Menu.Trigger
               render={
                 <button type="button" className="as-transcript-chip as-format-trigger" aria-label={t("actionBar.rows.format")}>
-                  <Type />
+                  <AlignLeft />
                   <span>{formatLabel}</span>
-                  <ChevronsUpDown />
+                  <ChevronDown />
                 </button>
               }
             />
@@ -482,6 +497,9 @@ export function TranscriptPage({
             <ChevronRight />
           </button>
         )}
+        {view === "subtitles" && (
+          <span className="as-transcript-toolbar-break" aria-hidden="true" />
+        )}
         {speakers.length > 1 && (
           <Popover.Root>
             <Popover.Trigger
@@ -517,7 +535,6 @@ export function TranscriptPage({
             </Popover.Portal>
           </Popover.Root>
         )}
-        <div className="as-transcript-toolbar-spacer" />
         <Button
           variant="icon"
           className="as-transcript-search-toggle"
@@ -543,9 +560,30 @@ export function TranscriptPage({
             <span className="as-transcript-match-count">
               {t("redesign.transcript.matches", { count: matchCount })}
             </span>
-            <button type="button" aria-pressed={caseSensitive} title={t("subtitles.search.caseMatch")} onClick={() => setCaseSensitive((value) => !value)}>Aa</button>
-            <button type="button" aria-pressed={wholeWord} title={t("subtitles.search.wholeWord")} onClick={() => setWholeWord((value) => !value)}>W</button>
-            <button type="button" aria-pressed={showReplace} title={t("subtitles.search.replaceAll")} onClick={() => setShowReplace((value) => !value)}>↔</button>
+            <button
+              type="button"
+              aria-pressed={caseSensitive}
+              title={t("subtitles.search.caseMatch")}
+              onClick={() => setCaseSensitive((value) => !value)}
+            >
+              Aa
+            </button>
+            <button
+              type="button"
+              aria-pressed={wholeWord}
+              title={t("subtitles.search.wholeWord")}
+              onClick={() => setWholeWord((value) => !value)}
+            >
+              W
+            </button>
+            <button
+              type="button"
+              aria-pressed={showReplace}
+              title={t("subtitles.search.replaceAll")}
+              onClick={() => setShowReplace((value) => !value)}
+            >
+              <ArrowLeftRight />
+            </button>
           </div>
           {showReplace && (
             <div className="as-transcript-replace-row">
@@ -580,7 +618,9 @@ export function TranscriptPage({
             {segmentGroups.map((group, index) => {
               const first = group.segments[0];
               const name = group.speakerId
-                ? speakers[speakerIndex(group.speakerId, subtitles, speakers)]?.name
+                ? speakers[
+                    getSpeakerIndexForId(group.speakerId, speakerIndices, speakers.length)
+                  ]?.name
                 : "";
               return (
                 <section className="as-original-block" key={`${first?.start}-${index}`}>
@@ -667,7 +707,9 @@ export function TranscriptPage({
                   <Loader2 className="animate-spin" />
                 ) : justSent ? (
                   <Check />
-                ) : null}
+                ) : (
+                  <Send />
+                )}
                 <span className="as-send-full-label">
                   {isAdding
                     ? t("captions.send.adding")
@@ -878,6 +920,7 @@ export function CaptionStylePage({ onBack, templates }: CaptionStylePageProps) {
                   const selected =
                     captionStyle.source === "autosubs" &&
                     captionStyle.presetId === preset.id;
+                  const sampleStyle = presetSampleStyle(preset);
                   return (
                     <div
                       className={`as-style-card${selected ? " is-selected" : ""}`}
@@ -889,15 +932,29 @@ export function CaptionStylePage({ onBack, templates }: CaptionStylePageProps) {
                         onClick={() => presets.select(preset.id)}
                         aria-pressed={selected}
                       >
-                        <PresetThumbnail
-                          preset={preset}
-                          selected={selected}
-                          className="as-style-thumbnail"
-                        />
-                        <span className="as-style-card-name">{preset.name}</span>
-                        <span className="as-style-animated">{t("redesign.styles.animated")}</span>
+                        <span className="as-style-thumb-wrap">
+                          <PresetThumbnail
+                            preset={preset}
+                            className="as-style-thumbnail"
+                            fallback={
+                              <span className="as-style-sample" style={sampleStyle}>
+                                So where do we start?
+                              </span>
+                            }
+                          />
+                          {selected && (
+                            <span className="as-style-check">
+                              <Check />
+                            </span>
+                          )}
+                        </span>
+                        <span className="as-style-card-details">
+                          <span className="as-style-card-name">{preset.name}</span>
+                          <span className="as-style-animated">
+                            {t("redesign.styles.animated")}
+                          </span>
+                        </span>
                       </button>
-                      {selected && <span className="as-style-check"><Check /></span>}
                       <Menu.Root>
                         <Menu.Trigger
                           render={
@@ -974,9 +1031,17 @@ export function CaptionStylePage({ onBack, templates }: CaptionStylePageProps) {
                         })}
                         aria-pressed={selected}
                       >
-                        <span className="as-template-thumbnail">{template.label}</span>
-                        <span className="as-style-card-name">{template.label}</span>
-                        {selected && <span className="as-style-check"><Check /></span>}
+                        <span className="as-style-thumb-wrap">
+                          <span className="as-template-thumbnail">{template.label}</span>
+                          {selected && (
+                            <span className="as-style-check">
+                              <Check />
+                            </span>
+                          )}
+                        </span>
+                        <span className="as-style-card-details">
+                          <span className="as-style-card-name">{template.label}</span>
+                        </span>
                       </button>
                     );
                   })}
@@ -984,15 +1049,17 @@ export function CaptionStylePage({ onBack, templates }: CaptionStylePageProps) {
               )}
             </section>
           </div>
-          <footer className="as-styles-footer">
-            <Button
-              variant="tone"
-              disabled={!connected || applying || !currentSubtitleDocumentFilename}
-              onClick={() => void applyStyles()}
-            >
-              {applying && <Loader2 className="animate-spin" />}
-              {t("redesign.styles.apply")}
-            </Button>
+          <footer className="as-action-bar">
+            <div className="as-action-inner as-styles-action-inner">
+              <Button
+                variant="tone"
+                disabled={!connected || applying || !currentSubtitleDocumentFilename}
+                onClick={() => void applyStyles()}
+              >
+                {applying && <Loader2 className="animate-spin" />}
+                {t("redesign.styles.apply")}
+              </Button>
+            </div>
           </footer>
           {deleting && (
             <div className="as-delete-overlay" role="dialog" aria-modal="true">

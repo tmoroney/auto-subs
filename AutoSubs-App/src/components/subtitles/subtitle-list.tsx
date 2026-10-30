@@ -7,6 +7,7 @@ import { ArrowDown, ArrowUp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { moveEdgeWord, type WordMoveDirection } from "@/utils/word-move"
+import { buildSpeakerIndexMap, getSpeakerIndexForId } from "@/utils/speaker-index"
 
 const ESTIMATED_SUBTITLE_ROW_HEIGHT = 96;
 const SUBTITLE_ROW_OVERSCAN = 8;
@@ -97,30 +98,12 @@ const SubtitleList = ({
         return text.toLowerCase().includes(query.toLowerCase());
     }, [searchCaseSensitive, searchWholeWord]);
 
-    // speaker_id can be either 0-based ("0", "1", ...) or 1-based ("1", "2", ...).
-    // Detect base once per transcript so Speaker 1 doesn't get mislabeled as Speaker 2.
-    const speakerIdBase = useMemo(() => {
-        const hasZero = subtitles.some(s => {
-            const sid = s.speaker_id;
-            if (sid === undefined || sid === null) return false;
-            return String(sid) === "0";
-        });
-        return hasZero ? 0 : 1;
-    }, [subtitles]);
-
-    const getSpeakerIndex = useCallback((speakerId: string | undefined) => {
-        if (!speakerId) return 0;
-        const n = Number(speakerId);
-        if (!Number.isFinite(n)) return 0;
-
-        const idx = n - speakerIdBase;
-        if (idx >= 0 && idx < speakers.length) return idx;
-
-        // Fallbacks for safety if the transcript is mixed/legacy.
-        if (n >= 0 && n < speakers.length) return n;
-        if (n - 1 >= 0 && n - 1 < speakers.length) return n - 1;
-        return 0;
-    }, [speakerIdBase, speakers.length]);
+    const speakerIndices = useMemo(() => buildSpeakerIndexMap(subtitles), [subtitles]);
+    const getSpeakerIndex = useCallback(
+        (speakerId: string | undefined) =>
+            getSpeakerIndexForId(speakerId, speakerIndices, speakers.length),
+        [speakerIndices, speakers.length],
+    );
 
     const filteredSubtitleItems = useMemo(() => {
         const query = searchQuery ?? "";
@@ -340,7 +323,7 @@ const SubtitleList = ({
                         data-index={virtualRow.index}
                         ref={rowVirtualizer.measureElement}
                         style={{ transform: `translateY(${virtualRow.start}px)` }}
-                        className={`as-subtitle-row group absolute left-0 right-0 top-0 text-sm leading-tight transition-colors duration-150 hover:bg-[var(--as-card)] ${isSelected ? "is-selected" : ""} ${itemClassName}`}
+                        className={`as-subtitle-row group absolute left-0 right-0 top-0 text-sm leading-tight transition-colors duration-150 ${isSelected ? "is-selected" : ""} ${itemClassName}`}
                         onClick={() => selectSubtitle(index)}
                     >
                         <div className="as-subtitle-row-meta">

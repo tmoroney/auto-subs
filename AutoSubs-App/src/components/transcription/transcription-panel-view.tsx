@@ -5,7 +5,6 @@ import {
   FileAudio,
   Plus,
   RefreshCw,
-  Square,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { languages, translateLanguages } from "@/lib/languages";
@@ -231,7 +230,7 @@ export function TranscriptionPanelView({
               className="as-stop-button"
               onClick={onCancel}
             >
-              <Square className="size-3.5 fill-current" aria-hidden="true" />
+              <span className="as-stop-icon" aria-hidden="true" />
             </Button>
           </div>
         </footer>
