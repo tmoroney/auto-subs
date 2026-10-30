@@ -449,7 +449,10 @@
       "description": "Local, 25 idiomas europeos",
       "details": "Más rápido y preciso que Parakeet. CC BY-SA 4.0.",
       "badge": "CC BY-SA 4.0"
-    }
+    },
+    "filterDownloaded": "Descargados",
+    "filterAll": "Todos",
+    "downloadError": "No se pudo descargar el modelo"
   },
   "completion": {
     "processingComplete": "Procesamiento completo",
@@ -738,6 +741,27 @@
     "premiereInstructions": "En Premiere, abre",
     "resolvePath": "Workspace › Scripts › AutoSubs",
     "premierePath": "Window › Extensions › AutoSubs",
-    "transcribing": "Transcribiendo"
+    "transcribing": "Transcribiendo",
+    "modelsIntro": "Se ejecuta en este dispositivo. Elige el modelo que mejor entienda tu audio.",
+    "addons": "Complementos",
+    "downloadsFirstUse": "Se descarga al usarlo",
+    "wordTiming": "Tiempos de palabra",
+    "performance": "Rendimiento",
+    "app": "App",
+    "appearance": "Apariencia",
+    "appearanceDescription": "Sigue el sistema de forma predeterminada",
+    "system": "Sistema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "version": "Versión {{version}}",
+    "help": "Ayuda",
+    "logs": "Registros",
+    "logsDescription": "Para informar de errores",
+    "openFolder": "Abrir carpeta",
+    "resetDescription": "Restaura los ajustes predeterminados",
+    "viewSource": "Ver código fuente",
+    "cliDescription": "Instala autosubs para cualquier terminal",
+    "languages99": "99 idiomas",
+    "languageCount": "{{number}} idiomas"
   }
 }

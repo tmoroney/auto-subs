@@ -5,15 +5,16 @@ import {
   PanelLeft,
   Settings as SettingsIcon,
   Video,
+  ChevronRight,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay";
 import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog";
 import { SubtitleViewerPanel } from "@/components/subtitles/subtitle-viewer-panel";
 import { TranscriptionPanel } from "@/components/transcription/transcription-panel";
-import { ModelPicker } from "@/components/settings/model-picker";
+import { ModelsPage } from "@/components/models/models-page";
+import { SettingsPage } from "@/components/settings/settings-page";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/kit";
 import { useAdobe } from "@/contexts/AdobeContext";
@@ -31,7 +32,7 @@ import {
 } from "@/utils/file-utils";
 import { useSettingsStore } from "@/stores/settings-store";
 
-type AppPage = "setup" | "transcript";
+type AppPage = "setup" | "transcript" | "models" | "settings";
 
 function AppContentBody() {
   const { t, i18n } = useTranslation();
@@ -45,7 +46,6 @@ function AppContentBody() {
     openStoredSubtitleDocument,
   } = useSubtitleDocument();
   const model = useSettingsStore((state) => state.model);
-  const language = useSettingsStore((state) => state.language);
   const audioInputMode = useSettingsStore((state) => state.audioInputMode);
   const updateSetting = useSettingsStore((state) => state.updateSetting);
   const smallScreen = useMediaQuery("(max-width: 640px)");
@@ -53,8 +53,7 @@ function AppContentBody() {
   const [sidebarOpen, setSidebarOpen] = React.useState(
     () => typeof window !== "undefined" && window.innerWidth > 640,
   );
-  const [modelPickerOpen, setModelPickerOpen] = React.useState(false);
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [returnPage, setReturnPage] = React.useState<AppPage>("setup");
   const [documents, setDocuments] = React.useState<SubtitleDocumentListItem[]>([]);
   const [documentsLoaded, setDocumentsLoaded] = React.useState(false);
 
@@ -230,26 +229,24 @@ function AppContentBody() {
 
             <div className="as-sidebar-footer">
               <section className="as-model-section">
-                {/* TODO(redesign stage 2) */}
-                <ModelPicker
-                  modelsState={modelsState}
-                  selectedModelIndex={model}
-                  selectedLanguage={language}
-                  onSelectModel={(index) => updateSetting("model", index)}
-                  downloadingModel={null}
-                  downloadProgress={0}
-                  open={modelPickerOpen}
-                  onOpenChange={setModelPickerOpen}
-                  isSmallScreen={smallScreen}
-                  triggerSubtitle={t("redesign.transcriptionModel")}
-                  triggerClassName="as-model-card-trigger"
-                />
+                <button type="button" className={`as-model-card-trigger${page === "models" ? " is-active" : ""}`} onClick={() => {
+                  setReturnPage(page === "settings" || page === "models" ? returnPage : page);
+                  setPage("models");
+                  if (smallScreen) setSidebarOpen(false);
+                }}>
+                  {modelsState[model]?.image && <img src={modelsState[model].image} alt="" />}
+                  <div><div>{modelsState[model] ? t(modelsState[model].label) : t("models.manage.title")}</div><span className="as-model-caption">{t("redesign.transcriptionModel")}</span></div>
+                  <ChevronRight size={14} />
+                </button>
               </section>
-              {/* TODO(redesign stage 2) */}
               <Button
                 variant="ghost"
-                className="as-settings-button"
-                onClick={() => setSettingsOpen(true)}
+                className={`as-settings-button${page === "settings" ? " is-active" : ""}`}
+                onClick={() => {
+                  setReturnPage(page === "settings" || page === "models" ? returnPage : page);
+                  setPage("settings");
+                  if (smallScreen) setSidebarOpen(false);
+                }}
               >
                 <SettingsIcon className="size-4" />
                 {t("settings.title")}
@@ -293,10 +290,11 @@ function AppContentBody() {
                 />
               </div>
             </div>
+            {page === "models" && <div className="as-page as-page--active"><ModelsPage onBack={() => setPage(returnPage)} /></div>}
+            {page === "settings" && <div className="as-page as-page--active"><SettingsPage onBack={() => setPage(returnPage)} /></div>}
           </div>
         </main>
 
-        <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
         <GettingStartedOverlay />
         <WhatsNewDialog />
       </div>

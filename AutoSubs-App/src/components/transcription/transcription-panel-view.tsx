@@ -531,7 +531,7 @@ export function TranscriptionPanelView({
               onClick={() => onStart?.()}
             >
               {t("redesign.transcribe")}
-              <span className="as-kbd">⌘↵</span>
+              <span className="as-shortcut">{navigator.userAgent.includes("Mac") ? "⌘↵" : "Ctrl↵"}</span>
             </Button>
           </div>
         </footer>

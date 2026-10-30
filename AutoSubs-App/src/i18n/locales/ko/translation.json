@@ -410,7 +410,10 @@
       "description": "로컬 처리, 유럽 25개 언어",
       "details": "Parakeet보다 빠르고 정확합니다. CC BY-SA 4.0.",
       "badge": "CC BY-SA 4.0"
-    }
+    },
+    "filterDownloaded": "다운로드됨",
+    "filterAll": "모두",
+    "downloadError": "모델을 다운로드할 수 없습니다"
   },
   "progressSteps": {
     "download": "모델 다운로드 중",
@@ -738,6 +741,27 @@
     "premiereInstructions": "Premiere에서 열기",
     "resolvePath": "Workspace › Scripts › AutoSubs",
     "premierePath": "Window › Extensions › AutoSubs",
-    "transcribing": "전사 중"
+    "transcribing": "전사 중",
+    "modelsIntro": "이 기기에서 실행됩니다. 오디오를 가장 잘 이해하는 모델을 선택하세요.",
+    "addons": "추가 기능",
+    "downloadsFirstUse": "처음 사용할 때 다운로드",
+    "wordTiming": "단어 타이밍",
+    "performance": "성능",
+    "app": "앱",
+    "appearance": "모양",
+    "appearanceDescription": "기본값은 시스템 설정",
+    "system": "시스템",
+    "light": "라이트",
+    "dark": "다크",
+    "version": "버전 {{version}}",
+    "help": "도움말",
+    "logs": "로그",
+    "logsDescription": "문제 보고용",
+    "openFolder": "폴더 열기",
+    "resetDescription": "모든 설정을 기본값으로 복원합니다",
+    "viewSource": "소스 보기",
+    "cliDescription": "모든 터미널에서 autosubs를 사용하세요",
+    "languages99": "99개 언어",
+    "languageCount": "{{number}}개 언어"
   }
 }

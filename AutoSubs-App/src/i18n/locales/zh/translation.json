@@ -449,7 +449,10 @@
       "description": "本地处理，支持25种欧洲语言",
       "details": "比 Parakeet 更快、更准确。CC BY-SA 4.0。",
       "badge": "CC BY-SA 4.0"
-    }
+    },
+    "filterDownloaded": "已下载",
+    "filterAll": "全部",
+    "downloadError": "模型下载失败"
   },
   "completion": {
     "processingComplete": "处理完成",
@@ -738,6 +741,27 @@
     "premiereInstructions": "在 Premiere 中打开",
     "resolvePath": "Workspace › Scripts › AutoSubs",
     "premierePath": "Window › Extensions › AutoSubs",
-    "transcribing": "正在转写"
+    "transcribing": "正在转写",
+    "modelsIntro": "在此设备上运行。选择最了解您音频的模型。",
+    "addons": "附加组件",
+    "downloadsFirstUse": "首次使用时下载",
+    "wordTiming": "词语时间",
+    "performance": "性能",
+    "app": "应用",
+    "appearance": "外观",
+    "appearanceDescription": "默认跟随系统",
+    "system": "系统",
+    "light": "浅色",
+    "dark": "深色",
+    "version": "版本 {{version}}",
+    "help": "帮助",
+    "logs": "日志",
+    "logsDescription": "用于反馈问题",
+    "openFolder": "打开文件夹",
+    "resetDescription": "恢复所有默认设置",
+    "viewSource": "查看源代码",
+    "cliDescription": "安装 autosubs，以便在终端中使用",
+    "languages99": "99 种语言",
+    "languageCount": "{{number}} 种语言"
   }
 }

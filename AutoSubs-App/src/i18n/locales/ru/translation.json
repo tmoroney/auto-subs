@@ -441,7 +441,10 @@
       "description": "Локально, 25 европейских языков",
       "details": "Быстрее и точнее, чем Parakeet. CC BY-SA 4.0.",
       "badge": "CC BY-SA 4.0"
-    }
+    },
+    "filterDownloaded": "Загруженные",
+    "filterAll": "Все",
+    "downloadError": "Не удалось загрузить модель"
   },
   "completion": {
     "processingComplete": "Обработка завершена",
@@ -750,6 +753,27 @@
     "premiereInstructions": "В Premiere откройте",
     "resolvePath": "Workspace › Scripts › AutoSubs",
     "premierePath": "Window › Extensions › AutoSubs",
-    "transcribing": "Расшифровка"
+    "transcribing": "Расшифровка",
+    "modelsIntro": "Работает на этом устройстве. Выберите модель, которая лучше понимает ваше аудио.",
+    "addons": "Дополнения",
+    "downloadsFirstUse": "Загрузка при первом использовании",
+    "wordTiming": "Тайминг слов",
+    "performance": "Производительность",
+    "app": "Приложение",
+    "appearance": "Оформление",
+    "appearanceDescription": "По умолчанию как в системе",
+    "system": "Система",
+    "light": "Светлая",
+    "dark": "Тёмная",
+    "version": "Версия {{version}}",
+    "help": "Помощь",
+    "logs": "Журналы",
+    "logsDescription": "Для сообщений об ошибках",
+    "openFolder": "Открыть папку",
+    "resetDescription": "Возвращает настройки по умолчанию",
+    "viewSource": "Исходный код",
+    "cliDescription": "Установите autosubs для любого терминала",
+    "languages99": "99 языков",
+    "languageCount": "{{number}} языков"
   }
 }
