@@ -1,10 +1,12 @@
 import * as React from "react"
-import { Settings2, X } from "lucide-react"
+import { Check, ChevronDown, Settings2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Menu, MenuPopup, MenuRadioItem } from "@/components/kit/menu"
+import { Switch as KitSwitch } from "@/components/kit/switch"
 import { Badge } from "@/components/ui/badge"
 import {
     Dialog,
@@ -36,6 +38,7 @@ interface TextFormattingPanelProps {
     showCustomDensityLimit?: boolean
     /** Hide the line-count input when another surface supplies a stepper. */
     hideLineCount?: boolean
+    compactTranscriptMenu?: boolean
     onSettingChange?: SettingUpdateHandler
     onCancel?: () => void
     onApply?: () => void
@@ -47,6 +50,7 @@ export function TextFormattingPanel({
     hideDensity = false,
     showCustomDensityLimit = false,
     hideLineCount = false,
+    compactTranscriptMenu = false,
     onSettingChange,
     onCancel,
     onApply,
@@ -90,6 +94,23 @@ export function TextFormattingPanel({
     }
     const [openCensorDialog, setOpenCensorDialog] = React.useState(false)
     const [newCensoredWord, setNewCensoredWord] = React.useState("")
+    const SwitchControl = compactTranscriptMenu ? KitSwitch : Switch
+    const settingRowClass = compactTranscriptMenu
+        ? "as-format-setting-row"
+        : "flex items-center justify-between"
+    const settingLabelClass = compactTranscriptMenu
+        ? "as-format-setting-label"
+        : "text-sm font-medium"
+    const settingDescriptionClass = compactTranscriptMenu
+        ? "as-format-setting-description"
+        : "text-xs text-muted-foreground"
+    const textCaseOptions = [
+        { value: "none", label: t("actionBar.format.textCase.normal") },
+        { value: "lowercase", label: t("actionBar.format.textCase.lowercase") },
+        { value: "uppercase", label: t("actionBar.format.textCase.uppercase") },
+        { value: "titlecase", label: t("actionBar.format.textCase.titleCase") },
+    ] as const;
+    const textCaseLabel = textCaseOptions.find((option) => option.value === textCase)?.label;
 
     // Derive the active censor word count from the subscribed fields so it
     // stays reactive without a non-reactive getState() call during render.
@@ -99,14 +120,14 @@ export function TextFormattingPanel({
     )
 
     return (
-        <div>
-            <div className="p-4 space-y-3">
+        <div className={compactTranscriptMenu ? "as-format-panel" : undefined}>
+            <div className={compactTranscriptMenu ? "as-format-settings" : "p-4 space-y-3"}>
                 {/* Text Density */}
                 {!hideDensity && (
-                    <div className="flex items-center justify-between">
+                    <div className={settingRowClass}>
                         <div>
-                            <Label className="text-sm font-medium">{t("actionBar.format.textDensityTitle")}</Label>
-                            <p className="text-xs text-muted-foreground">{t("actionBar.format.textDensityDescription")}</p>
+                            <Label className={settingLabelClass}>{t("actionBar.format.textDensityTitle")}</Label>
+                            <p className={settingDescriptionClass}>{t("actionBar.format.textDensityDescription")}</p>
                         </div>
                         <Select
                             value={textDensity}
@@ -128,14 +149,14 @@ export function TextFormattingPanel({
 
                 {/* Custom line limit (only shown when custom density is selected) */}
                 {(!hideDensity || showCustomDensityLimit) && textDensity === "custom" && (
-                    <div className="flex items-center justify-between">
+                    <div className={settingRowClass}>
                         <div>
-                            <Label className="text-sm font-medium">
+                            <Label className={settingLabelClass}>
                                 {customDensityUnit === "words"
                                     ? t("actionBar.format.customWordsTitle")
                                     : t("actionBar.format.customCharsTitle")}
                             </Label>
-                            <p className="text-xs text-muted-foreground">
+                            <p className={settingDescriptionClass}>
                                 {customDensityUnit === "words"
                                     ? t("actionBar.format.customWordsDescription")
                                     : t("actionBar.format.customCharsDescription")}
@@ -193,44 +214,73 @@ export function TextFormattingPanel({
                 </div>}
 
                 {/* Text Case */}
-                <div className="flex items-center justify-between">
+                <div className={settingRowClass}>
                     <div>
-                        <Label className="text-sm font-medium">{t("actionBar.format.textCaseTitle")}</Label>
-                        <p className="text-xs text-muted-foreground">{t("actionBar.format.textCaseDescription")}</p>
+                        <Label className={settingLabelClass}>{t("actionBar.format.textCaseTitle")}</Label>
+                        <p className={settingDescriptionClass}>{t("actionBar.format.textCaseDescription")}</p>
                     </div>
-                    <Select
-                        value={textCase}
-                        onValueChange={(val) => changeSetting("textCase", val as Settings["textCase"])}
-                    >
-                        <SelectTrigger className="w-32">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent align="end">
-                            <SelectItem value="none">{t("actionBar.format.textCase.normal")}</SelectItem>
-                            <SelectItem value="lowercase">{t("actionBar.format.textCase.lowercase")}</SelectItem>
-                            <SelectItem value="uppercase">{t("actionBar.format.textCase.uppercase")}</SelectItem>
-                            <SelectItem value="titlecase">{t("actionBar.format.textCase.titleCase")}</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    {compactTranscriptMenu ? (
+                        <Menu.Root>
+                            <Menu.Trigger className="as-settings-select as-format-case-trigger">
+                                {textCaseLabel}
+                                <ChevronDown size={14} aria-hidden="true" />
+                            </Menu.Trigger>
+                            <MenuPopup className="as-format-case-menu">
+                                <Menu.RadioGroup
+                                    value={textCase}
+                                    onValueChange={(value: string) =>
+                                        changeSetting("textCase", value as Settings["textCase"])
+                                    }
+                                >
+                                    {textCaseOptions.map((option) => (
+                                        <MenuRadioItem
+                                            key={option.value}
+                                            value={option.value}
+                                            className="as-format-case-option"
+                                        >
+                                            <Check className="as-format-case-check" />
+                                            <span>{option.label}</span>
+                                        </MenuRadioItem>
+                                    ))}
+                                </Menu.RadioGroup>
+                            </MenuPopup>
+                        </Menu.Root>
+                    ) : (
+                        <Select
+                            value={textCase}
+                            onValueChange={(value) => changeSetting("textCase", value as Settings["textCase"])}
+                        >
+                            <SelectTrigger className="w-32">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent align="end">
+                                {textCaseOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
                 </div>
 
                 {/* Remove Punctuation */}
-                <div className="flex items-center justify-between">
+                <div className={settingRowClass}>
                     <div>
-                        <Label className="text-sm font-medium">{t("actionBar.format.removePunctuationTitle")}</Label>
-                        <p className="text-xs text-muted-foreground">{t("actionBar.format.removePunctuationDescription")}</p>
+                        <Label className={settingLabelClass}>{t("actionBar.format.removePunctuationTitle")}</Label>
+                        <p className={settingDescriptionClass}>{t("actionBar.format.removePunctuationDescription")}</p>
                     </div>
-                    <Switch
+                    <SwitchControl
                         checked={removePunctuation}
                         onCheckedChange={(checked: boolean) => changeSetting("removePunctuation", checked)}
                     />
                 </div>
 
                 {/* Censor */}
-                <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                        <Label className="text-sm font-medium">{t("actionBar.censor.title")}</Label>
-                        <p className="text-xs text-muted-foreground">
+                <div className={settingRowClass}>
+                    <div className={compactTranscriptMenu ? "as-format-setting-copy" : "space-y-0.5"}>
+                        <Label className={settingLabelClass}>{t("actionBar.censor.title")}</Label>
+                        <p className={settingDescriptionClass}>
                             {t("actionBar.censor.wordCount", { count: censorWordCount })}
                             {!enableCensor ? ` · ${t("actionBar.common.off")}` : ""}
                         </p>
@@ -256,7 +306,7 @@ export function TextFormattingPanel({
 
                                 <div className="grid gap-4">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                        <Label htmlFor="censor-style" className="text-sm font-medium">
+                                            <Label htmlFor="censor-style" className={settingLabelClass}>
                                             {t("actionBar.censor.styleTitle")}
                                         </Label>
                                         <Select
@@ -279,21 +329,21 @@ export function TextFormattingPanel({
 
                                     {/* Word Lists Toggles */}
                                     <div className="space-y-2">
-                                        <span className="text-sm font-medium">{t("actionBar.censor.lists")}</span>
+                                        <span className={settingLabelClass}>{t("actionBar.censor.lists")}</span>
                                         <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
                                             {BUILT_IN_CENSOR_LISTS.map((list) => {
                                                 const isActive = (activeCensorLists ?? []).includes(list.id);
                                                 return (
                                                     <div key={list.id} className="flex items-center justify-between">
                                                         <div className="flex-1 min-w-0 pr-2">
-                                                            <span className="text-sm">{list.name}</span>
+                                                            <span className={compactTranscriptMenu ? "as-format-setting-label" : "text-sm"}>{list.name}</span>
                                                             {list.description && (
-                                                                <p className="text-xs text-muted-foreground truncate">{list.description}</p>
+                                                                <p className={compactTranscriptMenu ? "as-format-setting-description truncate" : "text-xs text-muted-foreground truncate"}>{list.description}</p>
                                                             )}
                                                         </div>
                                                         <div className="flex items-center gap-2 shrink-0">
                                                             <span className="text-xs text-muted-foreground whitespace-nowrap">{t("actionBar.censor.listWordCount", { count: list.words.length })}</span>
-                                                            <Switch
+                                                            <SwitchControl
                                                                 checked={isActive}
                                                                 onCheckedChange={(checked: boolean) => {
                                                                     const current = activeCensorLists ?? [];
@@ -319,8 +369,8 @@ export function TextFormattingPanel({
 
                                     {/* Custom Words */}
                                     <div className="space-y-2">
-                                        <span className="text-sm font-medium">{t("actionBar.censor.customSection")}</span>
-                                        <p className="text-xs text-muted-foreground">{t("actionBar.censor.customSectionDescription")}</p>
+                                        <span className={settingLabelClass}>{t("actionBar.censor.customSection")}</span>
+                                        <p className={settingDescriptionClass}>{t("actionBar.censor.customSectionDescription")}</p>
                                         <form
                                             className="flex items-center gap-2 rounded-lg border bg-muted/30 pr-1"
                                             onSubmit={(e) => {
@@ -381,7 +431,7 @@ export function TextFormattingPanel({
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
-                        <Switch
+                        <SwitchControl
                             checked={enableCensor}
                             onCheckedChange={(checked: boolean) => changeSetting("enableCensor", checked)}
                         />

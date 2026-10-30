@@ -1,30 +1,27 @@
 import type { Subtitle } from "@/types";
 
-function normalizeSpeakerId(speakerId: string | undefined) {
-  const trimmed = speakerId?.trim();
-  if (!trimmed || trimmed === "?") return null;
-  return trimmed.startsWith("Speaker ") ? trimmed.slice("Speaker ".length).trim() : trimmed;
-}
-
-export function buildSpeakerIndexMap(subtitles: Pick<Subtitle, "speaker_id">[]) {
-  const speakerIndices = new Map<string, number>();
-
-  for (const subtitle of subtitles) {
-    const speakerId = normalizeSpeakerId(subtitle.speaker_id);
-    if (speakerId && !speakerIndices.has(speakerId)) {
-      speakerIndices.set(speakerId, speakerIndices.size);
-    }
-  }
-
-  return speakerIndices;
+export function getSpeakerIdBase(subtitles: Pick<Subtitle, "speaker_id">[]) {
+  const hasZero = subtitles.some((subtitle) => {
+    const speakerId = subtitle.speaker_id;
+    if (speakerId === undefined || speakerId === null) return false;
+    return String(speakerId) === "0";
+  });
+  return hasZero ? 0 : 1;
 }
 
 export function getSpeakerIndexForId(
   speakerId: string | undefined,
-  speakerIndices: ReadonlyMap<string, number>,
+  speakerIdBase: number,
   speakerCount: number,
 ) {
-  const normalizedId = normalizeSpeakerId(speakerId);
-  const index = normalizedId ? speakerIndices.get(normalizedId) : undefined;
-  return index !== undefined && index < speakerCount ? index : 0;
+  if (!speakerId) return 0;
+  const numberId = Number(speakerId);
+  if (!Number.isFinite(numberId)) return 0;
+
+  const index = numberId - speakerIdBase;
+  if (index >= 0 && index < speakerCount) return index;
+
+  if (numberId >= 0 && numberId < speakerCount) return numberId;
+  if (numberId - 1 >= 0 && numberId - 1 < speakerCount) return numberId - 1;
+  return 0;
 }

@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
-import { Button } from "@/components/ui/button"
-import { ButtonGroup } from "@/components/ui/button-group"
+import { Button } from "@/components/kit"
 import { ArrowDown, ArrowUp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { moveEdgeWord, type WordMoveDirection } from "@/utils/word-move"
-import { buildSpeakerIndexMap, getSpeakerIndexForId } from "@/utils/speaker-index"
+import { getSpeakerIdBase, getSpeakerIndexForId } from "@/utils/speaker-index"
 
 const ESTIMATED_SUBTITLE_ROW_HEIGHT = 96;
 const SUBTITLE_ROW_OVERSCAN = 8;
@@ -98,11 +97,11 @@ const SubtitleList = ({
         return text.toLowerCase().includes(query.toLowerCase());
     }, [searchCaseSensitive, searchWholeWord]);
 
-    const speakerIndices = useMemo(() => buildSpeakerIndexMap(subtitles), [subtitles]);
+    const speakerIdBase = useMemo(() => getSpeakerIdBase(subtitles), [subtitles]);
     const getSpeakerIndex = useCallback(
         (speakerId: string | undefined) =>
-            getSpeakerIndexForId(speakerId, speakerIndices, speakers.length),
-        [speakerIndices, speakers.length],
+            getSpeakerIndexForId(speakerId, speakerIdBase, speakers.length),
+        [speakerIdBase, speakers.length],
     );
 
     const filteredSubtitleItems = useMemo(() => {
@@ -430,12 +429,12 @@ const SubtitleList = ({
                                         )}
 
                                         {isSelected ? (
-                                        <ButtonGroup className="mt-4">
+                                        <div className="as-word-move-controls">
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button
-                                                        variant="outline"
-                                                        className="text-xs h-8"
+                                                        variant="tone"
+                                                        className="as-word-move-button"
                                                         disabled={index <= 0 || splitIntoWords(draftText).length === 0}
                                                         onMouseDown={(e) => e.preventDefault()}
                                                         onClick={(e) => {
@@ -454,8 +453,8 @@ const SubtitleList = ({
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button
-                                                        variant="outline"
-                                                        className="text-xs h-8"
+                                                        variant="tone"
+                                                        className="as-word-move-button"
                                                         disabled={index >= subtitles.length - 1 || splitIntoWords(draftText).length === 0}
                                                         onMouseDown={(e) => e.preventDefault()}
                                                         onClick={(e) => {
@@ -471,7 +470,7 @@ const SubtitleList = ({
                                                     <p>{t("subtitles.wordMove.toNext", { shortcut: `${shortcutModifier}+↓` })}</p>
                                                 </TooltipContent>
                                             </Tooltip>
-                                        </ButtonGroup>
+                                        </div>
                                         ) : null}
                                     </div>
                                 </div>

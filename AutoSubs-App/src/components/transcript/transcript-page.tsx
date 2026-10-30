@@ -50,7 +50,7 @@ import {
 import { describeError } from "@/components/transcription/utils";
 import { describeCaptionStyle, isStyleAvailable, resolveCaptionStyle } from "@/lib/caption-style";
 import { groupTranscriptSegments } from "@/utils/group-transcript-segments";
-import { buildSpeakerIndexMap, getSpeakerIndexForId } from "@/utils/speaker-index";
+import { getSpeakerIdBase, getSpeakerIndexForId } from "@/utils/speaker-index";
 import type { CaptionPreset, Settings, Template, Track } from "@/types";
 import type { SubtitleDocumentListItem, TranscriptSourceType } from "@/utils/file-utils";
 
@@ -88,7 +88,9 @@ function presetSampleStyle(preset: CaptionPreset): React.CSSProperties {
 
   return {
     color,
-    fontFamily: typeof font === "string" && font ? font : undefined,
+    fontFamily: typeof font === "string" && font
+      ? `${JSON.stringify(font)}, var(--as-font-body), sans-serif`
+      : "var(--as-font-body), sans-serif",
   };
 }
 
@@ -386,7 +388,7 @@ export function TranscriptPage({
         : t("titlebar.resolve.productName");
 
   const segmentGroups = groupTranscriptSegments(subtitles, speakers.length > 0);
-  const speakerIndices = React.useMemo(() => buildSpeakerIndexMap(subtitles), [subtitles]);
+  const speakerIdBase = React.useMemo(() => getSpeakerIdBase(subtitles), [subtitles]);
 
   return (
     <div className="as-transcript-page as-transcript-root">
@@ -480,6 +482,7 @@ export function TranscriptPage({
                 hideDensity
                 showCustomDensityLimit
                 hideLineCount
+                compactTranscriptMenu
                 onSettingChange={handleSettingChange}
               />
               <p className="as-format-footer">{t("redesign.transcript.formatFootnote")}</p>
@@ -619,7 +622,7 @@ export function TranscriptPage({
               const first = group.segments[0];
               const name = group.speakerId
                 ? speakers[
-                    getSpeakerIndexForId(group.speakerId, speakerIndices, speakers.length)
+                    getSpeakerIndexForId(group.speakerId, speakerIdBase, speakers.length)
                   ]?.name
                 : "";
               return (
