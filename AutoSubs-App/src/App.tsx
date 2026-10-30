@@ -1,395 +1,473 @@
-// App.tsx
-import { ThemeProvider, useTheme } from "@/components/providers/theme-provider"
-import { Moon, Sun } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import React from "react"
-import { TranscriptionPanel } from "@/components/transcription/transcription-panel"
-import { SubtitleViewerPanel } from "@/components/subtitles/subtitle-viewer-panel"
-import { DraftTranscriptPanel } from "@/components/subtitles/draft-transcript-panel"
-import { useBlurSwap } from "@/hooks/use-blur-swap"
-import { useProgress } from "@/contexts/ProgressContext"
-import { useTranslation } from "react-i18next"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay"
-import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog"
-import { DEFAULT_SETTINGS, useSettingsStore } from "@/stores/settings-store"
-import { getVersion } from "@tauri-apps/api/app"
-import { EditorWorkspaceProviders } from "@/contexts/GlobalProvider"
-import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
-import { useIsMobile } from "@/hooks/use-mobile"
+import * as React from "react";
+import {
+  Ear,
+  FileAudio,
+  FileUp,
+  PanelLeft,
+  Search,
+  Settings as SettingsIcon,
+  ChevronRight,
+} from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay";
+import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog";
+import {
+  CaptionStylePage,
+  TranscriptPage,
+} from "@/components/transcript/transcript-page";
+import { TranscriptionPanel } from "@/components/transcription/transcription-panel";
+import { ModelsPage } from "@/components/models/models-page";
+import { SettingsPage } from "@/components/settings/settings-page";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Button, Tooltip } from "@/components/kit";
+import { useAdobe } from "@/contexts/AdobeContext";
+import { EditorWorkspaceProviders } from "@/contexts/GlobalProvider";
+import { useIntegration } from "@/contexts/IntegrationContext";
+import { useModels } from "@/contexts/ModelsContext";
+import { useProgress } from "@/contexts/ProgressContext";
+import { useResolve } from "@/contexts/ResolveContext";
+import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
+import { useResolveTemplates } from "@/components/captions/use-resolve-templates";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   listSubtitleDocumentIndex,
+  readSubtitleDocument,
   type SubtitleDocumentListItem,
-} from "@/utils/file-utils"
+} from "@/utils/file-utils";
+import { useSettingsStore } from "@/stores/settings-store";
 
-const MIN_TRANSCRIPTION_PANEL_WIDTH = 400
-const MIN_SUBTITLE_PANEL_WIDTH = 240
-const PANEL_GAP = 16
-const SUBTITLE_VIEWER_EXIT_ANIMATION_MS = 180
-
-export function ThemeToggle() {
-  const { setTheme, theme } = useTheme()
-  const { t } = useTranslation()
-
-  const handleToggle = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
-  }
-
-  return (
-    <Button variant="ghost" size="icon" onClick={handleToggle} className="rounded-full">
-      <Sun className="rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 size-5" />
-      <Moon className="absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 size-5" />
-      <span className="sr-only">{t("theme.toggle")}</span>
-    </Button>
-  )
-}
+type AppPage = "setup" | "transcript" | "styles" | "models" | "settings";
 
 function AppContentBody() {
-  const [showSubtitleViewer, setShowSubtitleViewer] = React.useState(() => {
-    // Open by default on desktop if there's enough screen space
-    const minRequiredWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + MIN_SUBTITLE_PANEL_WIDTH + PANEL_GAP
-    const hasEnoughSpace = typeof window !== 'undefined' && window.innerWidth >= minRequiredWidth
-    return hasEnoughSpace
-  })
-  const [isSubtitleViewerExpanded, setIsSubtitleViewerExpanded] =
-    React.useState(() => {
-      const minRequiredWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + MIN_SUBTITLE_PANEL_WIDTH + PANEL_GAP
-      const hasEnoughSpace = typeof window !== 'undefined' && window.innerWidth >= minRequiredWidth
-      return hasEnoughSpace
-    })
-  const [isSubtitleViewerClosing, setIsSubtitleViewerClosing] =
-    React.useState(false)
-  const [isSubtitleViewerResizing, setIsSubtitleViewerResizing] =
-    React.useState(false)
-  const [isSubtitleViewerResizeHovered, setIsSubtitleViewerResizeHovered] =
-    React.useState(false)
-  // Settings are hydrated before this mounts (SettingsProvider gates on it),
-  // so the persisted panel width is already in the store. Clamp it against the
-  // restored window size in case the stored width no longer fits.
-  const [subtitlePanelWidth, setSubtitlePanelWidth] = React.useState(() =>
-    Math.max(
-      MIN_SUBTITLE_PANEL_WIDTH,
-      Math.min(
-        import.meta.env.DEV
-          ? DEFAULT_SETTINGS.subtitlePanelWidth
-          : useSettingsStore.getState().subtitlePanelWidth,
-        window.innerWidth - MIN_TRANSCRIPTION_PANEL_WIDTH - PANEL_GAP,
-      ),
-    ),
-  )
-  const [transcriptDocuments, setTranscriptDocuments] = React.useState<
-    SubtitleDocumentListItem[]
-  >([])
-  const [hasLoadedTranscriptDocuments, setHasLoadedTranscriptDocuments] =
-    React.useState(false)
-  const { processingSteps, isRunActive, livePreviewSegments } = useProgress()
-  const onboardingCompleted = useSettingsStore((s) => s.onboardingCompleted)
-  const lastSeenVersion = useSettingsStore((s) => s.lastSeenVersion)
-  const isHydrated = useSettingsStore((s) => s.isHydrated)
-  const updateSetting = useSettingsStore((s) => s.updateSetting)
-  const { subtitles } = useSubtitleDocument()
-  const [currentVersion, setCurrentVersion] = React.useState<string>("")
-  const isMobile = useIsMobile()
-  const mainContentRef = React.useRef<HTMLDivElement>(null)
-  const subtitlePanelRef = React.useRef<HTMLDivElement>(null)
-  const subtitleViewerCloseTimeoutRef = React.useRef<number | null>(null)
-  const subtitleViewerOpenTimeoutRef = React.useRef<number | null>(null)
-  const wasMobileRef = React.useRef(false)
+  const { t, i18n } = useTranslation();
+  const { selectedIntegration, setSelectedIntegration } = useIntegration();
+  const { timelineInfo: resolveTimeline } = useResolve();
+  const { isPremiereConnected, premiereTimeline } = useAdobe();
+  const { modelsState } = useModels();
+  const { isRunActive, processingSteps } = useProgress();
+  const {
+    flushPendingSubtitleSave,
+    openStoredSubtitleDocument,
+    importSubtitles,
+    currentSubtitleDocumentFilename,
+  } = useSubtitleDocument();
+  const model = useSettingsStore((state) => state.model);
+  const audioInputMode = useSettingsStore((state) => state.audioInputMode);
+  const updateSetting = useSettingsStore((state) => state.updateSetting);
+  const smallScreen = useMediaQuery("(max-width: 640px)");
+  const [page, setPage] = React.useState<AppPage>("setup");
+  const [sidebarOpen, setSidebarOpen] = React.useState(
+    () => typeof window !== "undefined" && window.innerWidth > 640,
+  );
+  const [returnPage, setReturnPage] = React.useState<AppPage>("setup");
+  const [documents, setDocuments] = React.useState<SubtitleDocumentListItem[]>([]);
+  const [documentsLoaded, setDocumentsLoaded] = React.useState(false);
+  const [recentSearchOpen, setRecentSearchOpen] = React.useState(false);
+  const [recentQuery, setRecentQuery] = React.useState("");
+  const templates = useResolveTemplates(page === "styles");
 
-  const loadTranscriptDocuments = React.useCallback(async () => {
+  const loadDocuments = React.useCallback(async () => {
     try {
-      setTranscriptDocuments(await listSubtitleDocumentIndex())
+      setDocuments(await listSubtitleDocumentIndex());
     } catch (error) {
-      console.error("Failed to load subtitle documents:", error)
+      console.error("Failed to load subtitle documents:", error);
     } finally {
-      setHasLoadedTranscriptDocuments(true)
+      setDocumentsLoaded(true);
     }
-  }, [])
+  }, []);
 
   React.useEffect(() => {
-    let cancelled = false
-    getVersion()
-      .then((v) => {
-        if (!cancelled) setCurrentVersion(v)
-      })
-      .catch(() => {
-        if (!cancelled) setCurrentVersion("")
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    void loadDocuments();
+  }, [loadDocuments]);
 
   React.useEffect(() => {
-    void loadTranscriptDocuments()
-  }, [loadTranscriptDocuments])
+    const handleResize = () => setSidebarOpen(window.innerWidth > 640);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  // Priority gating: only show one onboarding-style dialog at a time.
-  const showGettingStarted = isHydrated && !onboardingCompleted
-  const showWhatsNew =
-    isHydrated &&
-    onboardingCompleted &&
-    !!currentVersion &&
-    lastSeenVersion !== currentVersion
+  const selectResolve = () => {
+    setSelectedIntegration("davinci");
+    updateSetting("audioInputMode", "timeline");
+    setPage("setup");
+    if (smallScreen) setSidebarOpen(false);
+  };
 
-  const handleCloseSubtitleViewer = React.useCallback(() => {
-    if (!showSubtitleViewer || isSubtitleViewerClosing) return
+  const selectPremiere = () => {
+    setSelectedIntegration("premiere");
+    updateSetting("audioInputMode", "timeline");
+    setPage("setup");
+    if (smallScreen) setSidebarOpen(false);
+  };
 
-    if (subtitleViewerOpenTimeoutRef.current !== null) {
-      window.clearTimeout(subtitleViewerOpenTimeoutRef.current)
-      subtitleViewerOpenTimeoutRef.current = null
-    }
+  const selectFile = () => {
+    setSelectedIntegration("standalone");
+    setPage("setup");
+    if (smallScreen) setSidebarOpen(false);
+  };
 
-    setIsSubtitleViewerClosing(true)
-    setIsSubtitleViewerExpanded(false)
-    subtitleViewerCloseTimeoutRef.current = window.setTimeout(() => {
-      setShowSubtitleViewer(false)
-      setIsSubtitleViewerClosing(false)
-      subtitleViewerCloseTimeoutRef.current = null
-    }, SUBTITLE_VIEWER_EXIT_ANIMATION_MS)
-  }, [isSubtitleViewerClosing, showSubtitleViewer])
-
-  const handleOpenSubtitleViewer = React.useCallback(() => {
-    if (
-      showSubtitleViewer &&
-      isSubtitleViewerExpanded &&
-      !isSubtitleViewerClosing
-    ) {
-      return
-    }
-
-    if (subtitleViewerCloseTimeoutRef.current !== null) {
-      window.clearTimeout(subtitleViewerCloseTimeoutRef.current)
-      subtitleViewerCloseTimeoutRef.current = null
-    }
-    if (subtitleViewerOpenTimeoutRef.current !== null) {
-      window.clearTimeout(subtitleViewerOpenTimeoutRef.current)
-      subtitleViewerOpenTimeoutRef.current = null
-    }
-
-    setIsSubtitleViewerClosing(false)
-    setIsSubtitleViewerExpanded(false)
-    setShowSubtitleViewer(true)
-
-    subtitleViewerOpenTimeoutRef.current = window.setTimeout(() => {
-      setIsSubtitleViewerExpanded(true)
-      subtitleViewerOpenTimeoutRef.current = null
-    }, 20)
-  }, [
-    handleCloseSubtitleViewer,
-    isMobile,
-    isSubtitleViewerClosing,
-    isSubtitleViewerExpanded,
-    showSubtitleViewer,
-    subtitles.length,
-  ])
-
-  React.useEffect(() => {
-    return () => {
-      if (subtitleViewerCloseTimeoutRef.current !== null) {
-        window.clearTimeout(subtitleViewerCloseTimeoutRef.current)
+  const openDocument = async (document: SubtitleDocumentListItem) => {
+    try {
+      await flushPendingSubtitleSave();
+      const transcript = await readSubtitleDocument(document.filename);
+      if (!transcript) return;
+      if (document.sourceType === "standalone") {
+        setSelectedIntegration("standalone");
+        updateSetting("audioInputMode", "file");
+      } else if (document.sourceType === "resolve") {
+        setSelectedIntegration("davinci");
+        updateSetting("audioInputMode", "timeline");
+      } else if (document.sourceType === "premiere") {
+        setSelectedIntegration("premiere");
+        updateSetting("audioInputMode", "timeline");
+      } else if (document.sourceType === "aftereffects") {
+        setSelectedIntegration("aftereffects");
+        updateSetting("audioInputMode", "timeline");
       }
-      if (subtitleViewerOpenTimeoutRef.current !== null) {
-        window.clearTimeout(subtitleViewerOpenTimeoutRef.current)
-      }
+      openStoredSubtitleDocument(document.filename, transcript);
+      setPage("transcript");
+      if (smallScreen) setSidebarOpen(false);
+    } catch (error) {
+      console.error("Failed to open subtitle document:", error);
     }
-  }, [])
+  };
 
-  // Reopen the subtitle viewer when the viewport grows past the mobile breakpoint.
-  React.useEffect(() => {
-    if (wasMobileRef.current && !isMobile) {
-      handleOpenSubtitleViewer()
+  const handleImportSubtitles = async () => {
+    try {
+      await importSubtitles(
+        useSettingsStore.getState(),
+        null,
+        resolveTimeline.timelineId ?? "",
+      );
+      await loadDocuments();
+      setPage("transcript");
+    } catch (error) {
+      console.error("Failed to import subtitles:", error);
     }
-    wasMobileRef.current = isMobile
-  }, [isMobile, handleOpenSubtitleViewer])
+  };
 
-  const handleTranscriptCreated = React.useCallback(async () => {
-    await loadTranscriptDocuments()
-  }, [loadTranscriptDocuments])
-
-  // While a run is in progress the right panel shows the live draft instead of
-  // the previous, unrelated transcript. Showing a stale transcript during
-  // processing was actively misleading — it looked like the result.
-  //
-  // Keyed on the run, not on "some step is active": steps hand over with a gap,
-  // and during that gap no step is active, which would blur the panel back to
-  // the old transcript and straight out again between every single step.
-  const isDraftMode = isRunActive
-
-  // The hairline tracks the running step. Between steps there is nothing to
-  // track, so hold the last value rather than letting it snap back to zero.
-  const activeStepProgress = processingSteps.find((step) => step.isActive)?.progress
-  const heldProgressRef = React.useRef(0)
-  if (!isDraftMode) heldProgressRef.current = 0
-  else if (activeStepProgress !== undefined) heldProgressRef.current = activeStepProgress
-
-  // Formatting re-segments the whole transcript, so the draft list is replaced
-  // wholesale rather than refined in place. Hold the draft for one blur-out,
-  // swap under cover of it, and blur back in on the final subtitles.
-  const { displayed: showDraftPanel, className: panelSwapClassName } =
-    useBlurSwap(isDraftMode)
-
-  // A run implies the user wants to watch it, so surface the panel if it is shut,
-  // but only when the viewport is wide enough to show both panels side-by-side.
-  React.useEffect(() => {
-    const minRequiredWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + MIN_SUBTITLE_PANEL_WIDTH + PANEL_GAP
-    if (
-      isDraftMode &&
-      !showSubtitleViewer &&
-      typeof window !== "undefined" &&
-      window.innerWidth >= minRequiredWidth
-    ) {
-      handleOpenSubtitleViewer()
-    }
-  }, [isDraftMode, showSubtitleViewer, handleOpenSubtitleViewer])
-
-  const getMaxSubtitlePanelWidth = React.useCallback(() => {
-    const containerWidth = mainContentRef.current?.getBoundingClientRect().width ?? window.innerWidth
-    return Math.max(
-      MIN_SUBTITLE_PANEL_WIDTH,
-      containerWidth - MIN_TRANSCRIPTION_PANEL_WIDTH - PANEL_GAP,
-    )
-  }, [])
-
-  const handleSubtitleResizeStart = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (isMobile) return
-
-    event.preventDefault()
-    document.body.classList.add("app-panel-resizing")
-    setIsSubtitleViewerResizing(true)
-
-    const startX = event.clientX
-    const startWidth = subtitlePanelWidth
-    let latestWidth = startWidth
-
-    const maxWidth = getMaxSubtitlePanelWidth()
-    let frame: number | null = null
-
-    // Write the width straight to the DOM while dragging (one write per frame)
-    // so both panels aren't re-rendered on every pointermove; React state
-    // catches up once on release.
-    const handlePointerMove = (moveEvent: PointerEvent) => {
-      const nextWidth = startWidth + startX - moveEvent.clientX
-      latestWidth = Math.min(maxWidth, Math.max(MIN_SUBTITLE_PANEL_WIDTH, nextWidth))
-      if (frame !== null) return
-      frame = window.requestAnimationFrame(() => {
-        frame = null
-        const panel = subtitlePanelRef.current
-        if (panel) panel.style.width = `${latestWidth}px`
-      })
-    }
-
-    const handlePointerUp = () => {
-      if (frame !== null) {
-        window.cancelAnimationFrame(frame)
-        frame = null
-      }
-      latestWidth = Math.min(getMaxSubtitlePanelWidth(), latestWidth)
-      const panel = subtitlePanelRef.current
-      if (panel) panel.style.width = `${latestWidth}px`
-      setSubtitlePanelWidth(latestWidth)
-      setIsSubtitleViewerResizing(false)
-      document.body.classList.remove("app-panel-resizing")
-      if (!import.meta.env.DEV) {
-        // Persist the user's chosen width once per drag, not per pointermove.
-        updateSetting("subtitlePanelWidth", latestWidth)
-      }
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", handlePointerUp)
-      window.removeEventListener("pointercancel", handlePointerUp)
-    }
-
-    window.addEventListener("pointermove", handlePointerMove)
-    window.addEventListener("pointerup", handlePointerUp)
-    window.addEventListener("pointercancel", handlePointerUp)
-  }, [getMaxSubtitlePanelWidth, isMobile, subtitlePanelWidth, updateSetting])
-
-  // Adjust subtitle panel width when window is resized
-  React.useEffect(() => {
-    if (isMobile) return
-
-    const handleResize = () => {
-      const maxWidth = getMaxSubtitlePanelWidth()
-      if (subtitlePanelWidth > maxWidth) {
-        setSubtitlePanelWidth(maxWidth)
-      }
-    }
-
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [getMaxSubtitlePanelWidth, subtitlePanelWidth, isMobile])
-
-  const subtitleViewerClassName = isMobile
-    ? `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} absolute inset-0 z-50 min-h-0 overflow-hidden bg-card`
-    : `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} ${isSubtitleViewerResizing ? "subtitle-sidebar-shell-resizing" : "subtitle-sidebar-shell"} ${isSubtitleViewerResizing || isSubtitleViewerResizeHovered ? "border-foreground/30 dark:border-foreground/25" : "border-border"} relative min-h-0 shrink-0 overflow-hidden border-l transition-color bg-card [contain:layout_style]`
+  const isFileSource =
+    selectedIntegration === "standalone" || audioInputMode === "file";
+  const isPremiereSource =
+    selectedIntegration === "premiere" || selectedIntegration === "aftereffects";
+  const resolveConnected = Boolean(resolveTimeline.timelineId);
+  const premiereConnected = isPremiereConnected && Boolean(premiereTimeline.timelineId);
+  const activeSource = isFileSource ? "file" : isPremiereSource ? "premiere" : "resolve";
+  const runningStep =
+    processingSteps.find((step) => step.isActive) ??
+    processingSteps.find((step) => !step.isCompleted);
+  const runningItemName = isFileSource
+    ? t("actionBar.mode.fileInput")
+    : isPremiereSource
+      ? premiereTimeline.name || t("titlebar.premiere.productName")
+      : resolveTimeline.name || t("titlebar.resolve.productName");
+  const filteredDocuments = documents.filter((document) =>
+    document.displayName.toLocaleLowerCase().includes(recentQuery.toLocaleLowerCase()),
+  );
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col h-screen overflow-hidden bg-background relative">
-          {/* Main Content Area with Resizable Panels */}
-          <div ref={mainContentRef} className="flex-1 min-h-0 pb-0 relative">
-            <div className="flex h-full min-w-0">
-              <div className="min-h-0 min-w-[400px] flex-1 overflow-hidden">
-                <TranscriptionPanel
-                  onViewSubtitles={handleOpenSubtitleViewer}
-                  onTranscriptCreated={handleTranscriptCreated}
-                  isSubtitleViewerOpen={
-                    showSubtitleViewer && !isSubtitleViewerClosing
-                  }
-                />
-              </div>
-              {showSubtitleViewer && (
-                <div
-                  ref={subtitlePanelRef}
-                  className={subtitleViewerClassName}
-                  style={{
-                    width: isMobile
-                      ? "100%"
-                      : isSubtitleViewerExpanded
-                        ? subtitlePanelWidth
-                        : 0,
-                  }}
-                >
-                  {!isMobile && (
-                    <div
-                      role="separator"
-                      aria-orientation="vertical"
-                      aria-label="Resize subtitles panel"
-                      className="absolute inset-y-0 -left-2 z-30 w-5 cursor-col-resize touch-none"
-                      onPointerDown={handleSubtitleResizeStart}
-                      onPointerEnter={() => setIsSubtitleViewerResizeHovered(true)}
-                      onPointerLeave={() => setIsSubtitleViewerResizeHovered(false)}
-                    />
-                  )}
-                  <div className={`h-full min-h-0 ${panelSwapClassName}`}>
-                    {showDraftPanel ? (
-                      <DraftTranscriptPanel
-                        segments={livePreviewSegments}
-                        isComplete={!isDraftMode}
-                        progress={heldProgressRef.current}
-                        isFullScreen={isMobile}
-                        onClose={handleCloseSubtitleViewer}
+      <div className="as-shell">
+        {sidebarOpen && smallScreen && (
+          <button
+            type="button"
+            aria-label={t("common.close")}
+            className="as-sidebar-scrim"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {sidebarOpen && (
+          <aside className={`as-sidebar ${smallScreen ? "as-sidebar--mobile" : ""}`}>
+            <div className="as-sidebar-head" data-tauri-drag-region>
+              <Button
+                variant="icon"
+                aria-label={t("redesign.hideSidebar")}
+                className="as-sidebar-toggle"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <PanelLeft className="size-4" />
+              </Button>
+            </div>
+
+            <div className="as-sidebar-flow">
+              <section>
+                <h2 className="as-side-label">
+                  {t("redesign.newTranscriptFrom")}
+                </h2>
+                <div className="as-source-list">
+                  <SourceButton
+                    active={activeSource === "resolve"}
+                    icon={
+                      <img
+                        className="size-4"
+                        src="/davinci-resolve-logo.png"
+                        alt=""
                       />
-                    ) : (
-                      <SubtitleViewerPanel
-                        isFullScreen={isMobile}
-                        onClose={handleCloseSubtitleViewer}
-                        transcriptDocuments={transcriptDocuments}
-                        isLoadingTranscriptDocuments={!hasLoadedTranscriptDocuments}
-                        onTranscriptDocumentsRefresh={loadTranscriptDocuments}
+                    }
+                    label={t("titlebar.resolve.productName")}
+                    connected={resolveConnected}
+                    onClick={selectResolve}
+                  />
+                  <SourceButton
+                    active={activeSource === "premiere"}
+                    icon={
+                      <img
+                        className="size-4"
+                        src="/premiere-logo.png"
+                        alt=""
                       />
-                    )}
+                    }
+                    label={t("titlebar.premiere.productName")}
+                    connected={premiereConnected}
+                    onClick={selectPremiere}
+                  />
+                  <SourceButton
+                    active={activeSource === "file"}
+                    icon={<FileAudio className="size-4" />}
+                    label={t("actionBar.mode.fileInput")}
+                    onClick={selectFile}
+                  />
+                </div>
+              </section>
+
+              <section className="as-recent-section">
+                <div className="as-recent-heading">
+                  <h2 className="as-side-label">{t("redesign.recent")}</h2>
+                  <div className="as-recent-actions">
+                    <Tooltip content={t("redesign.recentSearch")}>
+                      <Button
+                        variant="icon"
+                        aria-label={t("redesign.recentSearch")}
+                        className="as-recent-icon"
+                        aria-pressed={recentSearchOpen}
+                        onClick={() => {
+                          setRecentSearchOpen((open) => !open);
+                          setRecentQuery("");
+                        }}
+                      >
+                        <Search />
+                      </Button>
+                    </Tooltip>
+                    <Tooltip content={t("importExport.importTab")}>
+                      <Button
+                        variant="icon"
+                        aria-label={t("importExport.importTab")}
+                        className="as-recent-icon"
+                        onClick={() => void handleImportSubtitles()}
+                      >
+                        <FileUp />
+                      </Button>
+                    </Tooltip>
                   </div>
                 </div>
-              )}
+                {recentSearchOpen && (
+                  <input
+                    className="as-recent-search"
+                    value={recentQuery}
+                    onChange={(event) => setRecentQuery(event.target.value)}
+                    placeholder={t("redesign.recentSearch")}
+                    aria-label={t("redesign.recentSearch")}
+                  />
+                )}
+                {!documentsLoaded && !isRunActive ? (
+                  <p className="as-recent-empty">
+                    {t("titlebar.subtitleHistory.loading")}
+                  </p>
+                ) : filteredDocuments.length || isRunActive ? (
+                  <div className="as-recent-list">
+                    {isRunActive && (
+                      <div
+                        className="as-recent-item as-recent-item--running"
+                        aria-live="polite"
+                      >
+                        <span className="as-recent-name as-recent-name--running">
+                          <span className="as-running-spinner" />
+                          {runningItemName}
+                        </span>
+                        <span className="as-recent-meta">
+                          {t("redesign.transcribing")} ·{" "}
+                          {Math.round(runningStep?.progress ?? 0)}%
+                        </span>
+                      </div>
+                    )}
+                    {filteredDocuments.slice(0, 6).map((document) => (
+                      <button
+                        key={document.filename}
+                        type="button"
+                        onClick={() => void openDocument(document)}
+                        className="as-recent-item"
+                      >
+                        <span className="as-recent-name">
+                          {document.displayName}
+                        </span>
+                        <span className="as-recent-meta">
+                          {recentDocumentMeta(document, i18n.language)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="as-recent-empty">
+                    {t("titlebar.subtitleHistory.empty")}
+                  </p>
+                )}
+              </section>
             </div>
-          </div>
 
-          {showGettingStarted && <GettingStartedOverlay />}
-          {showWhatsNew && <WhatsNewDialog />}
+            <div className="as-sidebar-footer">
+              <section className="as-model-section">
+                <button
+                  type="button"
+                  className={`as-model-card-trigger${page === "models" ? " is-active" : ""}`}
+                  onClick={() => {
+                    setReturnPage(
+                      page === "settings" || page === "models"
+                        ? returnPage
+                        : page,
+                    );
+                    setPage("models");
+                    if (smallScreen) setSidebarOpen(false);
+                  }}
+                >
+                  <Ear className="as-model-card-icon" strokeWidth={1.9} />
+                  <div>
+                    <span className="as-model-name">
+                      {modelsState[model]
+                        ? t(modelsState[model].label)
+                        : t("models.manage.title")}
+                    </span>
+                    <span className="as-model-caption">
+                      {t("redesign.transcriptionModel")}
+                    </span>
+                  </div>
+                  <ChevronRight size={14} />
+                </button>
+              </section>
+              <Button
+                variant="ghost"
+                className={`as-settings-button${page === "settings" ? " is-active" : ""}`}
+                onClick={() => {
+                  setReturnPage(page === "settings" || page === "models" ? returnPage : page);
+                  setPage("settings");
+                  if (smallScreen) setSidebarOpen(false);
+                }}
+              >
+                <SettingsIcon className="size-4" />
+                {t("settings.title")}
+              </Button>
+            </div>
+          </aside>
+        )}
+
+        <main className="as-main">
+          <header className={`as-topstrip ${sidebarOpen ? "as-topstrip--sidebar-open" : ""}`} data-tauri-drag-region>
+            {(!sidebarOpen || smallScreen) && (
+              <Button
+                variant="icon"
+                aria-label={t("redesign.showSidebar")}
+                className="as-sidebar-toggle"
+                onClick={() => setSidebarOpen((open) => !open)}
+              >
+                <PanelLeft className="size-4" />
+              </Button>
+            )}
+          </header>
+
+          <div className="as-main-content">
+            <div className={page === "setup" ? "as-page as-page--active" : "as-page as-page--hidden"}>
+              <TranscriptionPanel
+                onViewSubtitles={() => setPage("transcript")}
+                onTranscriptCreated={loadDocuments}
+              />
+            </div>
+            {page === "transcript" && (
+              <div className="as-page as-page--active as-transcript-page">
+                <TranscriptPage
+                  document={
+                    documents.find((item) => item.filename === currentSubtitleDocumentFilename) ?? null
+                  }
+                  onClose={() => setPage("setup")}
+                  onOpenStyles={() => setPage("styles")}
+                  templates={templates}
+                />
+              </div>
+            )}
+            {page === "styles" && (
+              <div className="as-page as-page--active">
+                <CaptionStylePage
+                  onBack={() => setPage("transcript")}
+                  templates={templates}
+                />
+              </div>
+            )}
+            {page === "models" && (
+              <div className="as-page as-page--active">
+                <ModelsPage onBack={() => setPage(returnPage)} />
+              </div>
+            )}
+            {page === "settings" && (
+              <div className="as-page as-page--active">
+                <SettingsPage onBack={() => setPage(returnPage)} />
+              </div>
+            )}
+          </div>
+        </main>
+
+        <GettingStartedOverlay />
+        <WhatsNewDialog />
       </div>
     </TooltipProvider>
-  )
+  );
+}
+
+function SourceButton({
+  active,
+  icon,
+  label,
+  connected,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  connected?: boolean;
+  onClick: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`as-source-button ${active ? "as-source-button--active" : ""}`}
+    >
+      <span className="as-source-icon">{icon}</span>
+      <span className="as-source-label">{label}</span>
+      {typeof connected === "boolean" && (
+        <span className={`as-source-status ${connected ? "as-source-status--connected" : ""}`} title={t(connected ? "titlebar.resolve.tooltip.connected" : "titlebar.status.disconnected")} />
+      )}
+    </button>
+  );
+}
+
+function recentDocumentMeta(document: SubtitleDocumentListItem, language: string) {
+  const date = document.createdAt.toLocaleDateString(language, {
+    month: "short",
+    day: "numeric",
+  });
+  const duration =
+    document.markOut == null
+      ? ""
+      : formatDuration(Math.max(0, document.markOut - (document.markIn ?? 0)));
+  return [date, duration || document.timelineName].filter(Boolean).join(" · ");
+}
+
+function formatDuration(seconds: number) {
+  const wholeSeconds = Math.floor(seconds);
+  const minutes = Math.floor(wholeSeconds / 60);
+  return `${minutes}:${String(wholeSeconds % 60).padStart(2, "0")}`;
 }
 
 function AppContent() {
@@ -397,7 +475,7 @@ function AppContent() {
     <EditorWorkspaceProviders>
       <AppContentBody />
     </EditorWorkspaceProviders>
-  )
+  );
 }
 
 function App() {

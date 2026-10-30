@@ -190,18 +190,20 @@ export function FileDropArea({
           ) : null}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3">
-          <div className="rounded-full bg-black/5 dark:bg-white/5 p-3 text-muted-foreground group-hover:text-foreground transition-colors">
-            <UploadIcon ref={iconRef} size={24} />
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors">
+        <div className="as-file-drop-content">
+          <div className="as-file-drop-primary">
+            <UploadIcon
+              ref={iconRef}
+              className="as-file-drop-icon"
+              size={16}
+            />
+            <span>
               {t("actionBar.fileDrop.prompt")}
             </span>
-            <span className="text-xs text-muted-foreground/80">
-              {t("actionBar.fileDrop.supports")}
-            </span>
           </div>
+          <span className="as-file-drop-secondary">
+            {t("actionBar.fileDrop.supports")}
+          </span>
         </div>
       )}
     </div>

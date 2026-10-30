@@ -1,19 +1,27 @@
-import * as React from "react"
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
-import { Button } from "@/components/ui/button"
-import { ButtonGroup } from "@/components/ui/button-group"
-import { ArrowDown, ArrowUp, X } from "lucide-react"
+import { Button } from "@/components/kit"
+import { ArrowDown, ArrowUp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { SpeakerSettings } from "@/components/common/speaker-settings"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { moveEdgeWord, type WordMoveDirection } from "@/utils/word-move"
+import { getSpeakerIdBase, getSpeakerIndexForId } from "@/utils/speaker-index"
 
 const ESTIMATED_SUBTITLE_ROW_HEIGHT = 96;
 const SUBTITLE_ROW_OVERSCAN = 8;
 const MAX_MOVE_HISTORY = 100;
+
+function formatSubtitleTimestamp(seconds: number) {
+    const total = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const remainingSeconds = total % 60;
+    const secondLabel = String(remainingSeconds).padStart(2, "0");
+    return hours > 0
+        ? `${hours}:${String(minutes).padStart(2, "0")}:${secondLabel}`
+        : `${minutes}:${secondLabel}`;
+}
 
 interface SubtitleListProps {
     searchQuery?: string;
@@ -45,7 +53,7 @@ const SubtitleList = ({
 }: SubtitleListProps) => {
     const { t } = useTranslation();
     const shortcutModifier = navigator.platform.startsWith("Mac") ? "⌘" : "Ctrl";
-    const { subtitles, updateSubtitles, currentSubtitleDocumentFilename, speakers, updateSpeakers } = useSubtitleDocument();
+    const { subtitles, updateSubtitles, currentSubtitleDocumentFilename, speakers } = useSubtitleDocument();
     const [uncontrolledSelectedIndex, setUncontrolledSelectedIndex] = useState<number | null>(null);
     const selectedIndex = controlledSelectedIndex ?? uncontrolledSelectedIndex;
 
@@ -55,8 +63,6 @@ const SubtitleList = ({
     const subtitlesRef = useRef(subtitles);
     const lastSubtitlesPropRef = useRef(subtitles);
     const moveHistoryRef = useRef<{ past: (typeof subtitles)[]; future: (typeof subtitles)[] }>({ past: [], future: [] });
-    const [editingSubtitleId, setEditingSubtitleId] = React.useState<number | null>(null);
-
     const containerRef = useRef<HTMLDivElement>(null);
 
     // A move replaces the editor's DOM text, so the browser's native text undo
@@ -91,30 +97,12 @@ const SubtitleList = ({
         return text.toLowerCase().includes(query.toLowerCase());
     }, [searchCaseSensitive, searchWholeWord]);
 
-    // speaker_id can be either 0-based ("0", "1", ...) or 1-based ("1", "2", ...).
-    // Detect base once per transcript so Speaker 1 doesn't get mislabeled as Speaker 2.
-    const speakerIdBase = useMemo(() => {
-        const hasZero = subtitles.some(s => {
-            const sid = s.speaker_id;
-            if (sid === undefined || sid === null) return false;
-            return String(sid) === "0";
-        });
-        return hasZero ? 0 : 1;
-    }, [subtitles]);
-
-    const getSpeakerIndex = useCallback((speakerId: string | undefined) => {
-        if (!speakerId) return 0;
-        const n = Number(speakerId);
-        if (!Number.isFinite(n)) return 0;
-
-        const idx = n - speakerIdBase;
-        if (idx >= 0 && idx < speakers.length) return idx;
-
-        // Fallbacks for safety if the transcript is mixed/legacy.
-        if (n >= 0 && n < speakers.length) return n;
-        if (n - 1 >= 0 && n - 1 < speakers.length) return n - 1;
-        return 0;
-    }, [speakerIdBase, speakers.length]);
+    const speakerIdBase = useMemo(() => getSpeakerIdBase(subtitles), [subtitles]);
+    const getSpeakerIndex = useCallback(
+        (speakerId: string | undefined) =>
+            getSpeakerIndexForId(speakerId, speakerIdBase, speakers.length),
+        [speakerIdBase, speakers.length],
+    );
 
     const filteredSubtitleItems = useMemo(() => {
         const query = searchQuery ?? "";
@@ -214,15 +202,6 @@ const SubtitleList = ({
             selection?.addRange(range);
         }
     }, [selectedIndex]);
-
-    const formatTimecode = (seconds: number | string): string => {
-        const parsed = typeof seconds === 'string' ? parseFloat(seconds) : seconds;
-        const sec = typeof parsed === 'number' && !isNaN(parsed) ? Math.max(0, parsed) : 0;
-        const hours = Math.floor(sec / 3600);
-        const minutes = Math.floor((sec % 3600) / 60);
-        const secs = Math.floor(sec % 60);
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
 
     const splitIntoWords = (text: string) => {
         const trimmed = (text ?? "").trim();
@@ -339,99 +318,39 @@ const SubtitleList = ({
 
                 return (
                     <div
-                        key={subtitle.id}
+                        key={virtualRow.key}
                         data-index={virtualRow.index}
                         ref={rowVirtualizer.measureElement}
                         style={{ transform: `translateY(${virtualRow.start}px)` }}
-                        className={`group absolute left-0 right-0 top-0 flex flex-col items-start gap-2 border-b border-l-2 border-l-transparent p-4 text-sm leading-tight transition-colors duration-150 hover:bg-muted/50 dark:hover:bg-muted/20 ${isSelected ? "bg-muted/50 dark:bg-muted/20 border-l-primary" : ""} ${itemClassName}`}
+                        className={`as-subtitle-row group absolute left-0 right-0 top-0 text-sm leading-tight transition-colors duration-150 ${isSelected ? "is-selected" : ""} ${itemClassName}`}
                         onClick={() => selectSubtitle(index)}
                     >
-                                    <div className="flex w-full items-center gap-2">
-                                        <button
-                                            type="button"
-                                            title={t("subtitles.jumpToTimeline")}
-                                            className="text-xs text-muted-foreground font-mono cursor-pointer hover:text-primary"
-                                            onClick={async (e) => {
-                                                e.stopPropagation();
-                                                if (onJumpToTime) {
-                                                    await onJumpToTime(subtitle.start);
-                                                }
-                                            }}
-                                        >
-                                            {formatTimecode(subtitle.start)}
-                                        </button>
-                                        {subtitle.speaker_id && speakers.length > 0 ? (
-                                            editingSubtitleId === subtitle.id ? (
-                                                <Popover
-                                                    open
-                                                    onOpenChange={(open) => {
-                                                        if (!open) {
-                                                            setEditingSubtitleId(null);
-                                                        }
-                                                    }}
-                                                >
-                                                    <PopoverTrigger asChild>
-                                                        <Button
-                                                            variant="outline"
-                                                            className="ml-auto text-xs p-2 h-6"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            {(() => {
-                                                                const idx = getSpeakerIndex(subtitle.speaker_id);
-                                                                return speakers[idx]?.name || t("subtitles.unknownSpeaker");
-                                                            })()}
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent align="end" className="relative bg-card" onClick={(e) => e.stopPropagation()}>
-                                                        <div>
-                                                            {(() => {
-                                                                const idx = getSpeakerIndex(subtitle.speaker_id);
-                                                                const speaker = speakers[idx];
-                                                                if (!speaker) return null;
-                                                                return (
-                                                                    <SpeakerSettings
-                                                                        speaker={speaker}
-                                                                        onSpeakerChange={(updated) => {
-                                                                            const next = [...speakers];
-                                                                            next[idx] = updated;
-                                                                            updateSpeakers(next);
-                                                                        }}
-                                                                    />
-                                                                );
-                                                            })()}
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="absolute right-2 top-2 size-6"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setEditingSubtitleId(null);
-                                                                }}
-                                                            >
-                                                                <X className="size-4" />
-                                                            </Button>
-                                                        </div>
-                                                    </PopoverContent>
-                                                </Popover>
-                                            ) : (
-                                                <Button
-                                                    variant="outline"
-                                                    className="ml-auto text-xs p-2 h-6"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setEditingSubtitleId(subtitle.id);
-                                                    }}
-                                                >
-                                                    {(() => {
-                                                        const idx = getSpeakerIndex(subtitle.speaker_id);
-                                                        return speakers[idx]?.name || t("subtitles.unknownSpeaker");
-                                                    })()}
-                                                </Button>
-                                            )
-                                        ) : null}
-
-                                    </div>
-                                    <div className="relative w-full">
+                        <div className="as-subtitle-row-meta">
+                            {speakers.length > 0 && (
+                                <span
+                                    className="as-subtitle-speaker-dot"
+                                    style={{
+                                        backgroundColor:
+                                            speakers[getSpeakerIndex(subtitle.speaker_id)]?.color ??
+                                            speakers[0]?.color,
+                                    }}
+                                />
+                            )}
+                            <button
+                                type="button"
+                                title={t("subtitles.jumpToTimeline")}
+                                className="as-subtitle-time"
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (onJumpToTime) {
+                                        await onJumpToTime(subtitle.start);
+                                    }
+                                }}
+                            >
+                                {formatSubtitleTimestamp(subtitle.start)}
+                            </button>
+                        </div>
+                        <div className="as-subtitle-row-text relative w-full">
                                         {isSelected ? (
                                             <div
                                                 ref={inlineEditorRef}
@@ -510,12 +429,12 @@ const SubtitleList = ({
                                         )}
 
                                         {isSelected ? (
-                                        <ButtonGroup className="mt-4">
+                                        <div className="as-word-move-controls">
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button
-                                                        variant="outline"
-                                                        className="text-xs h-8"
+                                                        variant="tone"
+                                                        className="as-word-move-button"
                                                         disabled={index <= 0 || splitIntoWords(draftText).length === 0}
                                                         onMouseDown={(e) => e.preventDefault()}
                                                         onClick={(e) => {
@@ -534,8 +453,8 @@ const SubtitleList = ({
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button
-                                                        variant="outline"
-                                                        className="text-xs h-8"
+                                                        variant="tone"
+                                                        className="as-word-move-button"
                                                         disabled={index >= subtitles.length - 1 || splitIntoWords(draftText).length === 0}
                                                         onMouseDown={(e) => e.preventDefault()}
                                                         onClick={(e) => {
@@ -551,7 +470,7 @@ const SubtitleList = ({
                                                     <p>{t("subtitles.wordMove.toNext", { shortcut: `${shortcutModifier}+↓` })}</p>
                                                 </TooltipContent>
                                             </Tooltip>
-                                        </ButtonGroup>
+                                        </div>
                                         ) : null}
                                     </div>
                                 </div>
