@@ -356,6 +356,60 @@ fn get_token_timestamps(seg: &WhisperSegment) -> Vec<WordTimestamp> {
 /// segment longer than this at a low-energy point so speech isn't cut mid-word.
 const MAX_WHISPER_CHUNK_SECONDS: f64 = 30.0;
 
+/// Leave headroom below the hard 30s limit so timestamp rounding cannot push a
+/// merged chunk over the edge into a `whisper_full` abort.
+const MERGE_CHUNK_MARGIN_SECONDS: f64 = 0.5;
+
+/// Only bridge pauses this short. Longer gaps are real silence and are better
+/// skipped by VAD than paid for in the Whisper encoder.
+const MAX_MERGE_GAP_SECONDS: f64 = 1.0;
+
+/// Set `AUTOSUBS_DISABLE_SEGMENT_MERGE=1` to restore one Whisper call per VAD
+/// segment for A/B comparisons.
+fn segment_merging_disabled() -> bool {
+    std::env::var_os("AUTOSUBS_DISABLE_SEGMENT_MERGE")
+        .map(|value| value.to_string_lossy() != "0")
+        .unwrap_or(false)
+}
+
+/// Whisper pads every call to its fixed 30-second encoder geometry, so running
+/// one call per short VAD segment pays the full 30 seconds of encoder work for
+/// a few seconds of audio. Merge adjacent same-speaker segments into chunks as
+/// close to 30 seconds as possible, inserting silence for short gaps so the
+/// merged samples stay on the original timeline. The following
+/// `split_overlong_segments` call is still needed for any source segment that
+/// was already longer than the limit.
+fn merge_speech_segments(speech_segments: Vec<SpeechSegment>) -> Vec<SpeechSegment> {
+    const SAMPLE_RATE: f64 = 16000.0;
+    let merge_limit = MAX_WHISPER_CHUNK_SECONDS - MERGE_CHUNK_MARGIN_SECONDS;
+
+    let mut merged: Vec<SpeechSegment> = Vec::with_capacity(speech_segments.len());
+    for segment in speech_segments {
+        if let Some(last) = merged.last_mut() {
+            let gap = segment.start - last.end;
+            let same_speaker = last.speaker_id == segment.speaker_id;
+            let combined_len = segment.end - last.start;
+
+            if same_speaker
+                && gap >= 0.0
+                && gap <= MAX_MERGE_GAP_SECONDS
+                && combined_len <= merge_limit
+            {
+                let silence_samples = (gap * SAMPLE_RATE).round() as usize;
+                last.samples.reserve(silence_samples + segment.samples.len());
+                last.samples
+                    .extend(std::iter::repeat_n(0i16, silence_samples));
+                last.samples.extend_from_slice(&segment.samples);
+                last.end = segment.end;
+                continue;
+            }
+        }
+        merged.push(segment);
+    }
+
+    merged
+}
+
 fn split_overlong_segments(speech_segments: Vec<SpeechSegment>) -> Vec<SpeechSegment> {
     const SAMPLE_RATE: f64 = 16000.0;
     const SEARCH_WINDOW_SECONDS: f64 = 0.5;
@@ -405,6 +459,21 @@ pub async fn run_transcription_pipeline(
 ) -> Result<(Vec<Segment>, Option<String>)> {
     tracing::debug!("Transcribe called with {:?}", options);
 
+    let speech_segments = if segment_merging_disabled() {
+        tracing::info!("segment merging disabled via AUTOSUBS_DISABLE_SEGMENT_MERGE");
+        speech_segments
+    } else {
+        let before = speech_segments.len();
+        let merged = merge_speech_segments(speech_segments);
+        if merged.len() != before {
+            tracing::info!(
+                "merged {} VAD segment(s) into {} Whisper chunk(s)",
+                before,
+                merged.len()
+            );
+        }
+        merged
+    };
     let speech_segments = split_overlong_segments(speech_segments);
 
     // Create Whisper state
@@ -443,11 +512,9 @@ pub async fn run_transcription_pipeline(
 
     let mut seg_index = 0usize;
     for (i, speech_segment) in speech_segments.iter().enumerate() {
-        let original_samples = speech_segment.samples.clone();
-
         // Convert integer samples to float for Whisper
-        let mut samples = vec![0.0f32; original_samples.len()];
-        whisper_rs::convert_integer_to_float_audio(&original_samples, &mut samples)?;
+        let mut samples = vec![0.0f32; speech_segment.samples.len()];
+        whisper_rs::convert_integer_to_float_audio(&speech_segment.samples, &mut samples)?;
 
         // Note: we deliberately do NOT chain a manual `initial_prompt` across
         // VAD chunks. With `single_segment=false`, whisper.cpp handles
@@ -567,14 +634,111 @@ pub async fn run_transcription_pipeline(
 mod tests {
     use super::*;
 
-    fn seg(start: f64, seconds: f64) -> SpeechSegment {
+    fn seg_with_speaker(start: f64, seconds: f64, speaker: Option<&str>) -> SpeechSegment {
         let len = (seconds * 16000.0) as usize;
         SpeechSegment {
             start,
             end: start + seconds,
-            samples: vec![0i16; len],
-            speaker_id: Some("S1".into()),
+            samples: vec![1i16; len],
+            speaker_id: speaker.map(str::to_string),
         }
+    }
+
+    fn seg(start: f64, seconds: f64) -> SpeechSegment {
+        seg_with_speaker(start, seconds, Some("S1"))
+    }
+
+    #[test]
+    fn short_segments_merge_into_one_whisper_chunk() {
+        let out = merge_speech_segments(vec![
+            seg(0.0, 5.0),
+            seg(5.5, 5.0),
+            seg(11.0, 5.0),
+        ]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].start, 0.0);
+        assert_eq!(out[0].end, 16.0);
+        assert_eq!(out[0].samples.len(), 16 * 16_000);
+        assert!(out[0].samples[80_000..88_000].iter().all(|s| *s == 0));
+        assert!(out[0].samples[168_000..176_000].iter().all(|s| *s == 0));
+        assert_eq!(out[0].speaker_id.as_deref(), Some("S1"));
+    }
+
+    #[test]
+    fn different_speakers_are_not_merged() {
+        let out = merge_speech_segments(vec![
+            seg_with_speaker(0.0, 5.0, Some("S1")),
+            seg_with_speaker(5.2, 5.0, Some("S2")),
+        ]);
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn long_gaps_are_not_merged() {
+        let out = merge_speech_segments(vec![seg(0.0, 5.0), seg(6.5, 5.0)]);
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn merged_chunk_never_exceeds_limit() {
+        let out = merge_speech_segments(vec![
+            seg(0.0, 14.0),
+            seg(14.1, 14.0),
+            seg(28.2, 2.0),
+        ]);
+        assert_eq!(out.len(), 2);
+        let limit = MAX_WHISPER_CHUNK_SECONDS - MERGE_CHUNK_MARGIN_SECONDS;
+        for chunk in &out {
+            assert!(chunk.end - chunk.start <= limit);
+        }
+    }
+
+    #[test]
+    fn overlapping_segments_are_not_merged() {
+        let out = merge_speech_segments(vec![seg(0.0, 5.0), seg(4.5, 5.0)]);
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn empty_input_stays_empty() {
+        assert!(merge_speech_segments(Vec::new()).is_empty());
+    }
+
+    #[test]
+    fn merged_output_is_ordered_and_timeline_preserving() {
+        let out = merge_speech_segments(vec![
+            seg(0.0, 5.0),
+            seg(5.2, 5.0),
+            seg_with_speaker(10.4, 5.0, Some("S2")),
+            seg_with_speaker(15.6, 5.0, Some("S2")),
+            seg(25.0, 5.0),
+        ]);
+
+        for window in out.windows(2) {
+            assert!(window[0].end <= window[1].start);
+        }
+        for chunk in &out {
+            let expected = ((chunk.end - chunk.start) * 16_000.0).round() as usize;
+            assert!(
+                chunk.samples.len().abs_diff(expected) <= 1,
+                "chunk {:.2}-{:.2} has {} samples, expected about {}",
+                chunk.start,
+                chunk.end,
+                chunk.samples.len(),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn merging_reduces_whisper_calls_for_vad_style_input() {
+        let input: Vec<SpeechSegment> = (0..10)
+            .map(|i| seg(i as f64 * 5.5, 5.0))
+            .collect();
+        let before = input.len();
+        let after = merge_speech_segments(input).len();
+        assert_eq!(before, 10);
+        assert_eq!(after, 2);
     }
 
     #[test]

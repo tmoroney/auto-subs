@@ -460,6 +460,23 @@ fn main() {
             // the log file only, never stdout/stderr, so CLI output stays clean.
             crate::logging::init_logging(&app.handle());
 
+            // Normalized audio can be as large as the source, and the cache is
+            // keyed by source identity, so every distinct input leaves an entry
+            // behind. Prune on every startup, GUI and CLI alike. CLI runs can
+            // overlap the GUI or another CLI, so entries a running job holds are
+            // protected by an in-use lease in the cache rather than by ordering.
+            // Headless prunes synchronously: the CLI exits via std::process::exit,
+            // which would cut a detached cleanup thread short.
+            if let Ok(cache_dir) = app.path().app_cache_dir() {
+                if headless {
+                    transcription_api::cleanup_normalized_audio_cache(&cache_dir);
+                } else {
+                    std::thread::spawn(move || {
+                        transcription_api::cleanup_normalized_audio_cache(&cache_dir);
+                    });
+                }
+            }
+
             if headless {
                 // Headless/CLI: never create a window. Hide the macOS dock icon so a
                 // CLI run is fully invisible, then run the subcommand and exit.

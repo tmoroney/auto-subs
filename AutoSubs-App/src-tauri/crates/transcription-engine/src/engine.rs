@@ -518,21 +518,38 @@ impl Engine {
             }
         };
 
-        let original_samples = crate::audio::read_wav(audio_path)?;
-        if original_samples.is_empty() {
+        let has_native_word_timestamps = matches!(
+            engine_kind,
+            ModelEngine::Parakeet | ModelEngine::SenseVoice
+        );
+        let alignment_will_run =
+            options.enable_forced_alignment.unwrap_or(false)
+                && options.translate_target.is_none()
+                && !has_native_word_timestamps;
+
+        let mut original_samples = Some(crate::audio::read_wav(audio_path)?);
+        if original_samples.as_ref().is_some_and(|samples| samples.is_empty()) {
             eyre::bail!("audio file contains no samples")
         }
 
         let speech_segments = prepare_speech_segments(
             &mut self.models,
             &self.cfg,
-            &original_samples,
+            original_samples.as_deref().expect("source audio is present"),
             &options,
             cb.progress.as_deref(),
             cb.speakers_identified.as_deref(),
             cb.is_cancelled.as_deref(),
         )
         .await?;
+
+        // The source buffer is only needed for acoustic forced alignment. Drop it
+        // before inference whenever alignment will not run: speech_segments own
+        // their own samples, so holding a second full copy only inflates peak RSS.
+        if !alignment_will_run {
+            original_samples = None;
+            tracing::debug!("released source audio before inference (forced alignment will not run)");
+        }
 
         // Extract VAD intervals for post-processing timestamp correction.
         // Shifted by the same user offset the engines bake into emitted
@@ -684,12 +701,7 @@ impl Engine {
         // Choose effective language: detected if present, otherwise the user-provided from_lang
         let effective_lang: &str = detected_lang.as_deref().unwrap_or(&from_lang);
 
-        let has_native_word_timestamps = matches!(
-            engine_kind,
-            ModelEngine::Parakeet | ModelEngine::SenseVoice
-        );
-
-        if enable_forced_alignment && translate_to.is_none() && !has_native_word_timestamps {
+        if alignment_will_run {
             if alignment_cancellation
                 .as_ref()
                 .is_some_and(|cancelled| cancelled())
@@ -719,7 +731,9 @@ impl Engine {
             };
             align_segments(
                 &aligner_dir,
-                &original_samples,
+                original_samples
+                    .as_deref()
+                    .expect("source audio is retained for forced alignment"),
                 &mut segments,
                 Some(effective_lang),
                 user_offset,
@@ -744,8 +758,7 @@ impl Engine {
         // recomputes word timings acoustically, Parakeet/SenseVoice emit native
         // word timings, and post-translation rebuilds words uniformly; snapping
         // those to coarse VAD bounds would only degrade them.
-        let forced_alignment_ran =
-            enable_forced_alignment && translate_to.is_none() && !has_native_word_timestamps;
+        let forced_alignment_ran = alignment_will_run;
         if !has_native_word_timestamps
             && !forced_alignment_ran
             && !post_translation_discards_word_timings
