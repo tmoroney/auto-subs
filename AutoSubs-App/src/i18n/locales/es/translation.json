@@ -762,6 +762,41 @@
     "viewSource": "Ver código fuente",
     "cliDescription": "Instala autosubs para cualquier terminal",
     "languages99": "99 idiomas",
-    "languageCount": "{{number}} idiomas"
+    "languageCount": "{{number}} idiomas",
+    "recentSearch": "Buscar recientes",
+    "transcript": {
+      "title": "Transcripción",
+      "view": "Vista",
+      "textPerSubtitle": "Texto por subtítulo",
+      "formatFootnote": "Los subtítulos se ajustan al instante. No se vuelve a transcribir nada.",
+      "matches": "{{count}} coincidencias",
+      "track": "Pista",
+      "putOnTrack": "Poner subtítulos en",
+      "hasClips": "Tiene clips",
+      "sent": "Enviado",
+      "send": "Enviar",
+      "sendToResolve": "Enviar a Resolve",
+      "sendToPremiere": "Enviar a Premiere Pro",
+      "sendToAfterEffects": "Enviar a After Effects",
+      "afterEffects": "After Effects",
+      "decreaseLines": "Reducir líneas",
+      "increaseLines": "Aumentar líneas",
+      "subtitles": "Subtítulos",
+      "original": "Original",
+      "lineCountSummary_one": "{{count}} línea",
+      "lineCountSummary_other": "{{count}} líneas"
+    },
+    "styles": {
+      "backTranscript": "Transcripción",
+      "title": "Estilo de subtítulos",
+      "meta": "Fotograma actual de {{timeline}}. Edita en Fusion.",
+      "autoSubs": "Estilos de AutoSubs",
+      "importPreset": "Importar estilo",
+      "animated": "Animado",
+      "mediaPool": "Desde tu grupo de medios",
+      "refreshTemplates": "Actualizar plantillas",
+      "apply": "Actualizar subtítulos",
+      "editFusion": "Editar en Fusion"
+    }
   }
 }

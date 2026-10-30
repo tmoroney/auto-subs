@@ -782,6 +782,41 @@
     "viewSource": "View source",
     "cliDescription": "Install autosubs for use in any terminal",
     "languages99": "99 languages",
-    "languageCount": "{{number}} languages"
+    "languageCount": "{{number}} languages",
+    "recentSearch": "Search recent",
+    "transcript": {
+      "title": "Transcript",
+      "view": "View",
+      "textPerSubtitle": "Text per subtitle",
+      "formatFootnote": "Changes re-flow the subtitles instantly. Nothing is transcribed again.",
+      "matches": "{{count}} matches",
+      "track": "Track",
+      "putOnTrack": "Put subtitles on",
+      "hasClips": "Has clips",
+      "sent": "Sent",
+      "send": "Send",
+      "sendToResolve": "Send to Resolve",
+      "sendToPremiere": "Send to Premiere Pro",
+      "sendToAfterEffects": "Send to After Effects",
+      "afterEffects": "After Effects",
+      "decreaseLines": "Decrease lines",
+      "increaseLines": "Increase lines",
+      "subtitles": "Subtitles",
+      "original": "Original",
+      "lineCountSummary_one": "{{count}} line",
+      "lineCountSummary_other": "{{count}} lines"
+    },
+    "styles": {
+      "backTranscript": "Transcript",
+      "title": "Caption style",
+      "meta": "Preview uses {{timeline}}'s current frame. Edit in Fusion.",
+      "autoSubs": "AutoSubs styles",
+      "importPreset": "Import preset",
+      "animated": "Animated",
+      "mediaPool": "From your media pool",
+      "refreshTemplates": "Refresh templates",
+      "apply": "Update captions on timeline",
+      "editFusion": "Edit in Fusion"
+    }
   }
 }

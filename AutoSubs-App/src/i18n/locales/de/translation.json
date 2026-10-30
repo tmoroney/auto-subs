@@ -762,6 +762,41 @@
     "viewSource": "Quellcode anzeigen",
     "cliDescription": "Installiert autosubs für jedes Terminal",
     "languages99": "99 Sprachen",
-    "languageCount": "{{number}} Sprachen"
+    "languageCount": "{{number}} Sprachen",
+    "recentSearch": "Zuletzt suchen",
+    "transcript": {
+      "title": "Transkript",
+      "view": "Ansicht",
+      "textPerSubtitle": "Text je Untertitel",
+      "formatFootnote": "Untertitel werden sofort neu umbrochen. Es wird nichts neu transkribiert.",
+      "matches": "{{count}} Treffer",
+      "track": "Spur",
+      "putOnTrack": "Untertitel auf Spur",
+      "hasClips": "Enthält Clips",
+      "sent": "Gesendet",
+      "send": "Senden",
+      "sendToResolve": "An Resolve senden",
+      "sendToPremiere": "An Premiere Pro senden",
+      "sendToAfterEffects": "An After Effects senden",
+      "afterEffects": "After Effects",
+      "decreaseLines": "Zeilen verringern",
+      "increaseLines": "Zeilen erhöhen",
+      "subtitles": "Untertitel",
+      "original": "Original",
+      "lineCountSummary_one": "{{count}} Zeile",
+      "lineCountSummary_other": "{{count}} Zeilen"
+    },
+    "styles": {
+      "backTranscript": "Transkript",
+      "title": "Untertitelstil",
+      "meta": "Aktueller Frame von {{timeline}}. Stil in Fusion ändern.",
+      "autoSubs": "AutoSubs-Stile",
+      "importPreset": "Stil importieren",
+      "animated": "Animiert",
+      "mediaPool": "Aus deinem Medienpool",
+      "refreshTemplates": "Vorlagen laden",
+      "apply": "Untertitel aktualisieren",
+      "editFusion": "In Fusion bearbeiten"
+    }
   }
 }

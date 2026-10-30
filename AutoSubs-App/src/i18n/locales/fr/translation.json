@@ -762,6 +762,41 @@
     "viewSource": "Voir le code source",
     "cliDescription": "Installe autosubs pour tout terminal",
     "languages99": "99 langues",
-    "languageCount": "{{number}} langues"
+    "languageCount": "{{number}} langues",
+    "recentSearch": "Chercher récents",
+    "transcript": {
+      "title": "Transcription",
+      "view": "Vue",
+      "textPerSubtitle": "Texte par sous-titre",
+      "formatFootnote": "Les sous-titres se réorganisent aussitôt. Rien n'est retranscrit.",
+      "matches": "{{count}} résultats",
+      "track": "Piste",
+      "putOnTrack": "Placer les sous-titres sur",
+      "hasClips": "Contient des clips",
+      "sent": "Envoyé",
+      "send": "Envoyer",
+      "sendToResolve": "Envoyer vers Resolve",
+      "sendToPremiere": "Envoyer vers Premiere Pro",
+      "sendToAfterEffects": "Envoyer vers After Effects",
+      "afterEffects": "After Effects",
+      "decreaseLines": "Réduire les lignes",
+      "increaseLines": "Augmenter les lignes",
+      "subtitles": "Sous-titres",
+      "original": "Original",
+      "lineCountSummary_one": "{{count}} ligne",
+      "lineCountSummary_other": "{{count}} lignes"
+    },
+    "styles": {
+      "backTranscript": "Transcription",
+      "title": "Style des sous-titres",
+      "meta": "Image actuelle de {{timeline}}. Modifier le style dans Fusion.",
+      "autoSubs": "Styles AutoSubs",
+      "importPreset": "Importer un style",
+      "animated": "Animé",
+      "mediaPool": "Depuis votre médiathèque",
+      "refreshTemplates": "Actualiser les modèles",
+      "apply": "Mettre à jour les sous-titres",
+      "editFusion": "Modifier dans Fusion"
+    }
   }
 }

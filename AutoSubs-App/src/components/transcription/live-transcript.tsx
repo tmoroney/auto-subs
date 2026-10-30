@@ -1,6 +1,7 @@
 import * as React from "react";
 import { FileAudio } from "lucide-react";
 import type { DraftSubtitle } from "@/types";
+import { groupTranscriptSegments } from "@/utils/group-transcript-segments";
 
 interface LiveTranscriptProps {
   segments: DraftSubtitle[];
@@ -13,34 +14,9 @@ interface LiveTranscriptProps {
   diarizationEnabled: boolean;
 }
 
-interface TranscriptBlock {
-  speakerId: string | null;
-  segments: DraftSubtitle[];
-}
-
 function formatStartTime(seconds: number) {
   const wholeSeconds = Math.max(0, Math.floor(seconds));
   return `${Math.floor(wholeSeconds / 60)}:${String(wholeSeconds % 60).padStart(2, "0")}`;
-}
-
-function groupSegments(
-  segments: DraftSubtitle[],
-  diarizationEnabled: boolean,
-): TranscriptBlock[] {
-  return segments.reduce<TranscriptBlock[]>((blocks, segment) => {
-    if (!segment.text?.trim()) return blocks;
-    const speakerId =
-      diarizationEnabled && segment.speaker_id && segment.speaker_id !== "?"
-        ? segment.speaker_id
-        : null;
-    const current = blocks[blocks.length - 1];
-    if (current && current.speakerId === speakerId) {
-      current.segments.push(segment);
-    } else {
-      blocks.push({ speakerId, segments: [segment] });
-    }
-    return blocks;
-  }, []);
 }
 
 export function LiveTranscript({
@@ -56,7 +32,7 @@ export function LiveTranscript({
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const shouldFollowRef = React.useRef(true);
   const blocks = React.useMemo(
-    () => groupSegments(segments, diarizationEnabled),
+    () => groupTranscriptSegments(segments, diarizationEnabled),
     [segments, diarizationEnabled],
   );
 

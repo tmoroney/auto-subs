@@ -21,7 +21,7 @@ interface ExportPopoverProps {
     trigger?: React.ReactNode
 }
 
-const EXPORT_FORMATS: ExportFormatConfig[] = [
+export const EXPORT_FORMATS: ExportFormatConfig[] = [
     {
         format: 'srt',
         icon: Captions,

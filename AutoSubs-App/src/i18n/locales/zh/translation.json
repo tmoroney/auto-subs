@@ -762,6 +762,41 @@
     "viewSource": "查看源代码",
     "cliDescription": "安装 autosubs，以便在终端中使用",
     "languages99": "99 种语言",
-    "languageCount": "{{number}} 种语言"
+    "languageCount": "{{number}} 种语言",
+    "recentSearch": "搜索最近项目",
+    "transcript": {
+      "title": "转录文本",
+      "view": "视图",
+      "textPerSubtitle": "每条字幕的文本",
+      "formatFootnote": "字幕会立即重新排版，不会重新转录。",
+      "matches": "{{count}} 个匹配",
+      "track": "轨道",
+      "putOnTrack": "字幕放置到",
+      "hasClips": "有片段",
+      "sent": "已发送",
+      "send": "发送",
+      "sendToResolve": "发送到 Resolve",
+      "sendToPremiere": "发送到 Premiere Pro",
+      "sendToAfterEffects": "发送到 After Effects",
+      "afterEffects": "After Effects",
+      "decreaseLines": "减少行数",
+      "increaseLines": "增加行数",
+      "subtitles": "字幕",
+      "original": "原文",
+      "lineCountSummary_one": "{{count}} 行",
+      "lineCountSummary_other": "{{count}} 行"
+    },
+    "styles": {
+      "backTranscript": "转录文本",
+      "title": "字幕样式",
+      "meta": "预览 {{timeline}} 的当前帧。在 Fusion 中编辑。",
+      "autoSubs": "AutoSubs 样式",
+      "importPreset": "导入预设",
+      "animated": "动画",
+      "mediaPool": "从媒体池中选择",
+      "refreshTemplates": "刷新模板",
+      "apply": "更新时间线字幕",
+      "editFusion": "在 Fusion 中编辑"
+    }
   }
 }

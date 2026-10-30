@@ -762,6 +762,41 @@
     "viewSource": "ソースを表示",
     "cliDescription": "どのターミナルでも autosubs を使えます",
     "languages99": "99 言語",
-    "languageCount": "{{number}} 言語"
+    "languageCount": "{{number}} 言語",
+    "recentSearch": "最近の項目を検索",
+    "transcript": {
+      "title": "文字起こし",
+      "view": "表示",
+      "textPerSubtitle": "字幕ごとのテキスト",
+      "formatFootnote": "字幕はすぐに再配置されます。再文字起こしは行いません。",
+      "matches": "{{count}} 件",
+      "track": "トラック",
+      "putOnTrack": "字幕を配置するトラック",
+      "hasClips": "クリップあり",
+      "sent": "送信済み",
+      "send": "送信",
+      "sendToResolve": "Resolveに送信",
+      "sendToPremiere": "Premiere Proに送信",
+      "sendToAfterEffects": "After Effectsに送信",
+      "afterEffects": "After Effects",
+      "decreaseLines": "行数を減らす",
+      "increaseLines": "行数を増やす",
+      "subtitles": "字幕",
+      "original": "原文",
+      "lineCountSummary_one": "{{count}}行",
+      "lineCountSummary_other": "{{count}}行"
+    },
+    "styles": {
+      "backTranscript": "文字起こし",
+      "title": "字幕スタイル",
+      "meta": "{{timeline}}の現在のフレームをプレビュー。Fusionで編集できます。",
+      "autoSubs": "AutoSubsスタイル",
+      "importPreset": "プリセットを読み込む",
+      "animated": "アニメーション",
+      "mediaPool": "メディアプールから",
+      "refreshTemplates": "テンプレートを更新",
+      "apply": "タイムラインの字幕を更新",
+      "editFusion": "Fusionで編集"
+    }
   }
 }

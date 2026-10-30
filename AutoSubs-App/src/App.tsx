@@ -2,7 +2,9 @@ import * as React from "react";
 import {
   Ear,
   FileAudio,
+  FileUp,
   PanelLeft,
+  Search,
   Settings as SettingsIcon,
   ChevronRight,
 } from "lucide-react";
@@ -10,12 +12,15 @@ import { useTranslation } from "react-i18next";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { GettingStartedOverlay } from "@/components/dialogs/getting-started-overlay";
 import { WhatsNewDialog } from "@/components/dialogs/whats-new-dialog";
-import { SubtitleViewerPanel } from "@/components/subtitles/subtitle-viewer-panel";
+import {
+  CaptionStylePage,
+  TranscriptPage,
+} from "@/components/transcript/transcript-page";
 import { TranscriptionPanel } from "@/components/transcription/transcription-panel";
 import { ModelsPage } from "@/components/models/models-page";
 import { SettingsPage } from "@/components/settings/settings-page";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Button } from "@/components/kit";
+import { Button, Tooltip } from "@/components/kit";
 import { useAdobe } from "@/contexts/AdobeContext";
 import { EditorWorkspaceProviders } from "@/contexts/GlobalProvider";
 import { useIntegration } from "@/contexts/IntegrationContext";
@@ -23,6 +28,7 @@ import { useModels } from "@/contexts/ModelsContext";
 import { useProgress } from "@/contexts/ProgressContext";
 import { useResolve } from "@/contexts/ResolveContext";
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext";
+import { useResolveTemplates } from "@/components/captions/use-resolve-templates";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   listSubtitleDocumentIndex,
@@ -31,7 +37,7 @@ import {
 } from "@/utils/file-utils";
 import { useSettingsStore } from "@/stores/settings-store";
 
-type AppPage = "setup" | "transcript" | "models" | "settings";
+type AppPage = "setup" | "transcript" | "styles" | "models" | "settings";
 
 function AppContentBody() {
   const { t, i18n } = useTranslation();
@@ -43,6 +49,8 @@ function AppContentBody() {
   const {
     flushPendingSubtitleSave,
     openStoredSubtitleDocument,
+    importSubtitles,
+    currentSubtitleDocumentFilename,
   } = useSubtitleDocument();
   const model = useSettingsStore((state) => state.model);
   const audioInputMode = useSettingsStore((state) => state.audioInputMode);
@@ -55,6 +63,9 @@ function AppContentBody() {
   const [returnPage, setReturnPage] = React.useState<AppPage>("setup");
   const [documents, setDocuments] = React.useState<SubtitleDocumentListItem[]>([]);
   const [documentsLoaded, setDocumentsLoaded] = React.useState(false);
+  const [recentSearchOpen, setRecentSearchOpen] = React.useState(false);
+  const [recentQuery, setRecentQuery] = React.useState("");
+  const templates = useResolveTemplates(page === "styles");
 
   const loadDocuments = React.useCallback(async () => {
     try {
@@ -101,11 +112,38 @@ function AppContentBody() {
       await flushPendingSubtitleSave();
       const transcript = await readSubtitleDocument(document.filename);
       if (!transcript) return;
+      if (document.sourceType === "standalone") {
+        setSelectedIntegration("standalone");
+        updateSetting("audioInputMode", "file");
+      } else if (document.sourceType === "resolve") {
+        setSelectedIntegration("davinci");
+        updateSetting("audioInputMode", "timeline");
+      } else if (document.sourceType === "premiere") {
+        setSelectedIntegration("premiere");
+        updateSetting("audioInputMode", "timeline");
+      } else if (document.sourceType === "aftereffects") {
+        setSelectedIntegration("aftereffects");
+        updateSetting("audioInputMode", "timeline");
+      }
       openStoredSubtitleDocument(document.filename, transcript);
       setPage("transcript");
       if (smallScreen) setSidebarOpen(false);
     } catch (error) {
       console.error("Failed to open subtitle document:", error);
+    }
+  };
+
+  const handleImportSubtitles = async () => {
+    try {
+      await importSubtitles(
+        useSettingsStore.getState(),
+        null,
+        resolveTimeline.timelineId ?? "",
+      );
+      await loadDocuments();
+      setPage("transcript");
+    } catch (error) {
+      console.error("Failed to import subtitles:", error);
     }
   };
 
@@ -124,6 +162,9 @@ function AppContentBody() {
     : isPremiereSource
       ? premiereTimeline.name || t("titlebar.premiere.productName")
       : resolveTimeline.name || t("titlebar.resolve.productName");
+  const filteredDocuments = documents.filter((document) =>
+    document.displayName.toLocaleLowerCase().includes(recentQuery.toLocaleLowerCase()),
+  );
 
   return (
     <TooltipProvider>
@@ -192,12 +233,49 @@ function AppContentBody() {
               </section>
 
               <section className="as-recent-section">
-                <h2 className="as-side-label">{t("redesign.recent")}</h2>
+                <div className="as-recent-heading">
+                  <h2 className="as-side-label">{t("redesign.recent")}</h2>
+                  <div className="as-recent-actions">
+                    <Tooltip content={t("redesign.recentSearch")}>
+                      <Button
+                        variant="icon"
+                        aria-label={t("redesign.recentSearch")}
+                        className="as-recent-icon"
+                        aria-pressed={recentSearchOpen}
+                        onClick={() => {
+                          setRecentSearchOpen((open) => !open);
+                          setRecentQuery("");
+                        }}
+                      >
+                        <Search />
+                      </Button>
+                    </Tooltip>
+                    <Tooltip content={t("importExport.importTab")}>
+                      <Button
+                        variant="icon"
+                        aria-label={t("importExport.importTab")}
+                        className="as-recent-icon"
+                        onClick={() => void handleImportSubtitles()}
+                      >
+                        <FileUp />
+                      </Button>
+                    </Tooltip>
+                  </div>
+                </div>
+                {recentSearchOpen && (
+                  <input
+                    className="as-recent-search"
+                    value={recentQuery}
+                    onChange={(event) => setRecentQuery(event.target.value)}
+                    placeholder={t("redesign.recentSearch")}
+                    aria-label={t("redesign.recentSearch")}
+                  />
+                )}
                 {!documentsLoaded && !isRunActive ? (
                   <p className="as-recent-empty">
                     {t("titlebar.subtitleHistory.loading")}
                   </p>
-                ) : documents.length || isRunActive ? (
+                ) : filteredDocuments.length || isRunActive ? (
                   <div className="as-recent-list">
                     {isRunActive && (
                       <div
@@ -214,7 +292,7 @@ function AppContentBody() {
                         </span>
                       </div>
                     )}
-                    {documents.slice(0, 6).map((document) => (
+                    {filteredDocuments.slice(0, 6).map((document) => (
                       <button
                         key={document.filename}
                         type="button"
@@ -304,20 +382,26 @@ function AppContentBody() {
                 onTranscriptCreated={loadDocuments}
               />
             </div>
-            <div className={page === "transcript" ? "as-page as-page--active as-transcript-page" : "as-page as-page--hidden"}>
-              <button type="button" className="as-back-link" onClick={() => setPage("setup")}>
-                ‹ {t("common.back")}
-              </button>
-              <div className="as-transcript-view">
-                <SubtitleViewerPanel
-                  isFullScreen
+            {page === "transcript" && (
+              <div className="as-page as-page--active as-transcript-page">
+                <TranscriptPage
+                  document={
+                    documents.find((item) => item.filename === currentSubtitleDocumentFilename) ?? null
+                  }
                   onClose={() => setPage("setup")}
-                  transcriptDocuments={documents}
-                  isLoadingTranscriptDocuments={!documentsLoaded}
-                  onTranscriptDocumentsRefresh={loadDocuments}
+                  onOpenStyles={() => setPage("styles")}
+                  templates={templates}
                 />
               </div>
-            </div>
+            )}
+            {page === "styles" && (
+              <div className="as-page as-page--active">
+                <CaptionStylePage
+                  onBack={() => setPage("transcript")}
+                  templates={templates}
+                />
+              </div>
+            )}
             {page === "models" && (
               <div className="as-page as-page--active">
                 <ModelsPage onBack={() => setPage(returnPage)} />

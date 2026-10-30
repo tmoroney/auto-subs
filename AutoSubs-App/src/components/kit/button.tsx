@@ -31,21 +31,22 @@ const sizes: Record<ButtonSize, string> = {
   lg: "h-10 gap-2 rounded-[var(--as-radius)] px-4 text-sm",
 };
 
-export function Button({
-  variant = "tone",
-  size = "md",
-  className,
-  ...props
-}: ButtonProps) {
-  return (
-    <BaseButton
-      {...props}
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none",
-        variants[variant],
-        variant === "icon" ? "size-9 rounded-[var(--as-radius)]" : sizes[size],
-        className,
-      )}
-    />
-  );
-}
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  function Button(
+    { variant = "tone", size = "md", className, ...props },
+    ref,
+  ) {
+    return (
+      <BaseButton
+        {...props}
+        ref={ref}
+        className={cn(
+          "inline-flex shrink-0 items-center justify-center font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none",
+          variants[variant],
+          variant === "icon" ? "size-9 rounded-[var(--as-radius)]" : sizes[size],
+          className,
+        )}
+      />
+    );
+  },
+);

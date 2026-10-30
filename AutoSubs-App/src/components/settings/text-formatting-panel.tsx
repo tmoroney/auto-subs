@@ -21,13 +21,22 @@ import { useSettingsStore } from "@/stores/settings-store"
 import { useTranslation } from "react-i18next"
 import { BUILT_IN_CENSOR_LISTS } from "@/censor/built-in-lists"
 import { getActiveCensorWords } from "@/censor/merge"
-import { CensorStyle } from "@/types"
+import { CensorStyle, type Settings } from "@/types"
+
+type SettingUpdateHandler = <K extends keyof Settings>(
+    key: K,
+    value: Settings[K],
+) => void;
 
 interface TextFormattingPanelProps {
     /** Show Cancel / Apply buttons at the bottom */
     showActions?: boolean
     /** Hide the Text Density select row and its custom-chars row (shown elsewhere in the UI) */
     hideDensity?: boolean
+    showCustomDensityLimit?: boolean
+    /** Hide the line-count input when another surface supplies a stepper. */
+    hideLineCount?: boolean
+    onSettingChange?: SettingUpdateHandler
     onCancel?: () => void
     onApply?: () => void
     applyDisabled?: boolean
@@ -36,6 +45,9 @@ interface TextFormattingPanelProps {
 export function TextFormattingPanel({
     showActions = false,
     hideDensity = false,
+    showCustomDensityLimit = false,
+    hideLineCount = false,
+    onSettingChange,
     onCancel,
     onApply,
     applyDisabled = false,
@@ -69,6 +81,13 @@ export function TextFormattingPanel({
         })),
     )
     const updateSetting = useSettingsStore((s) => s.updateSetting)
+    const changeSetting = <K extends keyof Settings,>(key: K, value: Settings[K]) => {
+        if (onSettingChange) {
+            onSettingChange(key, value)
+        } else {
+            updateSetting(key, value)
+        }
+    }
     const [openCensorDialog, setOpenCensorDialog] = React.useState(false)
     const [newCensoredWord, setNewCensoredWord] = React.useState("")
 
@@ -91,7 +110,7 @@ export function TextFormattingPanel({
                         </div>
                         <Select
                             value={textDensity}
-                            onValueChange={(value) => updateSetting("textDensity", value as "less" | "standard" | "more" | "single" | "custom")}
+                            onValueChange={(value) => changeSetting("textDensity", value as Settings["textDensity"])}
                         >
                             <SelectTrigger className="w-32">
                                 <SelectValue />
@@ -108,7 +127,7 @@ export function TextFormattingPanel({
                 )}
 
                 {/* Custom line limit (only shown when custom density is selected) */}
-                {!hideDensity && textDensity === "custom" && (
+                {(!hideDensity || showCustomDensityLimit) && textDensity === "custom" && (
                     <div className="flex items-center justify-between">
                         <div>
                             <Label className="text-sm font-medium">
@@ -125,7 +144,7 @@ export function TextFormattingPanel({
                         <div className="flex items-center gap-2">
                             <Select
                                 value={customDensityUnit}
-                                onValueChange={(value) => updateSetting("customDensityUnit", value as "chars" | "words")}
+                                onValueChange={(value) => changeSetting("customDensityUnit", value as Settings["customDensityUnit"])}
                             >
                                 <SelectTrigger className="w-28">
                                     <SelectValue />
@@ -143,7 +162,7 @@ export function TextFormattingPanel({
                                 value={customDensityUnit === "words" ? customMaxWordsPerLine : customMaxCharsPerLine}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                     const n = Math.max(1, Math.floor(Number(e.target.value) || 0));
-                                    updateSetting(
+                                    changeSetting(
                                         customDensityUnit === "words" ? "customMaxWordsPerLine" : "customMaxCharsPerLine",
                                         n,
                                     );
@@ -155,7 +174,7 @@ export function TextFormattingPanel({
                 )}
 
                 {/* Line Count */}
-                <div className="flex items-center justify-between">
+                {!hideLineCount && <div className="flex items-center justify-between">
                     <div>
                         <Label className="text-sm font-medium">{t("actionBar.format.lineCountTitle")}</Label>
                         <p className="text-xs text-muted-foreground">{t("actionBar.format.lineCountDescription")}</p>
@@ -167,11 +186,11 @@ export function TextFormattingPanel({
                         value={maxLinesPerSubtitle}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                             const n = Math.max(1, Math.floor(Number(e.target.value) || 0));
-                            updateSetting("maxLinesPerSubtitle", n);
+                            changeSetting("maxLinesPerSubtitle", n);
                         }}
                         className="w-20"
                     />
-                </div>
+                </div>}
 
                 {/* Text Case */}
                 <div className="flex items-center justify-between">
@@ -181,7 +200,7 @@ export function TextFormattingPanel({
                     </div>
                     <Select
                         value={textCase}
-                        onValueChange={(val) => updateSetting("textCase", val as "none" | "uppercase" | "lowercase" | "titlecase")}
+                        onValueChange={(val) => changeSetting("textCase", val as Settings["textCase"])}
                     >
                         <SelectTrigger className="w-32">
                             <SelectValue />
@@ -203,7 +222,7 @@ export function TextFormattingPanel({
                     </div>
                     <Switch
                         checked={removePunctuation}
-                        onCheckedChange={(checked: boolean) => updateSetting("removePunctuation", checked)}
+                        onCheckedChange={(checked: boolean) => changeSetting("removePunctuation", checked)}
                     />
                 </div>
 
@@ -242,7 +261,7 @@ export function TextFormattingPanel({
                                         </Label>
                                         <Select
                                             value={censorStyle}
-                                            onValueChange={(value: CensorStyle) => updateSetting("censorStyle", value)}
+                                            onValueChange={(value: CensorStyle) => changeSetting("censorStyle", value)}
                                         >
                                             <SelectTrigger id="censor-style" className="w-full sm:w-[240px]">
                                                 <SelectValue />
@@ -279,12 +298,12 @@ export function TextFormattingPanel({
                                                                 onCheckedChange={(checked: boolean) => {
                                                                     const current = activeCensorLists ?? [];
                                                                     if (checked) {
-                                                                        updateSetting("activeCensorLists", [...current, list.id]);
+                                                                        changeSetting("activeCensorLists", [...current, list.id]);
                                                                     } else {
-                                                                        updateSetting("activeCensorLists", current.filter((id: string) => id !== list.id));
+                                                                        changeSetting("activeCensorLists", current.filter((id: string) => id !== list.id));
                                                                     }
                                                                     if (checked && !enableCensor) {
-                                                                        updateSetting("enableCensor", true);
+                                                                        changeSetting("enableCensor", true);
                                                                     }
                                                                 }}
                                                             />
@@ -307,8 +326,8 @@ export function TextFormattingPanel({
                                             onSubmit={(e) => {
                                                 e.preventDefault();
                                                 if (!newCensoredWord.trim() || (censoredWords || []).includes(newCensoredWord.trim())) return;
-                                                updateSetting("censoredWords", [...(censoredWords || []), newCensoredWord.trim()]);
-                                                if (!enableCensor) updateSetting("enableCensor", true);
+                                                changeSetting("censoredWords", [...(censoredWords || []), newCensoredWord.trim()]);
+                                                if (!enableCensor) changeSetting("enableCensor", true);
                                                 setNewCensoredWord("");
                                             }}
                                         >
@@ -341,7 +360,7 @@ export function TextFormattingPanel({
                                                             className="cursor-pointer select-none px-3 py-1.5 text-sm hover:bg-destructive hover:text-destructive-foreground"
                                                             onClick={() => {
                                                                 const updatedWords = (censoredWords || []).filter((_: string, i: number) => i !== index);
-                                                                updateSetting("censoredWords", updatedWords);
+                                                                changeSetting("censoredWords", updatedWords);
                                                             }}
                                                         >
                                                             <span className="flex items-center gap-1.5">
@@ -364,7 +383,7 @@ export function TextFormattingPanel({
                         </Dialog>
                         <Switch
                             checked={enableCensor}
-                            onCheckedChange={(checked: boolean) => updateSetting("enableCensor", checked)}
+                            onCheckedChange={(checked: boolean) => changeSetting("enableCensor", checked)}
                         />
                     </div>
                 </div>

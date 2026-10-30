@@ -57,11 +57,6 @@ function fileName(path: string | null | undefined) {
   return path?.split(/[/\\]/).pop() || "";
 }
 
-function formatDuration(seconds: number) {
-  const wholeSeconds = Math.max(0, Math.floor(seconds));
-  return `${Math.floor(wholeSeconds / 60)}:${String(wholeSeconds % 60).padStart(2, "0")}`;
-}
-
 function OptionCard({
   label,
   value,
@@ -116,7 +111,6 @@ export function TranscriptionPanelView({
   const customPrompt = useSettingsStore((state) => state.customPrompt);
   const updateSetting = useSettingsStore((state) => state.updateSetting);
   const [showPrompt, setShowPrompt] = React.useState(Boolean(customPrompt));
-  const [elapsedSeconds, setElapsedSeconds] = React.useState(0);
 
   const isFileMode = audioInputMode === "file" || selectedIntegration === "standalone";
   const isPremiereSource =
@@ -131,6 +125,19 @@ export function TranscriptionPanelView({
     processingSteps.find((step) => step.isActive) ??
     processingSteps.find((step) => !step.isCompleted);
   const stepProgress = activeStep?.progress ?? 0;
+  const lastStreamedEnd = livePreviewSegments.reduce(
+    (latest, segment) => Math.max(latest, segment.end ?? 0),
+    0,
+  );
+  const progressPosition = (() => {
+    const total = Math.max(0, Math.floor(lastStreamedEnd));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = String(total % 60).padStart(2, "0");
+    return hours > 0
+      ? `${hours}:${String(minutes).padStart(2, "0")}:${seconds}`
+      : `${minutes}:${seconds}`;
+  })();
   const stepLabel =
     activeStep?.id === "transcribe"
       ? t("redesign.transcribing")
@@ -140,19 +147,6 @@ export function TranscriptionPanelView({
     : isPremiereSource
       ? t("titlebar.premiere.productName")
       : t("titlebar.resolve.productName");
-
-  React.useEffect(() => {
-    if (!running) {
-      setElapsedSeconds(0);
-      return;
-    }
-    const startedAt = Date.now();
-    const timer = window.setInterval(
-      () => setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000)),
-      1000,
-    );
-    return () => window.clearInterval(timer);
-  }, [running]);
 
   const toggleTrack = (trackId: string) => {
     const next = selectedTracks.includes(trackId)
@@ -227,7 +221,7 @@ export function TranscriptionPanelView({
             <div className="as-action-summary">
               <span>{stepLabel}</span>
               <span className="as-progress-time">
-                {formatDuration(elapsedSeconds)} · {Math.round(stepProgress)}%
+                {progressPosition} · {Math.round(stepProgress)}%
               </span>
             </div>
             <Button

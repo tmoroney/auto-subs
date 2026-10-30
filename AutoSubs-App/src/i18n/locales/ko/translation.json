@@ -762,6 +762,41 @@
     "viewSource": "소스 보기",
     "cliDescription": "모든 터미널에서 autosubs를 사용하세요",
     "languages99": "99개 언어",
-    "languageCount": "{{number}}개 언어"
+    "languageCount": "{{number}}개 언어",
+    "recentSearch": "최근 항목 검색",
+    "transcript": {
+      "title": "스크립트",
+      "view": "보기",
+      "textPerSubtitle": "자막별 텍스트",
+      "formatFootnote": "자막이 즉시 다시 배치됩니다. 다시 받아쓰지 않습니다.",
+      "matches": "{{count}}개 일치",
+      "track": "트랙",
+      "putOnTrack": "자막을 넣을 트랙",
+      "hasClips": "클립 있음",
+      "sent": "전송됨",
+      "send": "보내기",
+      "sendToResolve": "Resolve로 보내기",
+      "sendToPremiere": "Premiere Pro로 보내기",
+      "sendToAfterEffects": "After Effects로 보내기",
+      "afterEffects": "After Effects",
+      "decreaseLines": "줄 수 줄이기",
+      "increaseLines": "줄 수 늘리기",
+      "subtitles": "자막",
+      "original": "원문",
+      "lineCountSummary_one": "{{count}}줄",
+      "lineCountSummary_other": "{{count}}줄"
+    },
+    "styles": {
+      "backTranscript": "스크립트",
+      "title": "자막 스타일",
+      "meta": "{{timeline}}의 현재 프레임을 미리 봅니다. Fusion에서 편집하세요.",
+      "autoSubs": "AutoSubs 스타일",
+      "importPreset": "프리셋 가져오기",
+      "animated": "애니메이션",
+      "mediaPool": "미디어 풀에서",
+      "refreshTemplates": "템플릿 새로고침",
+      "apply": "타임라인 자막 업데이트",
+      "editFusion": "Fusion에서 편집"
+    }
   }
 }

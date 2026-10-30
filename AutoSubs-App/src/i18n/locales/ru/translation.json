@@ -774,6 +774,43 @@
     "viewSource": "Исходный код",
     "cliDescription": "Установите autosubs для любого терминала",
     "languages99": "99 языков",
-    "languageCount": "{{number}} языков"
+    "languageCount": "{{number}} языков",
+    "recentSearch": "Поиск недавних",
+    "transcript": {
+      "title": "Расшифровка",
+      "view": "Вид",
+      "textPerSubtitle": "Текст на субтитр",
+      "formatFootnote": "Субтитры перестраиваются сразу. Повторная расшифровка не нужна.",
+      "matches": "Совпадений: {{count}}",
+      "track": "Дорожка",
+      "putOnTrack": "Добавить субтитры на",
+      "hasClips": "Есть клипы",
+      "sent": "Отправлено",
+      "send": "Отправить",
+      "sendToResolve": "В Resolve",
+      "sendToPremiere": "В Premiere Pro",
+      "sendToAfterEffects": "В After Effects",
+      "afterEffects": "After Effects",
+      "decreaseLines": "Меньше строк",
+      "increaseLines": "Больше строк",
+      "subtitles": "Субтитры",
+      "original": "Оригинал",
+      "lineCountSummary_one": "{{count}} строка",
+      "lineCountSummary_few": "{{count}} строки",
+      "lineCountSummary_many": "{{count}} строк",
+      "lineCountSummary_other": "{{count}} строки"
+    },
+    "styles": {
+      "backTranscript": "Расшифровка",
+      "title": "Стиль субтитров",
+      "meta": "Предпросмотр кадра {{timeline}}. Измените стиль в Fusion.",
+      "autoSubs": "Стили AutoSubs",
+      "importPreset": "Импорт стиля",
+      "animated": "Анимированный",
+      "mediaPool": "Из медиатеки",
+      "refreshTemplates": "Обновить шаблоны",
+      "apply": "Обновить субтитры",
+      "editFusion": "Изменить в Fusion"
+    }
   }
 }
