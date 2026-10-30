@@ -229,13 +229,30 @@ function AppContentBody() {
 
             <div className="as-sidebar-footer">
               <section className="as-model-section">
-                <button type="button" className={`as-model-card-trigger${page === "models" ? " is-active" : ""}`} onClick={() => {
-                  setReturnPage(page === "settings" || page === "models" ? returnPage : page);
-                  setPage("models");
-                  if (smallScreen) setSidebarOpen(false);
-                }}>
+                <button
+                  type="button"
+                  className={`as-model-card-trigger${page === "models" ? " is-active" : ""}`}
+                  onClick={() => {
+                    setReturnPage(
+                      page === "settings" || page === "models"
+                        ? returnPage
+                        : page,
+                    );
+                    setPage("models");
+                    if (smallScreen) setSidebarOpen(false);
+                  }}
+                >
                   {modelsState[model]?.image && <img src={modelsState[model].image} alt="" />}
-                  <div><div>{modelsState[model] ? t(modelsState[model].label) : t("models.manage.title")}</div><span className="as-model-caption">{t("redesign.transcriptionModel")}</span></div>
+                  <div>
+                    <div>
+                      {modelsState[model]
+                        ? t(modelsState[model].label)
+                        : t("models.manage.title")}
+                    </div>
+                    <span className="as-model-caption">
+                      {t("redesign.transcriptionModel")}
+                    </span>
+                  </div>
                   <ChevronRight size={14} />
                 </button>
               </section>
@@ -290,8 +307,16 @@ function AppContentBody() {
                 />
               </div>
             </div>
-            {page === "models" && <div className="as-page as-page--active"><ModelsPage onBack={() => setPage(returnPage)} /></div>}
-            {page === "settings" && <div className="as-page as-page--active"><SettingsPage onBack={() => setPage(returnPage)} /></div>}
+            {page === "models" && (
+              <div className="as-page as-page--active">
+                <ModelsPage onBack={() => setPage(returnPage)} />
+              </div>
+            )}
+            {page === "settings" && (
+              <div className="as-page as-page--active">
+                <SettingsPage onBack={() => setPage(returnPage)} />
+              </div>
+            )}
           </div>
         </main>
 

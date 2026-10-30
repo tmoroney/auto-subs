@@ -595,8 +595,9 @@ body.app-panel-resizing * {
 }
 
 .as-model-card-trigger .as-model-caption {
-    font-size: 12px;
-    font-weight: 400;
+    color: var(--as-fg-muted) !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
 }
 
 .as-model-card-trigger svg {
@@ -1141,7 +1142,7 @@ body.app-panel-resizing * {
     border-radius: 6px;
     background: var(--as-card);
     color: var(--as-fg-secondary);
-    font-family: var(--as-font-mono);
+    font-family: var(--as-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
     font-size: 12.5px;
     line-height: 1.6;
 }
@@ -1489,8 +1490,8 @@ body.app-panel-resizing * {
     line-height: 1.14;
 }
 .as-page-meta { margin: 5px 0 18px; color: var(--as-fg-muted); font-size: 13px; }
-.as-back-link { display: inline-flex; gap: 4px; margin: 0 0 10px -8px; color: var(--as-fg-secondary); }
-.as-model-search { display: flex; height: 42px; align-items: center; gap: 10px; border: 1px solid var(--as-line-strong); border-radius: 12px; padding: 0 13px; color: var(--as-fg-muted); }
+.as-content-page > .as-back-link { display: inline-flex; align-items: center; gap: 4px; width: fit-content; margin: 0 0 10px -4px; padding: 0; border: 0; background: transparent; color: var(--as-fg-secondary); font-size: 13.5px; }
+.as-model-search { display: flex; height: 42px; align-items: center; gap: 10px; margin-top: 18px; border: 0; border-radius: 12px; padding: 0 14px; background: transparent; color: var(--as-fg-muted); }
 .as-model-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--as-fg); font: inherit; }
 .as-model-filters { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 11px 0 8px; }
 .as-sort-trigger { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 999px; background: var(--as-card); color: var(--as-fg-secondary); font-size: 12px; }
@@ -1524,6 +1525,7 @@ body.app-panel-resizing * {
 .as-settings-link { display: inline-flex; align-items: center; gap: 6px; color: var(--as-fg-secondary); font-size: 13px; }
 .as-danger { color: var(--as-danger) !important; }
 .as-addon-size { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; background: var(--as-card); padding: 6px 10px; font-size: 12px; }
+.as-addon-availability { color: var(--as-fg-muted); font-size: 12px; }
 .as-model-card-trigger.is-active { background: var(--as-card-hover) !important; }
 .as-settings-button.is-active { background: var(--as-card-hover) !important; color: var(--as-fg) !important; }
 .as-models-page { container-type: inline-size; }
