@@ -927,7 +927,8 @@ body.app-panel-resizing * {
 }
 
 .as-range-segmented {
-    min-height: 36px !important;
+    height: 36px !important;
+    align-items: stretch !important;
     padding: 3px !important;
     gap: 2px !important;
     border-radius: 10px !important;
@@ -935,16 +936,16 @@ body.app-panel-resizing * {
 }
 
 .as-range-segmented [role="radio"] {
-    height: 26px !important;
-    padding: 5px 11px !important;
+    height: auto !important;
+    padding: 0 11px !important;
     border-radius: 7px !important;
     font-size: 13px !important;
     line-height: normal !important;
 }
 
 .as-settings-segmented [role="radio"] {
-    height: 25px !important;
-    padding: 4px 9px !important;
+    height: auto !important;
+    padding: 0 9px !important;
     font-size: 14px !important;
     line-height: normal !important;
 }
