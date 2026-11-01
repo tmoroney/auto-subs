@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Model } from '@/types';
-import { models } from '@/lib/models';
+import { models, withImportedModels } from '@/lib/models';
+import { useSettingsStore } from '@/stores/settings-store';
 
 interface ModelsContextType {
+  /** Built-in models, then imported ones; the `model` setting indexes this. */
   modelsState: Model[];
   downloadedModelValues: string[];
   setModelsState: (models: Model[]) => void;
@@ -14,7 +16,12 @@ interface ModelsContextType {
 const ModelsContext = createContext<ModelsContextType | null>(null);
 
 export function ModelsProvider({ children }: { children: React.ReactNode }) {
-  const [modelsState, setModelsState] = useState(models);
+  const [builtInModels, setModelsState] = useState(models);
+  const importedModels = useSettingsStore((s) => s.importedModels);
+  const modelsState = useMemo(
+    () => withImportedModels(importedModels, builtInModels),
+    [importedModels, builtInModels],
+  );
   const [downloadedModelValues, setDownloadedModelValues] = useState<string[]>([]);
 
   async function checkDownloadedModels() {

@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useSettingsStore } from "@/stores/settings-store"
 import { languages, translateLanguages, getTranslationMethod } from "@/lib/languages"
-import { models, modelSupportsLanguage } from "@/lib/models"
+import { models, modelSupportsLanguage, withImportedModels } from "@/lib/models"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/animated-tabs"
 import { useTranslation } from "react-i18next"
@@ -14,12 +14,13 @@ import { useTranslation } from "react-i18next"
 export function LanguageSelector() {
     const { t } = useTranslation()
     const model = useSettingsStore((s) => s.model)
+    const importedModels = useSettingsStore((s) => s.importedModels)
     const language = useSettingsStore((s) => s.language)
     const targetLanguage = useSettingsStore((s) => s.targetLanguage)
     const translate = useSettingsStore((s) => s.translate)
     const updateSetting = useSettingsStore((s) => s.updateSetting)
     const [languageTab, setLanguageTab] = React.useState<'source' | 'translate'>('source')
-    const currentModel = models[model]
+    const currentModel = withImportedModels(importedModels)[model]
     // Omni-ASR handles 1600+ languages beyond the source list, so an unlisted
     // language is a cue to fall back to it in auto-detect mode.
     const omniAsrIndex = React.useMemo(

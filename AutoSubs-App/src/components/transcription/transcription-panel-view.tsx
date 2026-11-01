@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { ModelPicker } from "@/components/settings/model-picker";
 import { useSettingsStore } from "@/stores/settings-store";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,11 @@ export interface TranscriptionPanelViewProps {
   onStartNewTranscription: () => void | Promise<void>;
   onRefreshAudioTracks?: () => Promise<void>;
   isProcessing?: boolean;
+  /**
+   * A run holds the start lock: it is checking the model file before
+   * processing shows, or a cancelled run is still winding down.
+   */
+  isStarting?: boolean;
   selectedIntegration: Integration;
 }
 
@@ -82,6 +88,7 @@ export function TranscriptionPanelView({
   onStartNewTranscription,
   onRefreshAudioTracks,
   isProcessing,
+  isStarting,
   selectedIntegration,
 }: TranscriptionPanelViewProps) {
   const { t, i18n } = useTranslation();
@@ -183,6 +190,7 @@ export function TranscriptionPanelView({
 
   const startDisabled =
     isProcessing ||
+    isStarting ||
     (audioInputMode === "file" && !selectedFile) ||
     (audioInputMode === "timeline" &&
       (selectedTrackCount === 0 || inputTracks.length === 0));
@@ -345,7 +353,7 @@ export function TranscriptionPanelView({
                       disabled={startDisabled}
                       className="w-full"
                     >
-                      <PlayCircle className="size-4" />
+                      {isStarting ? <Spinner /> : <PlayCircle className="size-4" />}
                       {startButtonLabel}
                     </Button>
                   </div>

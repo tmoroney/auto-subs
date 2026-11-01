@@ -1,4 +1,4 @@
-import { HardDrive, MemoryStick, Lightbulb, Feather } from "lucide-react"
+import { HardDrive, MemoryStick, Lightbulb, Feather, FileDown } from "lucide-react"
 import { CircleCheckIcon } from "@/components/ui/icons/circle-check"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { useTranslation } from "react-i18next"
 import { Model } from "@/types"
-import { sortedModelsForLanguage, type ModelSort } from "@/lib/models"
+import { modelLabel, modelSupportsLanguage, sortedModelsForLanguage, type ModelSort } from "@/lib/models"
+import { fileNameOf } from "@/lib/imported-models"
+import { ImportModelDialog, pickWhisperModelFile, type PendingImport } from "@/components/settings/import-model-dialog"
 import { cn } from "@/lib/utils"
 import * as React from "react"
 import { ChevronsUpDownIcon, type ChevronsUpDownIconHandle } from "@/components/ui/icons/chevrons-up-down"
@@ -99,22 +101,35 @@ export function ModelPicker({
   const chevronsIconRef = React.useRef<ChevronsUpDownIconHandle>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [activeSort, setActiveSort] = React.useState<ModelSort>('recommended')
+  const [pendingImport, setPendingImport] = React.useState<PendingImport | null>(null)
+
+  const handleImportClick = async () => {
+    onOpenChange(false)
+    const picked = await pickWhisperModelFile(t)
+    if (picked) setPendingImport(picked)
+  }
 
   // Ordering is derived from the manifest (accuracy, then proven-for-language,
   // then speed, then footprint), so nothing here needs to know about specific
   // models. Search narrows the result; it never reorders it.
-  const filteredModels = React.useMemo(() => {
-    const ordered = sortedModelsForLanguage(selectedLanguage, activeSort, modelsState)
+  // Imported models have no ratings to sort by, so they get their own group
+  // in the order they were added.
+  const [filteredModels, filteredImported] = React.useMemo(() => {
+    const builtIn = modelsState.filter(m => !m.importedPath)
+    const imported = modelsState.filter(m => m.importedPath && modelSupportsLanguage(m, selectedLanguage))
+    const ordered = sortedModelsForLanguage(selectedLanguage, activeSort, builtIn)
 
     const query = searchQuery.trim().toLowerCase()
-    if (!query) return ordered
+    if (!query) return [ordered, imported]
 
-    return ordered.filter(model =>
-      t(model.label).toLowerCase().includes(query) ||
-      t(model.description).toLowerCase().includes(query) ||
+    const matches = (model: Model) =>
+      modelLabel(model, t).toLowerCase().includes(query) ||
+      (model.description && t(model.description).toLowerCase().includes(query)) ||
       t(model.badge).toLowerCase().includes(query)
-    )
+    return [ordered.filter(matches), imported.filter(matches)]
   }, [modelsState, selectedLanguage, searchQuery, activeSort, t])
+
+  const selectedModel = modelsState[selectedModelIndex] ?? modelsState[0]
 
   return (
     <TooltipProvider delayDuration={400}>
@@ -138,12 +153,12 @@ export function ModelPicker({
           >
             <div className="flex items-center gap-1.5">
               <img
-                src={modelsState[selectedModelIndex].image}
-                alt={t(modelsState[selectedModelIndex].label) + " icon"}
+                src={selectedModel.image}
+                alt={modelLabel(selectedModel, t) + " icon"}
                 className="size-6 object-contain rounded"
               />
               <div className="flex items-center gap-1">
-                <span className="truncate">{t(modelsState[selectedModelIndex].label)}</span>
+                <span className="truncate">{modelLabel(selectedModel, t)}</span>
               </div>
             </div>
             <ChevronsUpDownIcon ref={chevronsIconRef} className="ml-auto" />
@@ -185,7 +200,7 @@ export function ModelPicker({
                     return (
                       <CommandItem
                         key={model.value}
-                        value={`${model.value} ${t(model.label)} ${t(model.description)}`}
+                        value={`${model.value} ${modelLabel(model, t)} ${model.description && t(model.description)}`}
                         onSelect={() => {
                           onSelectModel(actualModelIndex)
                           onOpenChange(false)
@@ -193,13 +208,13 @@ export function ModelPicker({
                         className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <img src={model.image} alt={t(model.label) + " icon"} className="size-8 object-contain rounded flex-shrink-0" />
+                          <img src={model.image} alt={modelLabel(model, t) + " icon"} className="size-8 object-contain rounded flex-shrink-0" />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-1.5 leading-none flex-wrap">
-                              <span className="font-medium text-xs leading-none truncate">{t(model.label)}</span>
+                              <span className="font-medium text-xs leading-none truncate">{modelLabel(model, t)}</span>
                               {/* The top row earns a badge: the sort that put it
                                   there is otherwise invisible. */}
-                              {index === 0 && activeSort === 'recommended' && !searchQuery && (
+                              {index === 0 && !model.importedPath && activeSort === 'recommended' && !searchQuery && (
                                 <Badge className={cn(TAG_CLASS, "border-transparent shadow-none")}>
                                   {t("models.bestPick")}
                                 </Badge>
@@ -217,13 +232,29 @@ export function ModelPicker({
                                 the same x on every row; the download size is
                                 appended only while it still matters. */}
                             <p className="text-[11px] text-muted-foreground mt-[3px] leading-none truncate">
-                              {t("modelStatus.ramShort", { size: formatRam(model.ramMb) })}
-                              {!model.isDownloaded && ` · ${t("modelStatus.downloadShort", { size: model.size })}`}
+                              {model.importedPath ? fileNameOf(model.importedPath) : (
+                                <>
+                                  {t("modelStatus.ramShort", { size: formatRam(model.ramMb) })}
+                                  {!model.isDownloaded && ` · ${t("modelStatus.downloadShort", { size: model.size })}`}
+                                </>
+                              )}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center mx-1 flex-shrink-0 gap-2">
-                          {downloadingModel === model.value ? (
+                          {model.importedPath ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <FileDown size={14} className="text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent side={isSmallScreen ? "bottom" : "right"} sideOffset={10} className="max-w-64 p-4 bg-slate-50 dark:bg-slate-950 text-foreground">
+                                <div className="space-y-1.5">
+                                  <p className="text-xs">{t(model.details)}</p>
+                                  <p className="text-xs text-muted-foreground break-all">{model.importedPath}</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : downloadingModel === model.value ? (
                             <div className="flex items-center gap-2">
                               <Progress value={downloadProgress} className="h-1 w-12" />
                               <span className="text-xs text-blue-600 dark:text-blue-400">{t("modelStatus.downloadProgress", { progress: downloadProgress })}</span>
@@ -278,22 +309,43 @@ export function ModelPicker({
                   }
 
                   return (
-                    <CommandGroup>
-                      {filteredModels.map(renderItem)}
-                    </CommandGroup>
+                    <>
+                      {filteredImported.length > 0 && (
+                        <CommandGroup heading={t("models.imported.groupTitle")}>
+                          {filteredImported.map(renderItem)}
+                        </CommandGroup>
+                      )}
+                      <CommandGroup heading={filteredImported.length > 0 ? t("models.imported.builtInTitle") : undefined}>
+                        {filteredModels.map(renderItem)}
+                      </CommandGroup>
+                    </>
                   )
                 })()}
               </CommandList>
             </Command>
 
-            <div className="border-t bg-muted/30 px-3 pb-1 pt-0.5">
+            <div className="flex items-center justify-between gap-2 border-t bg-muted/30 px-3 pb-1 pt-0.5">
               <span className="text-xs text-muted-foreground">
-                {t("models.availableCount", { count: filteredModels.length })}
+                {t("models.availableCount", { count: filteredModels.length + filteredImported.length })}
               </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px] font-normal"
+                onClick={() => void handleImportClick()}
+              >
+                <FileDown className="size-3.5" />
+                {t("models.imported.importButton")}
+              </Button>
             </div>
           </div>
         </PopoverContent>
       </Popover>
+      <ImportModelDialog
+        pending={pendingImport}
+        onClose={() => setPendingImport(null)}
+        onImported={onSelectModel}
+      />
     </TooltipProvider>
   )
 }

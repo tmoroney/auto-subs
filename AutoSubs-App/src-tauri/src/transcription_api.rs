@@ -212,6 +212,8 @@ pub struct EnsureModelsRequest {
     pub enable_forced_alignment: Option<bool>,
     pub max_speakers: Option<usize>,
     pub diarize_backend: Option<String>,
+    /// Path of an imported Whisper model file, used in place of a download.
+    pub asr_model_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -235,6 +237,7 @@ pub async fn ensure_models<R: Runtime>(
     let cache_dir = get_cache_dir(app.clone()).map_err(|e| format!("Failed to get cache directory: {e}"))?;
     let engine = Engine::new(EngineConfig {
         cache_dir,
+        asr_model_path: request.asr_model_path,
         ..Default::default()
     });
 

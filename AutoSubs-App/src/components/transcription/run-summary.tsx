@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { useSettingsStore } from "@/stores/settings-store";
 import { languages, translateLanguages } from "@/lib/languages";
+import { modelLabel } from "@/lib/models";
 import type { Model } from "@/types";
 
 interface RunSummaryCardProps {
@@ -47,7 +48,8 @@ function useRunSummary(
       ? t("actionBar.mode.timeline")
       : t("actionBar.mode.fileInput");
 
-  const selectedModelLabel = t(modelsState[selectedModelIndex].label);
+  const selectedModel = modelsState[selectedModelIndex];
+  const selectedModelLabel = selectedModel ? modelLabel(selectedModel, t) : "";
 
   const sourceLanguageLabel =
     language === "auto"

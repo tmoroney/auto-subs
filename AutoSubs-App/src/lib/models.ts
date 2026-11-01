@@ -1,5 +1,6 @@
-import { DiarizeBackend, Model } from "@/types";
+import { DiarizeBackend, ImportedModel, Model } from "@/types";
 import manifestData from "../../models.json";
+import { importedModelToModel } from "@/lib/imported-models";
 
 /**
  * Centralized model definitions for AutoSubs.
@@ -145,6 +146,23 @@ export function sortedModelsForLanguage(
 export const models: Model[] = manifest.models.map((m) =>
   toModel(m.id, m.engine, m.ui, i18nBase(m.id))
 );
+
+/**
+ * The list the persisted `model` index points into: the built-in models, then
+ * the user's imported ones in the order they were added.
+ */
+export function withImportedModels(imported: ImportedModel[], builtIn: Model[] = models): Model[] {
+  return [...builtIn, ...imported.map(importedModelToModel)];
+}
+
+/**
+ * A model's display name. Built-in labels are i18n keys; an imported model's
+ * label is the name the user gave it, which must not go through `t` (a colon
+ * or dot in it would be read as a namespace or key path).
+ */
+export function modelLabel(model: Model, t: (key: string) => string): string {
+  return model.importedPath ? model.label : t(model.label);
+}
 
 /**
  * The most speakers the default diarization model can label. Asking for more

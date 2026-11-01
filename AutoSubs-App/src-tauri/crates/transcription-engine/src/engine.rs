@@ -421,7 +421,12 @@ impl Engine {
             }
             None => {
                 if let Some(p) = &cfg.asr_model_path {
-                    PathBuf::from(p)
+                    // An imported model file, used in place.
+                    let path = PathBuf::from(p);
+                    if !path.is_file() {
+                        eyre::bail!("Whisper model path does not exist: {}", p);
+                    }
+                    path
                 } else {
                     self.models.ensure_whisper_model(&options.model, progress, is_cancelled).await?
                 }

@@ -122,6 +122,21 @@ export interface Model {
         attribution: string
         commercialUse: boolean
     }
+    /**
+     * Set only for a Whisper file the user imported: where it is saved. Its
+     * `label` is then the user's name for it rather than an i18n key.
+     */
+    importedPath?: string
+}
+
+/** A Whisper model file the user imported, used where it is saved. */
+export interface ImportedModel {
+    /** `custom:<uuid>`, so it can't collide with a catalogue id. */
+    id: string
+    name: string
+    path: string
+    /** From the file header: false means English only. */
+    multilingual: boolean
 }
 
 // Settings Interface
@@ -149,7 +164,11 @@ export interface Settings {
     subSlateMilestoneShown: boolean;
 
     // Processing settings
-    model: number; // index of model in models array
+    // Index into the built-in models followed by importedModels. Loading
+    // rebases it from importedModelsBase, the built-in count when it was saved.
+    model: number;
+    importedModels: ImportedModel[];
+    importedModelsBase: number;
     language: string,
     translate: boolean,
     targetLanguage: string,
@@ -271,6 +290,8 @@ export interface EnsureModelsRequest {
     // speakers always needs the lighter one).
     maxSpeakers: number | null,
     diarizeBackend: DiarizeBackend,
+    // An imported model's file, used in place of a download.
+    asrModelPath?: string,
 }
 
 /** "sortformer" is the default speaker model; "pyannote" the lighter one. */
