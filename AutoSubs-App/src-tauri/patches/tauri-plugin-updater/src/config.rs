@@ -91,10 +91,6 @@ where
 pub struct Config {
     /// Dangerously allow using insecure transport protocols for update endpoints.
     pub dangerous_insecure_transport_protocol: bool,
-    /// Dangerously accept invalid TLS certificates for update requests.
-    pub dangerous_accept_invalid_certs: bool,
-    /// Dangerously accept invalid hostnames for TLS certificates for update requests.
-    pub dangerous_accept_invalid_hostnames: bool,
     /// Updater endpoints.
     pub endpoints: Vec<Url>,
     /// Signature public key.
@@ -113,10 +109,6 @@ impl<'de> Deserialize<'de> for Config {
         pub struct Config {
             #[serde(default, alias = "dangerous-insecure-transport-protocol")]
             pub dangerous_insecure_transport_protocol: bool,
-            #[serde(default, alias = "dangerous-accept-invalid-certs")]
-            pub dangerous_accept_invalid_certs: bool,
-            #[serde(default, alias = "dangerous-accept-invalid-hostnames")]
-            pub dangerous_accept_invalid_hostnames: bool,
             #[serde(default)]
             pub endpoints: Vec<Url>,
             pub pubkey: String,
@@ -133,8 +125,6 @@ impl<'de> Deserialize<'de> for Config {
 
         Ok(Self {
             dangerous_insecure_transport_protocol: config.dangerous_insecure_transport_protocol,
-            dangerous_accept_invalid_certs: config.dangerous_accept_invalid_certs,
-            dangerous_accept_invalid_hostnames: config.dangerous_accept_invalid_hostnames,
             endpoints: config.endpoints,
             pubkey: config.pubkey,
             windows: config.windows,

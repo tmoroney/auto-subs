@@ -449,12 +449,6 @@ impl Updater {
             }
 
             let mut request = ClientBuilder::new().user_agent(UPDATER_USER_AGENT);
-            if self.config.dangerous_accept_invalid_certs {
-                request = request.danger_accept_invalid_certs(true);
-            }
-            if self.config.dangerous_accept_invalid_hostnames {
-                request = request.danger_accept_invalid_hostnames(true);
-            }
             if let Some(timeout) = self.timeout {
                 request = request.timeout(timeout);
             }
@@ -661,12 +655,6 @@ impl Update {
         }
 
         let mut request = ClientBuilder::new().user_agent(UPDATER_USER_AGENT);
-        if self.config.dangerous_accept_invalid_certs {
-            request = request.danger_accept_invalid_certs(true);
-        }
-        if self.config.dangerous_accept_invalid_hostnames {
-            request = request.danger_accept_invalid_hostnames(true);
-        }
         if let Some(timeout) = self.timeout {
             request = request.timeout(timeout);
         }
@@ -1661,5 +1649,19 @@ mod tests {
         for (orig, escaped) in cases.iter().zip(cases_escaped) {
             assert_eq!(escape_nsis_current_exe_arg(&OsStr::new(orig)), escaped);
         }
+    }
+
+    #[test]
+    fn source_does_not_disable_tls_certificate_verification() {
+        // Regression test for CodeQL `rust/disabled-certificate-check`: the
+        // vendored updater must never disable TLS certificate or hostname
+        // verification, so these dangerous reqwest calls are removed entirely.
+        let source = include_str!("updater.rs");
+        // Built at runtime so the exact call strings cannot match this test's
+        // own source text (a plain literal would contain itself).
+        let cert_call = "danger_accept_invalid_certs".to_owned() + "(true);";
+        let host_call = "danger_accept_invalid_hostnames".to_owned() + "(true);";
+        assert!(!source.contains(cert_call.as_str()));
+        assert!(!source.contains(host_call.as_str()));
     }
 }
