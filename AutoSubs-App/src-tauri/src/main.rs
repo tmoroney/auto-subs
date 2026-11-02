@@ -26,6 +26,7 @@ use tokio::process::Command as TokioCommand;
 mod audio_preprocess;
 mod models;
 mod transcription_api;
+mod queue_io;
 mod transcript_types;
 mod logging;
 mod resolve_bridge;
@@ -688,10 +689,17 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             transcription_api::transcribe_audio,
+            transcription_api::queue_transcribe_audio,
             transcription_api::ensure_models,
             transcription_api::cancel_transcription,
             transcription_api::reformat_subtitles,
             transcription_api::density_char_limits,
+            queue_io::queue_collect_files,
+            queue_io::queue_check_output,
+            queue_io::queue_write_srt,
+            queue_io::queue_preflight_outputs,
+            queue_io::queue_export_outputs,
+            queue_io::queue_reset_cancellation,
             models::get_downloaded_models,
             models::delete_model,
             logging::get_backend_logs,

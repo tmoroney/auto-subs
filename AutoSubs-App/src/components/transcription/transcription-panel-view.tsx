@@ -1,5 +1,5 @@
 import * as React from "react";
-import { PlayCircle, X } from "lucide-react";
+import { ListPlus, PlayCircle, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Card } from "@/components/ui/card";
@@ -55,6 +55,15 @@ export interface TranscriptionPanelViewProps {
   onRefreshAudioTracks?: () => Promise<void>;
   isProcessing?: boolean;
   selectedIntegration: Integration;
+  queueCount: number;
+  pipelineBusy: boolean;
+  onOpenQueue: () => void;
+  onAddSelectedToQueue: () => void;
+  onDropQueuePaths: (paths: string[]) => void;
+  selectedQueueItem: boolean;
+  onRemoveQueueItem: () => void;
+  settingsIssues: string[];
+  queueDropRef: React.RefObject<HTMLDivElement>;
 }
 
 export function TranscriptionPanelView({
@@ -83,6 +92,15 @@ export function TranscriptionPanelView({
   onRefreshAudioTracks,
   isProcessing,
   selectedIntegration,
+  queueCount,
+  pipelineBusy,
+  onOpenQueue,
+  onAddSelectedToQueue,
+  onDropQueuePaths,
+  selectedQueueItem,
+  onRemoveQueueItem,
+  settingsIssues,
+  queueDropRef,
 }: TranscriptionPanelViewProps) {
   const { t, i18n } = useTranslation();
   const selectedInputTracksByApp = useSettingsStore((s) => s.selectedInputTracksByApp);
@@ -118,12 +136,22 @@ export function TranscriptionPanelView({
 
   React.useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let disposed = false;
     (async () => {
       const webview = await getCurrentWebview();
-      unlisten = await webview.onDragDropEvent((event: any) => {
+      const stop = await webview.onDragDropEvent((event: any) => {
         if (event.payload.type === "drop") {
           const files = event.payload.paths as string[] | undefined;
           if (files && files.length > 0) {
+            const rect = queueDropRef.current?.getBoundingClientRect();
+            const position = event.payload.position as { x: number; y: number } | undefined;
+            const scale = window.devicePixelRatio || 1;
+            const inQueue = !!rect && !!position && position.x / scale >= rect.left && position.x / scale <= rect.right
+              && position.y / scale >= rect.top && position.y / scale <= rect.bottom;
+            if (inQueue || files.length > 1 || !isSupportedMediaFile(files[0])) {
+              onDropQueuePaths(files);
+              return;
+            }
             const supportedFile = files.find(isSupportedMediaFile);
             if (supportedFile) {
               setSelectedFile(supportedFile);
@@ -131,11 +159,14 @@ export function TranscriptionPanelView({
           }
         }
       });
+      if (disposed) stop();
+      else unlisten = stop;
     })();
     return () => {
+      disposed = true;
       if (unlisten) unlisten();
     };
-  }, [setSelectedFile]);
+  }, [setSelectedFile, onDropQueuePaths, queueDropRef]);
 
   const handleRefreshAudioTracks = React.useCallback(async () => {
     if (!onRefreshAudioTracks || isRefreshingTracks) return;
@@ -182,7 +213,7 @@ export function TranscriptionPanelView({
     !isProcessing && processingSteps.some((step) => step.isCompleted);
 
   const startDisabled =
-    isProcessing ||
+    isProcessing || pipelineBusy || settingsIssues.length > 0 ||
     (audioInputMode === "file" && !selectedFile) ||
     (audioInputMode === "timeline" &&
       (selectedTrackCount === 0 || inputTracks.length === 0));
@@ -196,8 +227,8 @@ export function TranscriptionPanelView({
     audioInputMode === "timeline" &&
     selectedTrackCount > 0 &&
     inputTracks.length > 0
-      ? `${t("common.generateSubtitles")} (${selectedTrackCount})`
-      : t("common.generateSubtitles");
+      ? `${t("queue.generateCurrent")} (${selectedTrackCount})`
+      : t("queue.generateCurrent");
 
   return (
     <div className="h-full flex flex-col relative">
@@ -205,6 +236,12 @@ export function TranscriptionPanelView({
         onViewSubtitles={onViewSubtitles}
         isSubtitleViewerOpen={isSubtitleViewerOpen}
       />
+
+      <div className="px-3.5 pb-1 flex justify-start">
+        <Button type="button" variant="ghost" size="sm" onClick={onOpenQueue}>
+          <ListPlus className="size-4" />{t("queue.open")} ({queueCount})
+        </Button>
+      </div>
 
       <div className="flex-1 min-h-0 flex flex-col p-3.5 pt-1.5 pb-4">
         {showProcessing && (
@@ -288,6 +325,11 @@ export function TranscriptionPanelView({
                   </div>
 
                   <Card className="z-50 overflow-hidden rounded-2xl bg-background p-0 shadow-none">
+                    {settingsIssues.length > 0 && (
+                      <div role="status" className="border-b px-3 py-2 text-xs text-destructive">
+                        <strong>{t("queue.settingsIssues")}: </strong>{settingsIssues.join(" ")}
+                      </div>
+                    )}
                     <CompactSettingsRow
                       number={formatSectionNumber(2)}
                       label={t("actionBar.language.title", "Language")}
@@ -337,17 +379,25 @@ export function TranscriptionPanelView({
                   </Card>
 
                   {/* Start Transcription */}
-                  <div className="z-50 shadow-none">
+                  <div className="z-50 flex flex-wrap gap-2 shadow-none">
                     <Button
                       onClick={onStart}
                       size="lg"
                       variant="default"
                       disabled={startDisabled}
-                      className="w-full"
+                      className="flex-1"
                     >
                       <PlayCircle className="size-4" />
                       {startButtonLabel}
                     </Button>
+                    {audioInputMode === "file" && (
+                      <Button type="button" variant="outline" size="lg"
+                        disabled={!selectedFile || (!selectedQueueItem && settingsIssues.length > 0)}
+                        onClick={selectedQueueItem ? onRemoveQueueItem : onAddSelectedToQueue}>
+                        {selectedQueueItem ? <Trash2 className="size-4" /> : <ListPlus className="size-4" />}
+                        {t(selectedQueueItem ? "queue.removeQueueItem" : "queue.addToQueue")}
+                      </Button>
+                    )}
                   </div>
                 </>
               )}

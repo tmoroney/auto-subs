@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Model } from "@/types";
+import { getPipelineOwner, subscribePipelineOwner } from "@/queue/pipeline-owner";
 
 interface ManageModelsDialogProps {
   open: boolean;
@@ -29,6 +30,11 @@ export function ManageModelsDialog({
   onRefresh
 }: ManageModelsDialogProps) {
   const { t } = useTranslation();
+  const pipelineOwner = React.useSyncExternalStore(
+    subscribePipelineOwner,
+    getPipelineOwner,
+    getPipelineOwner,
+  );
   const downloadedModels = models.filter(model => model.isDownloaded);
 
   // Keep the latest callback in a ref so the effect below only fires on the
@@ -74,6 +80,12 @@ export function ManageModelsDialog({
             {t("models.manage.description")}
           </DialogDescription>
         </DialogHeader>
+
+        {(pipelineOwner === "manual" || pipelineOwner === "queue") && (
+          <p className="text-sm text-muted-foreground" role="status">
+            {t("queue.busy")}
+          </p>
+        )}
 
         <div className="space-y-3 max-h-[340px] overflow-y-auto">
           {downloadedModels.length === 0 ? (
@@ -135,6 +147,7 @@ export function ManageModelsDialog({
                   variant="destructive"
                   size="icon"
                   title={t("models.manage.deleteModel")}
+                  disabled={pipelineOwner !== null}
                   onClick={() => handleDeleteModel(model.value)}
                 >
                   <Trash2 className="size-4" />

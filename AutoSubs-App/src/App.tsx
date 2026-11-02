@@ -17,12 +17,14 @@ import { getVersion } from "@tauri-apps/api/app"
 import { EditorWorkspaceProviders } from "@/contexts/GlobalProvider"
 import { useSubtitleDocument } from "@/contexts/SubtitleDocumentContext"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import {
   listSubtitleDocumentIndex,
   type SubtitleDocumentListItem,
 } from "@/utils/file-utils"
 
 const MIN_TRANSCRIPTION_PANEL_WIDTH = 400
+const QUEUE_PANEL_WIDTH = 288
 const MIN_SUBTITLE_PANEL_WIDTH = 240
 const PANEL_GAP = 16
 const SUBTITLE_VIEWER_EXIT_ANIMATION_MS = 180
@@ -45,6 +47,7 @@ export function ThemeToggle() {
 }
 
 function AppContentBody() {
+  const [queueOpen, setQueueOpen] = React.useState(false)
   const [showSubtitleViewer, setShowSubtitleViewer] = React.useState(() => {
     // Open by default on desktop if there's enough screen space
     const minRequiredWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + MIN_SUBTITLE_PANEL_WIDTH + PANEL_GAP
@@ -90,6 +93,12 @@ function AppContentBody() {
   const { subtitles } = useSubtitleDocument()
   const [currentVersion, setCurrentVersion] = React.useState<string>("")
   const isMobile = useIsMobile()
+  // On a narrower desktop, show subtitles as an overlay while the queue and
+  // form occupy the workspace. Mobile uses an overlay for the queue itself.
+  const narrowWithQueue = useMediaQuery("(max-width: 943px)")
+  const queueIsOverlay = useMediaQuery("(max-width: 767px)")
+  const isSubtitleOverlay = isMobile || (queueOpen && narrowWithQueue)
+  const minTranscriptionWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + (queueOpen && !queueIsOverlay ? QUEUE_PANEL_WIDTH : 0)
   const mainContentRef = React.useRef<HTMLDivElement>(null)
   const subtitlePanelRef = React.useRef<HTMLDivElement>(null)
   const subtitleViewerCloseTimeoutRef = React.useRef<number | null>(null)
@@ -148,6 +157,11 @@ function AppContentBody() {
       subtitleViewerCloseTimeoutRef.current = null
     }, SUBTITLE_VIEWER_EXIT_ANIMATION_MS)
   }, [isSubtitleViewerClosing, showSubtitleViewer])
+
+  const handleQueueOpenChange = React.useCallback((open: boolean) => {
+    if (open && (isMobile || narrowWithQueue)) handleCloseSubtitleViewer()
+    setQueueOpen(open)
+  }, [handleCloseSubtitleViewer, isMobile, narrowWithQueue])
 
   const handleOpenSubtitleViewer = React.useCallback(() => {
     if (
@@ -232,7 +246,7 @@ function AppContentBody() {
   // A run implies the user wants to watch it, so surface the panel if it is shut,
   // but only when the viewport is wide enough to show both panels side-by-side.
   React.useEffect(() => {
-    const minRequiredWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + MIN_SUBTITLE_PANEL_WIDTH + PANEL_GAP
+    const minRequiredWidth = minTranscriptionWidth + MIN_SUBTITLE_PANEL_WIDTH + PANEL_GAP
     if (
       isDraftMode &&
       !showSubtitleViewer &&
@@ -241,18 +255,18 @@ function AppContentBody() {
     ) {
       handleOpenSubtitleViewer()
     }
-  }, [isDraftMode, showSubtitleViewer, handleOpenSubtitleViewer])
+  }, [isDraftMode, showSubtitleViewer, handleOpenSubtitleViewer, minTranscriptionWidth])
 
   const getMaxSubtitlePanelWidth = React.useCallback(() => {
     const containerWidth = mainContentRef.current?.getBoundingClientRect().width ?? window.innerWidth
     return Math.max(
       MIN_SUBTITLE_PANEL_WIDTH,
-      containerWidth - MIN_TRANSCRIPTION_PANEL_WIDTH - PANEL_GAP,
+      containerWidth - minTranscriptionWidth - PANEL_GAP,
     )
-  }, [])
+  }, [minTranscriptionWidth])
 
   const handleSubtitleResizeStart = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (isMobile) return
+    if (isSubtitleOverlay) return
 
     event.preventDefault()
     document.body.classList.add("app-panel-resizing")
@@ -302,11 +316,11 @@ function AppContentBody() {
     window.addEventListener("pointermove", handlePointerMove)
     window.addEventListener("pointerup", handlePointerUp)
     window.addEventListener("pointercancel", handlePointerUp)
-  }, [getMaxSubtitlePanelWidth, isMobile, subtitlePanelWidth, updateSetting])
+  }, [getMaxSubtitlePanelWidth, isSubtitleOverlay, subtitlePanelWidth, updateSetting])
 
   // Adjust subtitle panel width when window is resized
   React.useEffect(() => {
-    if (isMobile) return
+    if (isSubtitleOverlay) return
 
     const handleResize = () => {
       const maxWidth = getMaxSubtitlePanelWidth()
@@ -315,12 +329,13 @@ function AppContentBody() {
       }
     }
 
+    handleResize()
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
-  }, [getMaxSubtitlePanelWidth, subtitlePanelWidth, isMobile])
+  }, [getMaxSubtitlePanelWidth, subtitlePanelWidth, isSubtitleOverlay])
 
-  const subtitleViewerClassName = isMobile
-    ? `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} absolute inset-0 z-50 min-h-0 overflow-hidden bg-card`
+  const subtitleViewerClassName = isSubtitleOverlay
+    ? `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} absolute inset-0 z-[70] min-h-0 overflow-hidden bg-card`
     : `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} ${isSubtitleViewerResizing ? "subtitle-sidebar-shell-resizing" : "subtitle-sidebar-shell"} ${isSubtitleViewerResizing || isSubtitleViewerResizeHovered ? "border-foreground/30 dark:border-foreground/25" : "border-border"} relative min-h-0 shrink-0 overflow-hidden border-l transition-color bg-card [contain:layout_style]`
 
   return (
@@ -329,8 +344,10 @@ function AppContentBody() {
           {/* Main Content Area with Resizable Panels */}
           <div ref={mainContentRef} className="flex-1 min-h-0 pb-0 relative">
             <div className="flex h-full min-w-0">
-              <div className="min-h-0 min-w-[400px] flex-1 overflow-hidden">
+              <div className="min-h-0 flex-1 overflow-hidden" style={{ minWidth: isMobile ? 0 : minTranscriptionWidth }}>
                 <TranscriptionPanel
+                  queueOpen={queueOpen}
+                  onQueueOpenChange={handleQueueOpenChange}
                   onViewSubtitles={handleOpenSubtitleViewer}
                   onTranscriptCreated={handleTranscriptCreated}
                   isSubtitleViewerOpen={
@@ -343,14 +360,14 @@ function AppContentBody() {
                   ref={subtitlePanelRef}
                   className={subtitleViewerClassName}
                   style={{
-                    width: isMobile
+                    width: isSubtitleOverlay
                       ? "100%"
                       : isSubtitleViewerExpanded
                         ? subtitlePanelWidth
                         : 0,
                   }}
                 >
-                  {!isMobile && (
+                  {!isSubtitleOverlay && (
                     <div
                       role="separator"
                       aria-orientation="vertical"
@@ -367,12 +384,12 @@ function AppContentBody() {
                         segments={livePreviewSegments}
                         isComplete={!isDraftMode}
                         progress={heldProgressRef.current}
-                        isFullScreen={isMobile}
+                        isFullScreen={isSubtitleOverlay}
                         onClose={handleCloseSubtitleViewer}
                       />
                     ) : (
                       <SubtitleViewerPanel
-                        isFullScreen={isMobile}
+                        isFullScreen={isSubtitleOverlay}
                         onClose={handleCloseSubtitleViewer}
                         transcriptDocuments={transcriptDocuments}
                         isLoadingTranscriptDocuments={!hasLoadedTranscriptDocuments}

@@ -81,6 +81,9 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSGeometry"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSWindow", "NSScreen", "NSAnimation", "NSAnimationContext", "NSResponder", "NSGraphics"] }
 
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+rustix = { version = "1", features = ["fs"] }
+
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.55"
 # WideCharToMultiByte + GetShortPathNameW for ANSI-safe Resolve script paths.

@@ -33,6 +33,8 @@ import {
 } from '@/utils/subtitle-export';
 import { loadFontForLanguage } from '@/lib/font-loader';
 import { preserveSubtitleEdits } from '@/utils/subtitle-edits';
+import { createPendingSubtitleSaves } from '@/utils/pending-subtitle-saves';
+import { createLatestRequestGate } from '@/utils/latest-request';
 
 function getTranscriptSourceType(
   audioInputMode: "file" | "timeline",
@@ -74,6 +76,10 @@ interface SubtitleDocumentContextType {
   exportSubtitlesAs: (format: SubtitleExportFormat, subtitles?: Subtitle[], speakers?: Speaker[]) => Promise<void>;
   importSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
   loadSubtitles: (audioInputMode: "file" | "timeline", fileInput: string | null, timelineId: string) => Promise<void>;
+  invalidatePendingSubtitleLoads: () => void;
+  startSubtitleLoad: () => () => boolean;
+  /** Clear the visible document after pending edits have been flushed. */
+  clearCurrentSubtitleDocument: () => void;
   openStoredSubtitleDocument: (filename: string, transcript: any) => void;
   closeDeletedSubtitleDocument: (filename: string) => void;
 }
@@ -92,11 +98,18 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   // document filename and would surface an id like `example__tr_2026…`.
   const documentFilenameRef = useRef(currentSubtitleDocumentFilename);
   documentFilenameRef.current = currentSubtitleDocumentFilename;
+  const subtitleLoadGateRef = useRef(createLatestRequestGate());
+  const startSubtitleLoad = useCallback(() => subtitleLoadGateRef.current.start(), []);
+  const invalidatePendingSubtitleLoads = useCallback(() => {
+    subtitleLoadGateRef.current.invalidate();
+  }, []);
 
   // Debounce subtitle file writes to prevent concurrent read-parse-stringify-write
   // cycles from accumulating in the V8 heap when the user types quickly.
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingSaveRef = useRef<{ subtitles: Subtitle[]; filename: string } | null>(null);
+  const pendingSavesRef = useRef(createPendingSubtitleSaves<Subtitle[]>(
+    (filename, subtitles) => updateSubtitleDocument(filename, { subtitles }),
+  ));
   // Export reads these after the save dialog closes. They are used only when
   // the same document is still open, so a different transcript cannot mix in.
   const subtitlesRef = useRef(subtitles);
@@ -111,10 +124,13 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
 
   // Load subtitles when timelineId or fileInput changes
   const loadSubtitles = useCallback(async (audioInputMode: "file" | "timeline", fileInput: string | null, timelineId: string) => {
+    const isCurrent = subtitleLoadGateRef.current.start();
     const filename = await resolveSubtitleDocumentFilename(audioInputMode === "file", fileInput, timelineId);
+    if (!isCurrent()) return;
     if (filename && filename.length > 0) {
       console.log("Loading subtitles:", filename);
       const transcript = await readSubtitleDocument(filename);
+      if (!isCurrent()) return;
       if (transcript) {
         console.log("Transcript loaded:", transcript);
         setCurrentSubtitleDocumentFilename(filename);
@@ -163,13 +179,11 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-    const pending = pendingSaveRef.current;
-    if (!pending) return;
-    pendingSaveRef.current = null;
     try {
-      await updateSubtitleDocument(pending.filename, { subtitles: pending.subtitles });
+      await pendingSavesRef.current.flush();
     } catch (error) {
       console.error('Failed to flush pending subtitle save:', error);
+      throw error;
     }
   }, []);
 
@@ -190,14 +204,11 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
-    pendingSaveRef.current = { subtitles: newSubtitles, filename: targetFilename };
+    pendingSavesRef.current.enqueue(targetFilename, newSubtitles);
     saveTimerRef.current = setTimeout(async () => {
       saveTimerRef.current = null;
-      const pending = pendingSaveRef.current;
-      if (!pending) return;
-      pendingSaveRef.current = null;
       try {
-        await updateSubtitleDocument(pending.filename, { subtitles: pending.subtitles });
+        await pendingSavesRef.current.flush();
         console.log('Subtitle saved to file (debounced)');
       } catch (error) {
         console.error('Failed to update subtitle in file:', error);
@@ -457,7 +468,22 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     }
   }
 
+  const clearCurrentSubtitleDocument = useCallback(() => {
+    invalidatePendingSubtitleLoads();
+    // Keep the refs in sync immediately: asynchronous actions can inspect them
+    // before React has committed the cleared state. Storage is not modified.
+    documentFilenameRef.current = null;
+    subtitlesRef.current = [];
+    speakersRef.current = [];
+    setSubtitles([]);
+    setSpeakers([]);
+    setCurrentSubtitleDocumentFilename(null);
+    setCurrentSubtitleDocumentSourceName(null);
+    setMarkIn(0);
+  }, [invalidatePendingSubtitleLoads]);
+
   const openStoredSubtitleDocument = (filename: string, transcript: any) => {
+    invalidatePendingSubtitleLoads();
     setSubtitles(transcript?.segments || []);
     setSpeakers(transcript?.speakers || []);
     setCurrentSubtitleDocumentFilename(filename);
@@ -469,13 +495,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   };
 
   const closeDeletedSubtitleDocument = (filename: string) => {
-    if (pendingSaveRef.current?.filename === filename) {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = null;
-      }
-      pendingSaveRef.current = null;
-    }
+    pendingSavesRef.current.discard(filename);
     if (documentFilenameRef.current !== filename) return;
     setSubtitles([]);
     setSpeakers([]);
@@ -502,6 +522,9 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       exportSubtitlesAs,
       importSubtitles,
       loadSubtitles,
+      invalidatePendingSubtitleLoads,
+      startSubtitleLoad,
+      clearCurrentSubtitleDocument,
       openStoredSubtitleDocument,
       closeDeletedSubtitleDocument,
     }}>
