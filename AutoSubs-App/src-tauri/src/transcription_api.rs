@@ -288,6 +288,28 @@ pub async fn transcribe_audio<R: Runtime>(
     app: AppHandle<R>,
     options: FrontendTranscribeOptions,
 ) -> Result<Transcript, String> {
+    transcribe_audio_inner(app, options, true).await
+}
+
+/// Transcribe under an existing pipeline lease. The owner must reset cancellation
+/// before preparation; a cancellation delivered during preparation must survive
+/// until transcription begins.
+#[command]
+pub async fn queue_transcribe_audio<R: Runtime>(
+    app: AppHandle<R>,
+    options: FrontendTranscribeOptions,
+) -> Result<Transcript, String> {
+    transcribe_audio_inner(app, options, false).await
+}
+
+async fn transcribe_audio_inner<R: Runtime>(
+    app: AppHandle<R>,
+    options: FrontendTranscribeOptions,
+    reset_cancellation: bool,
+) -> Result<Transcript, String> {
+    if !reset_cancellation && *SHOULD_CANCEL.lock().map_err(|_| "Failed to acquire cancellation lock".to_string())? {
+        return Err("Transcription cancelled".to_string());
+    }
     let start_time = Instant::now();
     let options_log = TranscribeOptionsLogView::from(&options);
     match serde_json::to_string(&options_log) {
@@ -303,8 +325,10 @@ pub async fn transcribe_audio<R: Runtime>(
     if let Ok(mut queue) = PROGRESS_QUEUE.lock() {
         queue.clear();
     }
-    if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
-        *should_cancel = false;
+    if reset_cancellation {
+        if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
+            *should_cancel = false;
+        }
     }
 
     let emit_app = app.clone();

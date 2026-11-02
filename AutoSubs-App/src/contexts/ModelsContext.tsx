@@ -2,6 +2,9 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Model } from '@/types';
 import { models } from '@/lib/models';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { tryAcquirePipeline, releasePipeline } from '@/queue/pipeline-owner';
 
 interface ModelsContextType {
   modelsState: Model[];
@@ -14,6 +17,7 @@ interface ModelsContextType {
 const ModelsContext = createContext<ModelsContextType | null>(null);
 
 export function ModelsProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const [modelsState, setModelsState] = useState(models);
   const [downloadedModelValues, setDownloadedModelValues] = useState<string[]>([]);
 
@@ -52,6 +56,13 @@ export function ModelsProvider({ children }: { children: React.ReactNode }) {
 
   // Function to delete a model
   const handleDeleteModel = async (modelValue: string) => {
+    // A transcription may have started while the confirmation dialog was
+    // open. Claim the same synchronous guard used by both run paths before
+    // touching the shared cache, and keep it until the deletion has settled.
+    if (!tryAcquirePipeline('model-delete')) {
+      toast.info(t('queue.busy'));
+      return;
+    }
     try {
       // Call the backend to delete the model files
       await invoke('delete_model', { model: modelValue });
@@ -63,6 +74,8 @@ export function ModelsProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error(`Failed to delete model ${modelValue}:`, error);
       // You could add a toast notification here to inform the user of the error
+    } finally {
+      releasePipeline('model-delete');
     }
   };
 

@@ -20,10 +20,14 @@ import {
 } from "@tauri-apps/plugin-fs";
 import { platform } from "@tauri-apps/plugin-os";
 import { Subtitle, Speaker } from "@/types";
+import { createSerialTaskQueue } from "./serial-task-queue";
 
 export { generateTranscriptTxt } from "./transcript-txt.ts";
 
 const TRANSCRIPT_INDEX_FILENAME = "transcript-index.json";
+// A queue run can save a document while the editor is autosaving another.
+// Serialize every index read/modify/write so neither silently drops the other.
+const withSubtitleIndex = createSerialTaskQueue();
 
 export type TranscriptSourceType = "standalone" | "premiere" | "aftereffects" | "resolve" | "unknown";
 
@@ -203,7 +207,7 @@ async function getSubtitleDocumentIndexPath(): Promise<string> {
   return await join(dir, TRANSCRIPT_INDEX_FILENAME);
 }
 
-async function readSubtitleDocumentIndex(): Promise<TranscriptIndexItem[]> {
+async function readSubtitleDocumentIndexUnlocked(strict = false): Promise<TranscriptIndexItem[]> {
   const indexPath = await getSubtitleDocumentIndexPath();
   if (!(await exists(indexPath))) {
     return [];
@@ -212,11 +216,21 @@ async function readSubtitleDocumentIndex(): Promise<TranscriptIndexItem[]> {
   try {
     const contents = await readTextFile(indexPath);
     const parsed = JSON.parse(contents);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) {
+      if (strict) throw new Error("Transcript index is not an array");
+      return [];
+    }
+    return parsed;
   } catch (error) {
     console.error("Failed to read transcript index:", error);
+    // Never overwrite an unreadable index with an empty list when updating it.
+    if (strict) throw error;
     return [];
   }
+}
+
+async function readSubtitleDocumentIndex(): Promise<TranscriptIndexItem[]> {
+  return withSubtitleIndex(() => readSubtitleDocumentIndexUnlocked());
 }
 
 async function writeSubtitleDocumentIndex(
@@ -230,56 +244,62 @@ async function upsertSubtitleDocumentIndexItem(
   filename: string,
   metadata: TranscriptMetadata,
 ): Promise<void> {
-  const items = await readSubtitleDocumentIndex();
-  const nextItem: TranscriptIndexItem = {
-    filename,
-    metadata,
-    createdAt: metadata.createdAt,
-  };
+  return withSubtitleIndex(async () => {
+    const items = await readSubtitleDocumentIndexUnlocked(true);
+    const nextItem: TranscriptIndexItem = {
+      filename,
+      metadata,
+      createdAt: metadata.createdAt,
+    };
 
-  const existingIndex = items.findIndex((item) => item.filename === filename);
-  if (existingIndex >= 0) {
-    items[existingIndex] = nextItem;
-  } else {
-    items.push(nextItem);
-  }
+    const existingIndex = items.findIndex((item) => item.filename === filename);
+    if (existingIndex >= 0) {
+      items[existingIndex] = nextItem;
+    } else {
+      items.push(nextItem);
+    }
 
-  await writeSubtitleDocumentIndex(items);
+    await writeSubtitleDocumentIndex(items);
+  });
 }
 
 async function ensureSubtitleDocumentIndexItem(
   filename: string,
 ): Promise<TranscriptIndexItem | null> {
-  const items = await readSubtitleDocumentIndex();
-  const existingItem = items.find((item) => item.filename === filename);
-  if (existingItem) {
-    return existingItem;
-  }
+  return withSubtitleIndex(async () => {
+    const items = await readSubtitleDocumentIndexUnlocked(true);
+    const existingItem = items.find((item) => item.filename === filename);
+    if (existingItem) {
+      return existingItem;
+    }
 
-  const transcript = (await readSubtitleDocument(
-    filename,
-  )) as StoredSubtitleDocument | null;
-  if (!transcript) {
-    return null;
-  }
+    const transcript = (await readSubtitleDocument(
+      filename,
+    )) as StoredSubtitleDocument | null;
+    if (!transcript) {
+      return null;
+    }
 
-  const metadata = buildMetadata(transcript, filename, transcript.metadata);
-  const nextItem: TranscriptIndexItem = {
-    filename,
-    metadata,
-    createdAt: metadata.createdAt,
-  };
+    const metadata = buildMetadata(transcript, filename, transcript.metadata);
+    const nextItem: TranscriptIndexItem = {
+      filename,
+      metadata,
+      createdAt: metadata.createdAt,
+    };
 
-  items.push(nextItem);
-  await writeSubtitleDocumentIndex(items);
-  return nextItem;
+    items.push(nextItem);
+    await writeSubtitleDocumentIndex(items);
+    return nextItem;
+  });
 }
 
 async function removeSubtitleDocumentIndexItem(filename: string): Promise<void> {
-  const items = await readSubtitleDocumentIndex();
-  await writeSubtitleDocumentIndex(
-    items.filter((item) => item.filename !== filename),
-  );
+  return withSubtitleIndex(async () => {
+    const items = await readSubtitleDocumentIndexUnlocked(true);
+    await writeSubtitleDocumentIndex(
+      items.filter((item) => item.filename !== filename),
+    );
+  });
 }
 
 function getLegacyTranscriptFilename(
