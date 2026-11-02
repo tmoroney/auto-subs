@@ -77,6 +77,7 @@ interface SubtitleDocumentContextType {
   importSubtitles: (settings: Settings, fileInput: string | null, timelineId: string) => Promise<void>;
   loadSubtitles: (audioInputMode: "file" | "timeline", fileInput: string | null, timelineId: string) => Promise<void>;
   invalidatePendingSubtitleLoads: () => void;
+  startSubtitleLoad: () => () => boolean;
   /** Clear the visible document after pending edits have been flushed. */
   clearCurrentSubtitleDocument: () => void;
   openStoredSubtitleDocument: (filename: string, transcript: any) => void;
@@ -98,6 +99,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   const documentFilenameRef = useRef(currentSubtitleDocumentFilename);
   documentFilenameRef.current = currentSubtitleDocumentFilename;
   const subtitleLoadGateRef = useRef(createLatestRequestGate());
+  const startSubtitleLoad = useCallback(() => subtitleLoadGateRef.current.start(), []);
   const invalidatePendingSubtitleLoads = useCallback(() => {
     subtitleLoadGateRef.current.invalidate();
   }, []);
@@ -521,6 +523,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       importSubtitles,
       loadSubtitles,
       invalidatePendingSubtitleLoads,
+      startSubtitleLoad,
       clearCurrentSubtitleDocument,
       openStoredSubtitleDocument,
       closeDeletedSubtitleDocument,

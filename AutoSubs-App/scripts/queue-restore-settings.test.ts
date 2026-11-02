@@ -44,8 +44,12 @@ test("round trips effective options when the censor override is retained", () =>
 
 test("reports a missing saved model instead of selecting the wrong index", () => {
   const options = createOptionsSnapshot(settings, "removed", "clip.mp4", []);
-  assert.deepEqual(restoreQueueSettings(options, [{ value: "new" }]),
-    { ok: false, reason: "missing_model", modelId: "removed" });
+  const restored = restoreQueueSettings(options, [{ value: "new" }]);
+  assert.equal(restored.ok, false);
+  if (restored.ok) return;
+  assert.equal(restored.modelId, "removed");
+  assert.equal(restored.patch.model, undefined);
+  assert.equal(restored.patch.language, options.lang);
 });
 
 test("restores a character limit and leaves the inactive word limit alone", () => {

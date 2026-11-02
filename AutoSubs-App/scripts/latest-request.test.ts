@@ -22,3 +22,14 @@ test("queue selection invalidates a running file load", () => {
   gate.invalidate();
   assert.equal(isCurrent(), false);
 });
+
+test("queue and history loads share the latest selection", () => {
+  const gate = createLatestRequestGate();
+  const queueLoad = gate.start();
+  const historyLoad = gate.start();
+  assert.equal(queueLoad(), false);
+  assert.equal(historyLoad(), true);
+  const nextQueueLoad = gate.start();
+  assert.equal(historyLoad(), false);
+  assert.equal(nextQueueLoad(), true);
+});

@@ -2,7 +2,7 @@ import type { Settings, TranscriptionOptions } from "../types.ts";
 
 export type RestoredQueueSettings =
   | { ok: true; patch: Partial<Settings>; censoredWordsOverride: string[] }
-  | { ok: false; reason: "missing_model"; modelId: string };
+  | { ok: false; reason: "missing_model"; modelId: string; patch: Partial<Settings>; censoredWordsOverride: string[] };
 
 /**
  * Translate effective queued options back into the main form's settings.
@@ -22,11 +22,10 @@ export function restoreQueueSettings(
   models: readonly { value: string }[],
 ): RestoredQueueSettings {
   const modelIndex = models.findIndex((model) => model.value === options.model);
-  if (modelIndex < 0) return { ok: false, reason: "missing_model", modelId: options.model };
 
   const patch: Partial<Settings> = {
     audioInputMode: "file",
-    model: modelIndex,
+    ...(modelIndex >= 0 ? { model: modelIndex } : {}),
     language: options.lang,
     translate: options.translate,
     targetLanguage: options.targetLanguage,
@@ -56,5 +55,7 @@ export function restoreQueueSettings(
     patch.customMaxCharsPerLine = options.customMaxCharsPerLine;
   }
 
-  return { ok: true, patch, censoredWordsOverride: [...options.censoredWords] };
+  return modelIndex < 0
+    ? { ok: false, reason: "missing_model", modelId: options.model, patch, censoredWordsOverride: [...options.censoredWords] }
+    : { ok: true, patch, censoredWordsOverride: [...options.censoredWords] };
 }

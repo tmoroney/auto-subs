@@ -68,6 +68,7 @@ export function TranscriptHistoryPopover({
   );
   const {
     openStoredSubtitleDocument,
+    startSubtitleLoad,
     closeDeletedSubtitleDocument,
     flushPendingSubtitleSave,
     currentSubtitleDocumentFilename,
@@ -98,10 +99,12 @@ export function TranscriptHistoryPopover({
   };
 
   const openSubtitleDocument = async (filename: string) => {
+    const isCurrent = startSubtitleLoad();
     try {
       await flushPendingSubtitleSave();
+      if (!isCurrent()) return;
       const subtitleDocumentData = await readSubtitleDocument(filename);
-      if (!subtitleDocumentData) return;
+      if (!isCurrent() || !subtitleDocumentData) return;
 
       openStoredSubtitleDocument(filename, subtitleDocumentData);
       suppressTooltip();

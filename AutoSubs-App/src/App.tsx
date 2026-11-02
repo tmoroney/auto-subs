@@ -96,8 +96,9 @@ function AppContentBody() {
   // On a narrower desktop, show subtitles as an overlay while the queue and
   // form occupy the workspace. Mobile uses an overlay for the queue itself.
   const narrowWithQueue = useMediaQuery("(max-width: 943px)")
+  const queueIsOverlay = useMediaQuery("(max-width: 767px)")
   const isSubtitleOverlay = isMobile || (queueOpen && narrowWithQueue)
-  const minTranscriptionWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + (queueOpen && !isMobile ? QUEUE_PANEL_WIDTH : 0)
+  const minTranscriptionWidth = MIN_TRANSCRIPTION_PANEL_WIDTH + (queueOpen && !queueIsOverlay ? QUEUE_PANEL_WIDTH : 0)
   const mainContentRef = React.useRef<HTMLDivElement>(null)
   const subtitlePanelRef = React.useRef<HTMLDivElement>(null)
   const subtitleViewerCloseTimeoutRef = React.useRef<number | null>(null)
@@ -334,7 +335,7 @@ function AppContentBody() {
   }, [getMaxSubtitlePanelWidth, subtitlePanelWidth, isSubtitleOverlay])
 
   const subtitleViewerClassName = isSubtitleOverlay
-    ? `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} absolute inset-0 z-50 min-h-0 overflow-hidden bg-card`
+    ? `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} absolute inset-0 z-[70] min-h-0 overflow-hidden bg-card`
     : `${isSubtitleViewerClosing ? "animate-subtitle-sidebar-out" : "animate-subtitle-sidebar-in"} ${isSubtitleViewerResizing ? "subtitle-sidebar-shell-resizing" : "subtitle-sidebar-shell"} ${isSubtitleViewerResizing || isSubtitleViewerResizeHovered ? "border-foreground/30 dark:border-foreground/25" : "border-border"} relative min-h-0 shrink-0 overflow-hidden border-l transition-color bg-card [contain:layout_style]`
 
   return (

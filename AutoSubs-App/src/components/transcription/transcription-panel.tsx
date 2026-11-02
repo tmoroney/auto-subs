@@ -57,6 +57,7 @@ export function TranscriptionPanel({
     openStoredSubtitleDocument,
     clearCurrentSubtitleDocument,
     invalidatePendingSubtitleLoads,
+    startSubtitleLoad,
   } = useSubtitleDocument();
   const {
     selectedInputTracksByApp,
@@ -230,7 +231,11 @@ export function TranscriptionPanel({
   // settings and loading an item's settings leave the job untouched.
   React.useEffect(() => useSettingsStore.subscribe((settings, previous) => {
     const id = selectedQueueIdRef.current;
-    if (!id || restoringQueueSettingsRef.current || missingQueueModelRef.current) return;
+    if (!id || restoringQueueSettingsRef.current) return;
+    if (missingQueueModelRef.current) {
+      if (settings.model === previous.model || !queueModelsRef.current[settings.model]) return;
+      missingQueueModelRef.current = false;
+    }
     const item = queue.getItems().find((job) => job.id === id);
     if (!item || ["preparing", "transcribing", "exporting"].includes(item.status)) return;
     const snapshot = (value: Settings) => {
@@ -400,7 +405,7 @@ export function TranscriptionPanel({
       if (request === queueSelectionRequestRef.current) setQueueNotice(error instanceof Error ? error.message : String(error));
       return;
     }
-    if (request !== queueSelectionRequestRef.current) return;
+    if (request !== queueSelectionRequestRef.current || getPipelineOwner() === "manual") return;
     const item = queue.getItems().find((job) => job.id === id);
     if (!item) return;
     invalidatePendingSubtitleLoads();
@@ -411,15 +416,11 @@ export function TranscriptionPanel({
     setQueueSelectionVersion((version) => version + 1);
     clearProgressSteps();
     setFileInput(item.sourcePath);
-    if (!restored.ok) {
-      setQueueNotice(tErr("queue.missing_model"));
-      return;
-    }
     restoringQueueSettingsRef.current = true;
     try { useSettingsStore.setState(restored.patch); }
     finally { restoringQueueSettingsRef.current = false; }
     censorSnapshotRef.current = { words: restored.censoredWordsOverride, signature: currentCensorSignature() };
-    setQueueNotice(null);
+    setQueueNotice(restored.ok ? null : tErr("queue.missing_model"));
   };
 
   const selectedQueueItem = queue.items.find((item) => item.id === selectedQueueId);
@@ -462,8 +463,9 @@ export function TranscriptionPanel({
     // a cancelled retry. Explicitly reselecting an item still reloads it.
     if (!id || !key || lastLoadedQueueResultKeyRef.current === key) return;
     let cancelled = false;
+    const isLatestLoad = startSubtitleLoad();
     const selectionRequest = queueSelectionRequestRef.current;
-    const isCurrent = () => !cancelled && selectedQueueIdRef.current === id &&
+    const isCurrent = () => !cancelled && isLatestLoad() && selectedQueueIdRef.current === id &&
       queueSelectionRequestRef.current === selectionRequest &&
       queueResultSelectionKey(queue.getItems().find((job) => job.id === id), queueSelectionVersion) === key;
     void (async () => {
@@ -481,14 +483,14 @@ export function TranscriptionPanel({
         resultActionsRef.current.openStoredSubtitleDocument(filename, document);
         lastLoadedQueueResultKeyRef.current = key;
         await resultActionsRef.current.onTranscriptCreated?.();
-        if (!isCurrent()) return;
+        if (cancelled || selectedQueueIdRef.current !== id || queueSelectionRequestRef.current !== selectionRequest) return;
         resultActionsRef.current.onViewSubtitles?.();
       } catch (error) {
         if (!cancelled) setQueueNotice(error instanceof Error ? error.message : String(error));
       }
     })();
     return () => { cancelled = true; };
-  }, [selectedQueueId, selectedQueueResultKey]);
+  }, [selectedQueueId, selectedQueueResultKey, startSubtitleLoad]);
 
   React.useEffect(() => {
     if (processingSteps.length > 0 && progressContainerRef.current) {

@@ -126,8 +126,9 @@ export function useTranscriptionQueue(validateOptions?: (options: TranscriptionO
 
   React.useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let unlistenSpeakers: (() => void) | undefined;
     let alive = true;
-    progressListenerReadyRef.current = listen<QueueProgressEvent>("labeled-progress", (event) => {
+    const progressReady = listen<QueueProgressEvent>("labeled-progress", (event) => {
       const id = activeIdRef.current;
       if (!id || !Number.isFinite(event.payload.progress)) return;
       const progress = Math.max(0, Math.min(100, event.payload.progress));
@@ -142,7 +143,15 @@ export function useTranscriptionQueue(validateOptions?: (options: TranscriptionO
       if (alive) unlisten = off; else off();
       return null;
     }).catch((error) => errorMessage(error));
-    return () => { alive = false; unlisten?.(); };
+    const speakersReady = listen<{ count: number }>("speakers-identified", (event) => {
+      const id = activeIdRef.current;
+      if (!id || !Number.isFinite(event.payload.count)) return;
+      commit((current) => ({ ...current, jobs: current.jobs.map((job) =>
+        job.id === id ? { ...job, speakerCount: event.payload.count } : job) }), false);
+    }).then((off) => { if (alive) unlistenSpeakers = off; else off(); return null; })
+      .catch((error) => errorMessage(error));
+    progressListenerReadyRef.current = Promise.all([progressReady, speakersReady]).then(([a, b]) => a || b);
+    return () => { alive = false; unlisten?.(); unlistenSpeakers?.(); };
   }, [commit]);
 
   const setOutputFolder = React.useCallback((folder: string | null) => {
@@ -210,6 +219,7 @@ export function useTranscriptionQueue(validateOptions?: (options: TranscriptionO
             if (cancelRef.current) throw new Error("Cancelled");
             let transcript = job.resultFilename && !job.resultStale ? await loadQueueResult(job.resultFilename) : null;
             if (!transcript) {
+              patchJob(job.id, { speakerCount: undefined });
               const options = await ensureQueueModels(job.options);
               if (cancelRef.current) throw new Error("Cancelled");
               patchJob(job.id, { status: "transcribing", progress: 0 });

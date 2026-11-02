@@ -395,7 +395,7 @@ fn publish_queue_output<F: Fn(&Path) -> bool>(destination: &Path, content: &str,
             let mut backup_stem = String::new();
             let mut units = 0;
             for ch in stem.chars() {
-                if units + ch.len_utf16() > 160 { break; }
+                if units + ch.len_utf16() > 160 || backup_stem.len() + ch.len_utf8() > 160 { break; }
                 units += ch.len_utf16();
                 backup_stem.push(ch);
             }
@@ -586,6 +586,17 @@ mod tests {
         assert!(output.is_dir());
         assert!(publish_queue_output(&dir.path().join("other.txt"), "text", &|_| false).is_err());
         assert!(!dir.path().join("other.txt").exists());
+    }
+
+    #[test]
+    fn backup_filename_fits_utf8_component_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join(format!("{}.srt", "字".repeat(80)));
+        fs::write(&output, "old").unwrap();
+        let backup = publish_queue_output(&output, "new", &|_| true).unwrap().unwrap();
+        assert!(backup.file_name().unwrap().to_string_lossy().len() <= 255);
+        assert_eq!(fs::read_to_string(backup).unwrap(), "old");
+        assert_eq!(fs::read_to_string(output).unwrap(), "new");
     }
 
     #[test]
