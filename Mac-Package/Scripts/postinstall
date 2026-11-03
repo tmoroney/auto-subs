@@ -33,11 +33,12 @@ UTILITY_PATH="$SCRIPTS_DIR/Utility"
 # Write the Resolve bridge launcher now so it is in place before the app first
 # runs. The app also rewrites it on startup (resolve_scripts.rs), which keeps
 # it current across updates. `tee` runs as the console user so the app
-# (running as them) can rewrite the file.
+# (running as them) can rewrite the file. The bundled copy has the Lua modules
+# inlined, which Resolve 21.1.2 needs because it can't load files.
 "${AS_USER[@]}" mkdir -p "$UTILITY_PATH"
 sed -e "s|\[\[__AUTOSUBS_RESOURCES_FOLDER__\]\]|[[${RESOURCES_PATH}]]|g" \
     -e "s|\[\[__AUTOSUBS_APP_EXECUTABLE__\]\]|[[${APP_PATH}]]|g" \
-    "$RESOURCES_PATH/AutoSubs.lua" | "${AS_USER[@]}" tee "$UTILITY_PATH/AutoSubs.lua" > /dev/null
+    "$RESOURCES_PATH/AutoSubs.bundled.lua" | "${AS_USER[@]}" tee "$UTILITY_PATH/AutoSubs.lua" > /dev/null
 
 # 3.10.0 installed a startup scriptlib that ran the bridge via fusion:Execute,
 # which blocks Fusion's script executor for the whole Resolve session.

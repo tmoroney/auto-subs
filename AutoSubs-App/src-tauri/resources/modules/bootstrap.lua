@@ -1,16 +1,21 @@
 -- AutoSubs bootstrap: runs inside Resolve's sandboxed Lua state.
 --
 -- Resolve 21.1 (free edition) removed io, ffi, package, require, os.execute
--- and bmd.readdir from the state that runs Workspace > Scripts scripts. This
--- file therefore provides everything the modules need without those globals:
+-- and bmd.readdir from the state that runs Workspace > Scripts scripts, and
+-- 21.1.2 also removed loadfile, dofile, bmd.readfile, fu:SavePrefs and
+-- fu:LoadPrefs. This file therefore provides everything the modules need
+-- without those globals:
 --   * platform detection (no ffi)
---   * a `require` replacement (AutoSubs_require) built on loadfile
---   * a base64 encoder for the Fusion.prefs response channel
+--   * a `require` replacement (AutoSubs_require) that takes modules from the
+--     launcher's bundle and falls back to files
+--   * AutoSubs_loadfile, a loadfile that also works on 21.1.2 (fu:OpenFile)
+--   * a base64 encoder for the bridge's response channel
 --   * the mailbox path the file-bridge shares with the desktop app
 --
--- The chunk returns the boot function; entry scripts run it as:
---   local boot = assert(loadfile(bootstrap_path))()
---   boot(resources_folder, app_executable, dev_mode)
+-- The chunk returns the boot function. The installed launcher carries this file
+-- as a string in its module bundle; the Dev launcher reads it from the repo:
+--   local boot = chunk()
+--   boot(resources_folder, app_executable, dev_mode, opts)
 --
 ---@diagnostic disable: undefined-global
 
@@ -64,6 +69,53 @@ local function base64_encode(data)
     end) .. ({ "", "==", "=" })[#data % 3 + 1])
 end
 
+local function fusion_object()
+    local fu = rawget(_G, "fusion") or rawget(_G, "fu")
+    if fu == nil then
+        local r = rawget(_G, "resolve")
+        if r and type(r.Fusion) == "function" then
+            fu = r:Fusion()
+        end
+    end
+    return fu
+end
+
+-- fu:OpenFile + ReadLine is the one way left to read a file on 21.1.2. ReadLine
+-- returns text with its line ending and cuts a line at 65535 bytes, so nothing
+-- read here may have longer lines (resolve_bridge.rs splits requests for this).
+-- FILE_MODE_READ is documented but no longer defined; its value is 1.
+local function read_text_file(path)
+    local fu = fusion_object()
+    if not fu or type(fu.OpenFile) ~= "function" then
+        return nil, "fu:OpenFile is not available"
+    end
+    local file = fu:OpenFile(path, rawget(_G, "FILE_MODE_READ") or 1)
+    if not file then
+        return nil, "could not open " .. path
+    end
+    local parts = {}
+    local line = file:ReadLine()
+    while type(line) == "string" do
+        parts[#parts + 1] = line
+        line = file:ReadLine()
+    end
+    file:Close()
+    return table.concat(parts)
+end
+
+-- loadfile where it exists, otherwise the same contract on top of fu:OpenFile.
+local function load_lua_file(path)
+    local native = rawget(_G, "loadfile")
+    if type(native) == "function" then
+        return native(path)
+    end
+    local source, err = read_text_file(path)
+    if not source then
+        return nil, err
+    end
+    return load(source, "@" .. path)
+end
+
 -- Resident-bridge handshake. The Utility/Dev scripts launch the bridge, and a
 -- loop from an earlier launch (or from the 3.10.0 startup scriptlib, which ran
 -- it via fusion:Execute) may still be alive; these prefs keys (in-memory only,
@@ -83,17 +135,6 @@ end
 --         A loop exits only when the value differs from what it read at
 --         startup, so a Stop aimed at a predecessor never kills the fresh
 --         loop — and one persisted to disk by a stray SavePrefs is harmless.
-local function fusion_object()
-    local fu = rawget(_G, "fusion") or rawget(_G, "fu")
-    if fu == nil then
-        local r = rawget(_G, "resolve")
-        if r and type(r.Fusion) == "function" then
-            fu = r:Fusion()
-        end
-    end
-    return fu
-end
-
 local function bridge_alive(fu)
     if not fu or type(fu.GetPrefs) ~= "function" then
         return false
@@ -144,6 +185,8 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
     -- that can't carry a per-user value, e.g. the shared Linux package one.
     _G.AUTOSUBS_MAILBOX = (opts and opts.mailbox_dir) or mailbox_dir(platform)
     _G.AutoSubs_base64 = base64_encode
+    _G.AutoSubs_loadfile = load_lua_file
+    _G.AutoSubs_bundle = opts and opts.modules or nil
 
     -- Launch-mode coordination (see the handshake comment above).
     local mode = (opts and opts.mode) or "manual"
@@ -152,13 +195,18 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
     if can_signal and opts and opts.open_app then
         -- Open from Resolve: this state can't launch programs, so ask the
         -- app's login-item watcher (resolve_launcher.rs) to do it. The
-        -- watcher reads Fusion.prefs from disk, so this is the one SavePrefs
-        -- a launch makes. It happens on the user's click, never from the idle
+        -- watcher reads Fusion.prefs from disk, so this is the one flush a
+        -- launch makes. It happens on the user's click, never from the idle
         -- loop. Done first so the app opens while the takeover below waits.
+        -- 21.1.2 has no SavePrefs, but fu:SetData writes Fusion.prefs at once.
         pcall(function()
             fu:SetPrefs("Global.AutoSubsBridge.LaunchRequest",
                 tostring(os.time()) .. " " .. tostring({}))
-            fu:SavePrefs()
+            if type(fu.SavePrefs) == "function" then
+                fu:SavePrefs()
+            else
+                fu:SetData("AutoSubsBridge.Flush", tostring(os.time()))
+            end
         end)
     end
     if mode == "manual" and can_signal then
@@ -189,7 +237,8 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
 
     -- Module loader mirroring `require`: caches results in AutoSubs_loaded
     -- (`true` for modules that return nothing), errors with the full path
-    -- tried so a missing module is diagnosable.
+    -- tried so a missing module is diagnosable. The launcher's bundle wins, so
+    -- the installed script needs no file access to start.
     _G.AutoSubs_loaded = _G.AutoSubs_loaded or {}
     function _G.AutoSubs_require(name)
         local loaded = _G.AutoSubs_loaded
@@ -197,7 +246,13 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
             return loaded[name]
         end
         local path = modules_path .. _G.AUTOSUBS_SEP .. name .. ".lua"
-        local chunk, load_err = loadfile(path)
+        local chunk, load_err
+        local bundled = _G.AutoSubs_bundle and _G.AutoSubs_bundle[name]
+        if bundled then
+            chunk, load_err = load(bundled, "=" .. name)
+        else
+            chunk, load_err = load_lua_file(path)
+        end
         if not chunk then
             error("AutoSubs module '" .. name .. "' not found at: " .. path
                 .. (load_err and (" (" .. tostring(load_err) .. ")") or ""), 2)

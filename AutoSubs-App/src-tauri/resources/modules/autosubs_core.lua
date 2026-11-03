@@ -3,10 +3,11 @@
 ---@diagnostic disable: undefined-global, deprecated
 --
 -- Resolve 21.1 sandboxes the Lua state that runs Workspace > Scripts scripts:
--- io, ffi, package, require, os.execute and bmd.readdir are all nil here.
--- Modules are loaded via AutoSubs_require (see bootstrap.lua) and the bridge
--- to the desktop app is a file mailbox (request.lua read via loadfile;
--- responses written to Fusion.prefs via SetPrefs/SavePrefs).
+-- io, ffi, package, require, os.execute and bmd.readdir are all nil here, and
+-- 21.1.2 also removed loadfile, fu:SavePrefs and fu:LoadPrefs. Modules are
+-- loaded via AutoSubs_require (see bootstrap.lua) and the bridge to the desktop
+-- app is a file mailbox: request.lua is read with AutoSubs_loadfile, replies go
+-- to ack.txt/response.txt, or to Fusion.prefs where SavePrefs still exists.
 
 -- Shared access to the Resolve / Fusion scripting environment (see resolve_env.lua).
 local resolve_env = AutoSubs_require("resolve_env")
@@ -44,6 +45,11 @@ local resources_path
 local main_app
 -- Full path to the mailbox request file the desktop app writes (set in Init).
 local REQUEST_FILE
+local REPLY_FILES
+-- A loop from before 21.1.2 support can hot-reload into this file, and its
+-- bootstrap doesn't define AutoSubs_loadfile. That only happens where loadfile
+-- still exists.
+local load_lua_file = rawget(_G, "AutoSubs_loadfile") or loadfile
 
 -- Load Resolve objects
 local projectManager = resolve:GetProjectManager()
@@ -2816,29 +2822,56 @@ local handlers = {
     end,
 }
 
--- Write an ack / response for a request into Fusion.prefs. Rust polls the
--- prefs file on disk; SetPrefs + SavePrefs is the only channel back that the
--- sandboxed scripting state still allows.
-local function bridge_write(key, value)
+local function write_reply_file(name, value)
+    -- FILE_MODE_WRITE is documented but no longer defined; its value is 2.
+    -- WriteLine because file:Write only takes a MemBlock and silently writes
+    -- nothing for a string.
+    local file = fusion:OpenFile(REPLY_FILES[name], rawget(_G, "FILE_MODE_WRITE") or 2)
+    if not file then
+        error("could not open " .. REPLY_FILES[name])
+    end
+    file:WriteLine(value)
+    file:Close()
+end
+
+-- Write an ack / response for a request. Rust polls both places. Where SavePrefs
+-- exists the reply goes to Fusion.prefs, as it always has. 21.1.2 removed
+-- SavePrefs, so there it goes to a mailbox file, and only if that fails to
+-- Fusion.prefs, which fu:SetData flushes to disk as a side effect.
+local function bridge_write(name, value)
     if not fusion then
         return
     end
-    -- Retry a few times: SavePrefs can transiently fail while Resolve is
-    -- writing the file itself.
+    local key = "Global.AutoSubsBridge." .. name
+    local has_save_prefs = type(fusion.SavePrefs) == "function"
+    -- Retry a few times: writes can transiently fail while Resolve is writing
+    -- the prefs file itself, or Rust has the reply file open.
     for _ = 1, 5 do
         local ok = pcall(function()
-            fusion:SetPrefs(key, value)
-            fusion:SavePrefs()
+            if has_save_prefs then
+                fusion:SetPrefs(key, value)
+                fusion:SavePrefs()
+            else
+                write_reply_file(name, value)
+            end
         end)
         if ok then
             return
         end
         bmd.wait(0.05)
     end
+    if not has_save_prefs then
+        print("[AutoSubs Server] Could not write " .. tostring(REPLY_FILES[name])
+            .. ", replying through Fusion.prefs")
+        pcall(function()
+            fusion:SetPrefs(key, value)
+            fusion:SetData("AutoSubsBridge.Flush", tostring(os.time()))
+        end)
+    end
 end
 
 local function bridge_ack(id)
-    bridge_write("Global.AutoSubsBridge.Ack", id)
+    bridge_write("Ack", id)
 end
 
 local function bridge_respond(id, body_json)
@@ -2851,7 +2884,7 @@ local function bridge_respond(id, body_json)
     local safe = body_json:gsub("[\128-\255]", function(c)
         return string.format("\\u%04x", 0xE000 + c:byte())
     end)
-    bridge_write("Global.AutoSubsBridge.Response", id .. ":" .. AutoSubs_base64(safe))
+    bridge_write("Response", id .. ":" .. AutoSubs_base64(safe))
 end
 
 -- Claim a mailbox request so only one loop handles it. A raced takeover or
@@ -2878,7 +2911,7 @@ end
 function StartServer()
     -- File-mailbox loop: the desktop app drops request.lua in the shared
     -- mailbox directory; we ack it, run the handler, and write the response
-    -- into Fusion.prefs (see resolve_bridge.rs for the other side).
+    -- to the app (see bridge_write and resolve_bridge.rs for the other side).
     local quitServer = false
     local shouldReload = false
     -- Last handled request id lives in the AUTOSUBS_LAST_REQUEST_ID global
@@ -2947,9 +2980,9 @@ function StartServer()
 
         if bmd.fileexists(REQUEST_FILE) then
             -- nil on a half-written/garbage file: just retry next tick
-            local chunk = loadfile(REQUEST_FILE)
+            local read_ok, chunk = pcall(load_lua_file, REQUEST_FILE)
             local ok, req = false, nil
-            if chunk then
+            if read_ok and chunk then
                 ok, req = pcall(chunk)
             end
             if ok and type(req) == "table" and type(req.id) == "string"
@@ -3072,7 +3105,16 @@ function StartServer()
 
         -- Clear cached modules BEFORE running the new chunk so it re-requires
         -- fresh copies instead of binding the old cached modules. The running
-        -- server keeps its own locals, so the fallbacks below still work.
+        -- server keeps its own locals, so the fallbacks below still work. The
+        -- launcher's bundle holds the code being replaced, so it goes too and
+        -- comes back if the update can't be loaded.
+        local bundle = rawget(_G, "AutoSubs_bundle")
+        _G.AutoSubs_bundle = nil
+        local function restart_previous()
+            _G.AutoSubs_bundle = bundle
+            print("[AutoSubs Server] Restarting previous server...")
+            return StartServer()
+        end
         for _, name in ipairs({
             "autosubs_core", "resolve_env", "caption_template_version",
             "caption_style", "font_fallback", "dkjson", "version",
@@ -3081,28 +3123,25 @@ function StartServer()
             AutoSubs_loaded[name] = nil
         end
 
-        local new_core_chunk, load_err = loadfile(new_core_path)
+        local new_core_chunk, load_err = load_lua_file(new_core_path)
         if not new_core_chunk then
             print("[AutoSubs Server] Failed to load new autosubs_core.lua:", load_err)
-            print("[AutoSubs Server] Restarting previous server...")
-            return StartServer()
+            return restart_previous()
         end
 
         local new_core = new_core_chunk()
         if type(new_core) ~= "table" or type(new_core.Init) ~= "function" then
             print("[AutoSubs Server] New autosubs_core.lua did not return an AutoSubs table")
-            print("[AutoSubs Server] Restarting previous server...")
-            return StartServer()
+            return restart_previous()
         end
 
         local ok, init_err = pcall(new_core.Init, new_core, reload_executable_path, reload_resources_path, DEV_MODE,
             false)
         if not ok then
             print("[AutoSubs Server] New server initialization failed:", init_err)
-            print("[AutoSubs Server] Restarting previous server...")
             -- Drop the broken new module so a later reload can be retried.
             AutoSubs_loaded["autosubs_core"] = nil
-            return StartServer()
+            return restart_previous()
         end
 
         -- Init tail-calls StartServer; if it returns we are done.
@@ -3118,6 +3157,10 @@ local AutoSubs = {
         main_app = executable_path
         resources_path = resources_folder
         REQUEST_FILE = join_path(AUTOSUBS_MAILBOX, "request.lua")
+        REPLY_FILES = {
+            Ack = join_path(AUTOSUBS_MAILBOX, "ack.txt"),
+            Response = join_path(AUTOSUBS_MAILBOX, "response.txt"),
+        }
 
         json = AutoSubs_require("dkjson")
         timecode = AutoSubs_require("timecode")

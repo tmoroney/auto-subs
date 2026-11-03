@@ -30,13 +30,33 @@ if resources_folder == "__AUTOSUBS_RESOURCES_FOLDER__" then
     )
 end
 
--- Load the bootstrap via loadfile (the sandboxed scripting state has no
--- require/package); it sets up module loading and starts the core server.
+-- Load the bootstrap from the checkout (the sandboxed scripting state has no
+-- require/package, and since 21.1.2 no loadfile, so read_text_file mirrors the
+-- one in bootstrap.lua); it sets up module loading and starts the core server.
 -- mode = "manual": running this script restarts the bridge against your repo
 -- checkout (it stops any running bridge first, including one a 3.10.0 startup
 -- scriptlib left behind).
 local bootstrap_path = resources_folder .. "/modules/bootstrap.lua"
-local boot = assert(loadfile(bootstrap_path))()
+
+local function read_text_file(path)
+    local file = assert((fusion or fu):OpenFile(path, 1), "could not open " .. path)
+    local parts = {}
+    local line = file:ReadLine()
+    while type(line) == "string" do
+        parts[#parts + 1] = line
+        line = file:ReadLine()
+    end
+    file:Close()
+    return table.concat(parts)
+end
+
+local boot_chunk
+if type(loadfile) == "function" then
+    boot_chunk = assert(loadfile(bootstrap_path))
+else
+    boot_chunk = assert(load(read_text_file(bootstrap_path), "@" .. bootstrap_path))
+end
+local boot = boot_chunk()
 
 -- No executable path is needed in dev mode: the core server never launches the
 -- desktop app while dev mode is enabled.

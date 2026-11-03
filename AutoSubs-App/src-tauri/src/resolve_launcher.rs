@@ -3,7 +3,7 @@
 //!
 //! The sandboxed Resolve script can't launch programs (AGENTS.md lists the
 //! routes that are gone), but it can write Fusion.prefs. The production
-//! launcher sets `Global.AutoSubsBridge.LaunchRequest` and calls SavePrefs
+//! launcher sets `Global.AutoSubsBridge.LaunchRequest` and flushes prefs
 //! (bootstrap.lua); a watcher outside Resolve sees the new value land on disk
 //! and opens the app. A running app is brought to the front instead, through
 //! LaunchServices on macOS and the single-instance plugin elsewhere.

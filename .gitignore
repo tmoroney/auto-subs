@@ -32,3 +32,4 @@ node_modules/
 /Adobe-Extension/archive
 .codemaps/
 /AutoSubs-App/src-tauri/gen-resolve-linux/
+/AutoSubs-App/src-tauri/resources/AutoSubs.bundled.lua
