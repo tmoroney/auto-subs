@@ -19,7 +19,7 @@ import {
   remove,
 } from "@tauri-apps/plugin-fs";
 import { platform } from "@tauri-apps/plugin-os";
-import { Subtitle, Speaker } from "@/types";
+import type { Subtitle, Speaker } from "../types.ts";
 
 export { generateTranscriptTxt } from "./transcript-txt.ts";
 
@@ -486,7 +486,36 @@ export async function validateExportedAudioFile(filePath: string): Promise<strin
   throw new Error(lastFailure);
 }
 
+/**
+ * Validates that a transcript filename is safe and does not contain directory
+ * traversal sequences (like `..`, `/`, `\`) or invalid characters.
+ * Enforces defense-in-depth against path traversal vulnerabilities.
+ */
+export function isSafeTranscriptFilename(filename: string | null | undefined): boolean {
+  if (!filename || typeof filename !== "string") {
+    return false;
+  }
+  const trimmed = filename.trim();
+  if (trimmed.length === 0 || trimmed.length > 255) {
+    return false;
+  }
+  // Reject directory traversal segments, separators, and control characters (including NUL)
+  if (
+    trimmed.includes("/") ||
+    trimmed.includes("\\") ||
+    trimmed.includes("..") ||
+    /[\x00-\x1f\x7f]/.test(trimmed)
+  ) {
+    return false;
+  }
+  // Must end in .json
+  return trimmed.endsWith(".json");
+}
+
 export async function getSubtitleDocumentPath(filename: string): Promise<string> {
+  if (!isSafeTranscriptFilename(filename)) {
+    throw new Error(`Invalid or unsafe transcript filename: ${filename}`);
+  }
   const dir = await getSubtitleDocumentsDir();
   return await join(dir, filename);
 }
@@ -678,8 +707,7 @@ export async function saveSubtitleDocument(
   options?: SaveSubtitleDocumentOptions,
 ): Promise<{ segments: Subtitle[]; speakers: Speaker[] }> {
   try {
-    const storageDir = await getSubtitleDocumentsDir();
-    const filePath = await join(storageDir, filename);
+    const filePath = await getSubtitleDocumentPath(filename);
 
     console.log("Saving transcript to:", filePath);
 
@@ -772,8 +800,7 @@ export async function saveSubtitleDocument(
 export async function loadSubtitleDocumentSubtitles(
   filename: string,
 ): Promise<Subtitle[]> {
-  const storageDir = await getSubtitleDocumentsDir();
-  const filePath = await join(storageDir, filename);
+  const filePath = await getSubtitleDocumentPath(filename);
 
   if (!(await exists(filePath))) {
     console.log("Transcript file not found:", filename);
