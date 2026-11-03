@@ -19,7 +19,7 @@ import {
   remove,
 } from "@tauri-apps/plugin-fs";
 import { platform } from "@tauri-apps/plugin-os";
-import { Subtitle, Speaker } from "@/types";
+import type { Subtitle, Speaker } from "../types.ts";
 
 export { generateTranscriptTxt } from "./transcript-txt.ts";
 
@@ -486,9 +486,34 @@ export async function validateExportedAudioFile(filePath: string): Promise<strin
   throw new Error(lastFailure);
 }
 
+/**
+ * Sentinel Security: Validates that a transcript filename is safe and cannot be used
+ * for path traversal attacks. Ensures it is a base filename without directory separators
+ * or traversal components, and strictly ends with '.json'.
+ */
+export function isValidTranscriptFilename(filename: string | null | undefined): boolean {
+  if (!filename || typeof filename !== "string") {
+    return false;
+  }
+  const trimmed = filename.trim();
+  if (
+    !trimmed ||
+    trimmed === ".json" ||
+    trimmed.includes("/") ||
+    trimmed.includes("\\") ||
+    trimmed.includes("..")
+  ) {
+    return false;
+  }
+  return trimmed.endsWith(".json");
+}
+
 export async function getSubtitleDocumentPath(filename: string): Promise<string> {
+  if (!isValidTranscriptFilename(filename)) {
+    throw new Error(`[file-security] Invalid transcript filename: "${filename}"`);
+  }
   const dir = await getSubtitleDocumentsDir();
-  return await join(dir, filename);
+  return await join(dir, filename.trim());
 }
 
 export async function readSubtitleDocument(filename: string): Promise<any | null> {
