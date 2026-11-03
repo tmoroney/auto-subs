@@ -487,37 +487,35 @@ export async function validateExportedAudioFile(filePath: string): Promise<strin
 }
 
 /**
- * Validates that a transcript filename is safe and does not contain directory
- * traversal sequences (like `..`, `/`, `\`) or invalid characters.
- * Enforces defense-in-depth against path traversal vulnerabilities.
+ * Sentinel Security: Validates that a transcript filename is safe and cannot be used
+ * for path traversal attacks. Ensures it is a base filename without directory separators
+ * or traversal components, and strictly ends with '.json'.
  */
-export function isSafeTranscriptFilename(filename: string | null | undefined): boolean {
+export function isValidTranscriptFilename(filename: string | null | undefined): boolean {
   if (!filename || typeof filename !== "string") {
     return false;
   }
   const trimmed = filename.trim();
-  if (trimmed.length === 0 || trimmed.length > 255) {
-    return false;
-  }
-  // Reject directory traversal segments, separators, and control characters (including NUL)
   if (
+    !trimmed ||
+    trimmed.length > 255 ||
+    /[\x00-\x1f\x7f]/.test(filename) ||
+    trimmed === ".json" ||
     trimmed.includes("/") ||
     trimmed.includes("\\") ||
-    trimmed.includes("..") ||
-    /[\x00-\x1f\x7f]/.test(trimmed)
+    trimmed.includes("..")
   ) {
     return false;
   }
-  // Must end in .json
   return trimmed.endsWith(".json");
 }
 
 export async function getSubtitleDocumentPath(filename: string): Promise<string> {
-  if (!isSafeTranscriptFilename(filename)) {
-    throw new Error(`Invalid or unsafe transcript filename: ${filename}`);
+  if (!isValidTranscriptFilename(filename)) {
+    throw new Error(`[file-security] Invalid transcript filename: "${filename}"`);
   }
   const dir = await getSubtitleDocumentsDir();
-  return await join(dir, filename);
+  return await join(dir, filename.trim());
 }
 
 export async function readSubtitleDocument(filename: string): Promise<any | null> {
@@ -707,7 +705,8 @@ export async function saveSubtitleDocument(
   options?: SaveSubtitleDocumentOptions,
 ): Promise<{ segments: Subtitle[]; speakers: Speaker[] }> {
   try {
-    const filePath = await getSubtitleDocumentPath(filename);
+    const storageDir = await getSubtitleDocumentsDir();
+    const filePath = await join(storageDir, filename);
 
     console.log("Saving transcript to:", filePath);
 
@@ -800,7 +799,8 @@ export async function saveSubtitleDocument(
 export async function loadSubtitleDocumentSubtitles(
   filename: string,
 ): Promise<Subtitle[]> {
-  const filePath = await getSubtitleDocumentPath(filename);
+  const storageDir = await getSubtitleDocumentsDir();
+  const filePath = await join(storageDir, filename);
 
   if (!(await exists(filePath))) {
     console.log("Transcript file not found:", filename);
