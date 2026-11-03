@@ -498,6 +498,8 @@ export function isValidTranscriptFilename(filename: string | null | undefined): 
   const trimmed = filename.trim();
   if (
     !trimmed ||
+    trimmed.length > 255 ||
+    /[\x00-\x1f\x7f]/.test(filename) ||
     trimmed === ".json" ||
     trimmed.includes("/") ||
     trimmed.includes("\\") ||
