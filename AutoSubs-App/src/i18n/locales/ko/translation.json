@@ -55,10 +55,10 @@
       "customCharsDescription": "줄당 문자 수",
       "customPromptButton": "프롬프트",
       "customPromptTitle": "어휘 및 맥락",
-      "customPromptDescription": "Whisper를 안내하기 위한 용어, 이름 또는 맥락을 추가하세요.",
+      "customPromptDescription": "용어, 이름 또는 맥락을 추가해 전사 정확도를 높이세요.",
       "customPromptPlaceholder": "예: OpenAI, DaVinci Resolve — Resolve의 자막 편집 튜토리얼.",
       "customPromptLanguageWarning": "오디오와 같은 언어로 작성하세요 — 다른 언어의 프롬프트는 잘못된 전사를 유발할 수 있습니다.",
-      "customPromptWhisperOnly": "Whisper 모델에서만 지원됩니다.",
+      "customPromptHint": "이름이나 용어는 쉼표로 구분하세요.",
       "customWordsTitle": "최대 단어 수",
       "customWordsDescription": "줄당 단어 수"
     },

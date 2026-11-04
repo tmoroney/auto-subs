@@ -36,3 +36,16 @@ pub fn write_wav(path: &str, samples: &[i16]) -> Result<()> {
     }
     Ok(())
 }
+/// Number of samples per millisecond at 16 kHz.
+pub const SAMPLES_PER_MS: usize = 16;
+
+/// Prepend silence to audio samples.
+///
+/// Returns a new buffer with `silence_ms` milliseconds of zeros
+/// followed by the original samples. Assumes 16 kHz sample rate.
+pub fn prepend_silence(samples: &[f32], silence_ms: u32) -> Vec<f32> {
+    let silence_len = silence_ms as usize * SAMPLES_PER_MS;
+    let mut padded = vec![0.0f32; silence_len];
+    padded.extend_from_slice(samples);
+    padded
+}

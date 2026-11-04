@@ -1,14 +1,17 @@
 //! Canary speech recognition backend.
 
+mod decoder;
+mod model;
+mod vocab;
+
 use crate::engines::onnx::{run_onnx_pipeline, OnnxEngine, WordTiming};
 use crate::types::{LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, TranscribeOptions};
 use eyre::{eyre, Result};
 use std::path::Path;
-use transcribe_rs::onnx::{
-    canary::{CanaryModel, CanaryParams},
-    Quantization,
-};
-use transcribe_rs::{SpeechModel, TranscriptionResult};
+use crate::vendor::onnx::Quantization;
+use crate::vendor::TranscriptionResult;
+
+use self::model::{CanaryModel, CanaryParams};
 
 // Canary encodes a whole clip per call; cap chunk length to bound memory.
 const MAX_SEGMENT_SECONDS: f64 = 30.0;
@@ -30,18 +33,27 @@ pub struct CanaryEngine {
     detected_lang: Option<String>,
 }
 
-impl OnnxEngine for CanaryEngine {
-    const MAX_SEGMENT_SECONDS: f64 = MAX_SEGMENT_SECONDS;
-
-    fn load(model_path: &Path) -> Result<Self> {
-        let model = CanaryModel::load(model_path, &Quantization::Int8)
+impl CanaryEngine {
+    fn load_with_keywords(model_path: &Path, keywords: &[String]) -> Result<Self> {
+        let mut model = CanaryModel::load(model_path, &Quantization::Int8)
             .map_err(|e| eyre!("Failed to load Canary model: {}", e))?;
+        if !keywords.is_empty() {
+            model.set_keywords(keywords);
+        }
 
         Ok(Self {
             model,
             params: CanaryParams::default(),
             detected_lang: None,
         })
+    }
+}
+
+impl OnnxEngine for CanaryEngine {
+    const MAX_SEGMENT_SECONDS: f64 = MAX_SEGMENT_SECONDS;
+
+    fn load(model_path: &Path) -> Result<Self> {
+        Self::load_with_keywords(model_path, &[])
     }
 
     fn transcribe_chunk(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
@@ -59,6 +71,7 @@ impl OnnxEngine for CanaryEngine {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn transcribe_canary(
     model_path: &Path,
     speech_segments: Vec<SpeechSegment>,
@@ -87,12 +100,19 @@ pub async fn transcribe_canary(
     if let Some(cb) = progress_callback {
         cb(0, ProgressType::Analyze, "progressSteps.analyze.loading");
     }
-    let mut engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || CanaryEngine::load(model_path))?;
+    let keywords = options
+        .advanced
+        .as_ref()
+        .and_then(|a| a.keywords.clone())
+        .unwrap_or_default();
+    let mut engine = crate::engines::onnx::load_with_directml_fallback(use_gpu, || {
+        CanaryEngine::load_with_keywords(model_path, &keywords)
+    })?;
     if let Some(cb) = progress_callback {
         cb(100, ProgressType::Analyze, "progressSteps.analyze.loading");
     }
 
-    let supported_languages = engine.model.capabilities().languages;
+    let supported_languages = engine.model.languages();
     if !supported_languages.is_empty() && !supported_languages.contains(&lang.as_str()) {
         eyre::bail!(
             "Canary does not support source language '{}'. Supported languages: {}",

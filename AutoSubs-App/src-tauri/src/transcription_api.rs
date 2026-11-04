@@ -434,10 +434,13 @@ pub async fn transcribe_audio<R: Runtime>(
         }
 
         if let Some(prompt) = options.custom_prompt.as_deref().map(str::trim).filter(|prompt| !prompt.is_empty()) {
-            transcribe_options
+            let advanced = transcribe_options
                 .advanced
-                .get_or_insert_with(Default::default)
-                .init_prompt = Some(prompt.to_string());
+                .get_or_insert_with(Default::default);
+            // Whisper consumes the prompt verbatim as its initial prompt; the
+            // ONNX engines instead boost the comma/newline-separated phrases.
+            advanced.init_prompt = Some(prompt.to_string());
+            advanced.keywords = Some(transcription_engine::keyword_boost::parse_keywords(prompt));
         }
 
         // Note: GPU is handled internally by the crate based on platform
