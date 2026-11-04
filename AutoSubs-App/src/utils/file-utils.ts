@@ -705,8 +705,9 @@ export async function saveSubtitleDocument(
   options?: SaveSubtitleDocumentOptions,
 ): Promise<{ segments: Subtitle[]; speakers: Speaker[] }> {
   try {
-    const storageDir = await getSubtitleDocumentsDir();
-    const filePath = await join(storageDir, filename);
+    // Sentinel Security: validate filename and resolve path via getSubtitleDocumentPath
+    // to strictly prevent directory traversal attacks.
+    const filePath = await getSubtitleDocumentPath(filename);
 
     console.log("Saving transcript to:", filePath);
 
@@ -799,8 +800,9 @@ export async function saveSubtitleDocument(
 export async function loadSubtitleDocumentSubtitles(
   filename: string,
 ): Promise<Subtitle[]> {
-  const storageDir = await getSubtitleDocumentsDir();
-  const filePath = await join(storageDir, filename);
+  // Sentinel Security: validate filename and resolve path via getSubtitleDocumentPath
+  // to strictly prevent directory traversal attacks.
+  const filePath = await getSubtitleDocumentPath(filename);
 
   if (!(await exists(filePath))) {
     console.log("Transcript file not found:", filename);
