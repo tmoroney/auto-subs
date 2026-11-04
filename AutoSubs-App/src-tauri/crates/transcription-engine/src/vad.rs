@@ -34,33 +34,41 @@ pub fn get_segments(
     let segs = vad.segments_from_samples(vadp, &samples)?;
 
     // Convert VAD centiseconds to seconds and slice samples from the original buffer
-    let n = int_samples.len();
-    const SR: f32 = 16_000.0;
-    let n_f32 = n as f32;
-
     let raw: Vec<(f64, f64)> = segs
         .map(|s| ((s.start as f64) / 100.0, (s.end as f64) / 100.0))
         .filter(|(st, en)| en > st)
         .collect();
 
-    let segments: Vec<SpeechSegment> = pad_boundaries(&raw, n as f64 / SR as f64)
+    Ok(build_segments(&raw, int_samples))
+}
+
+/// Pad the raw VAD boundaries and cut the matching samples out of `int_samples`.
+/// Indices are computed in f64 and clamped as `usize`: an f32 clamp bound cannot
+/// represent sample counts above 2^24 exactly and can round past the buffer end.
+fn build_segments(raw: &[(f64, f64)], int_samples: &[i16]) -> Vec<SpeechSegment> {
+    const SR: f64 = 16_000.0;
+    let n = int_samples.len();
+    let total_sec = n as f64 / SR;
+
+    pad_boundaries(raw, total_sec)
         .into_iter()
-        .map(|(start_sec, end_sec)| {
-            let start_idx = ((start_sec as f32 * SR).round()).clamp(0.0, n_f32) as usize;
-            let end_idx = ((end_sec as f32 * SR).round()).clamp(0.0, n_f32) as usize;
+        .filter_map(|(start_sec, end_sec)| {
+            let start_sec = start_sec.clamp(0.0, total_sec);
+            let end_sec = end_sec.clamp(0.0, total_sec);
+            let start_idx = ((start_sec * SR).round() as usize).min(n);
+            let end_idx = ((end_sec * SR).round() as usize).min(n);
 
-            let seg_samples: Vec<i16> = if end_idx > start_idx {
-                int_samples[start_idx..end_idx].to_vec()
-            } else {
-                Vec::new()
-            };
-
-            SpeechSegment { start: start_sec, end: end_sec, samples: seg_samples, speaker_id: None }
+            if end_idx <= start_idx || end_sec <= start_sec {
+                return None;
+            }
+            Some(SpeechSegment {
+                start: start_sec,
+                end: end_sec,
+                samples: int_samples[start_idx..end_idx].to_vec(),
+                speaker_id: None,
+            })
         })
-        .filter(|seg| seg.end > seg.start && !seg.samples.is_empty())
-        .collect();
-
-    Ok(segments)
+        .collect()
 }
 
 /// Grow each boundary by up to [`SPEECH_PAD_MS`], but never past the audio ends
@@ -93,6 +101,31 @@ mod tests {
 
     fn assert_close(actual: f64, expected: f64) {
         assert!((actual - expected).abs() < 1e-9, "{actual} != {expected}");
+    }
+
+    #[test]
+    fn last_segment_is_clipped_when_end_overshoots_buffer() {
+        // Length above 2^24 so an f32 bound would be inexact.
+        let len = 53_980_534usize;
+        let buf = vec![0i16; len];
+        let dur = len as f64 / 16_000.0;
+        for over in [1.0 / 16_000.0, 2.0 / 16_000.0, 5.0] {
+            let raw = vec![(dur - 1.0, dur + over)];
+            let segs = build_segments(&raw, &buf);
+            assert_eq!(segs.len(), 1);
+            let last = segs.last().unwrap();
+            assert!(last.end <= dur + 1e-9);
+            assert!(last.samples.len() <= len);
+            // Clipped to the buffer end: slice runs exactly from the (padded) start to len.
+            assert_eq!(last.samples.len(), len - (last.start * 16_000.0).round() as usize);
+        }
+    }
+
+    #[test]
+    fn segment_entirely_past_the_buffer_is_dropped() {
+        let buf = vec![0i16; 16_000];
+        let segs = build_segments(&[(5.0, 6.0)], &buf);
+        assert!(segs.is_empty());
     }
 
     #[test]
