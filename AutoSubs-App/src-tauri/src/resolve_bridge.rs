@@ -387,15 +387,22 @@ fn read_mailbox_reply(dir: &Path) -> BridgeReply {
     }
 }
 
-/// True when the reply shows the Lua loop alive but busy: an ack for a
-/// different, still-recent request id with no matching response yet —
+/// True when the replies show the Lua loop alive but busy: the newest ack is
+/// for a different, still-recent request id with no matching response yet —
 /// i.e. a handler is in flight. This happens when a caller's timeout fired
 /// while its handler kept running (the template scan on a large media pool
 /// can outlive the frontend's patience by tens of seconds); the loop will
 /// pick our request up when it finishes. A very old acked-but-unanswered id
 /// is an abandoned leftover, not evidence of life.
-fn request_in_flight(reply: &BridgeReply, id: &str) -> bool {
-    let Some(ack) = reply.ack.as_deref() else {
+///
+/// The response is looked up on every channel, not only the one holding the
+/// newest ack: the loop falls back to prefs per write, so an ack can land in
+/// the mailbox while its response lands in `Fusion.prefs`.
+fn request_in_flight(replies: &[BridgeReply], id: &str) -> bool {
+    let Some(latest) = replies.iter().max_by_key(|reply| reply.ack_id()) else {
+        return false;
+    };
+    let Some(ack) = latest.ack.as_deref() else {
         return false;
     };
     if ack == id {
@@ -407,10 +414,12 @@ fn request_in_flight(reply: &BridgeReply, id: &str) -> bool {
     if unix_millis().saturating_sub(encoded / 1000) > BUSY_ACK_MAX_AGE_MS {
         return false;
     }
-    match reply.response.as_deref() {
-        Some(value) => decode_response(value, ack).is_none(),
-        None => true,
-    }
+    !replies.iter().any(|reply| {
+        reply
+            .response
+            .as_deref()
+            .is_some_and(|value| decode_response(value, ack).is_some())
+    })
 }
 
 /// If the payload carries a string `filePath`, read that file and attach the
@@ -515,8 +524,7 @@ async fn wait_for_response(dir: &Path, id: &str, timeout: Duration) -> Result<St
             // but never past busy_cap: the same evidence is left behind when
             // the bridge dies mid-handler, so an unbounded extension would
             // mask a dead bridge too.
-            let latest = replies.iter().max_by_key(|reply| reply.ack_id());
-            if latest.is_some_and(|reply| request_in_flight(reply, id)) {
+            if request_in_flight(&replies, id) {
                 ack_deadline = (Instant::now() + BUSY_HOLD).min(busy_cap);
             }
         }
@@ -736,25 +744,40 @@ mod tests {
         let busy_id = (unix_millis() * 1000).to_string();
         let ours = "999";
         let text = format!("Ack = \"{}\"\n", busy_id);
-        assert!(request_in_flight(&reply_from_prefs(&text), ours));
+        assert!(request_in_flight(&[reply_from_prefs(&text)], ours));
 
         // A response for that id means the handler finished.
         let done = base64::engine::general_purpose::STANDARD.encode("{}");
         let text = format!("Ack = \"{}\"\nResponse = \"{}:{}\"", busy_id, busy_id, done);
-        assert!(!request_in_flight(&reply_from_prefs(&text), ours));
+        assert!(!request_in_flight(&[reply_from_prefs(&text)], ours));
 
         // Our own ack is not "someone else is busy".
         let text = format!("Ack = \"{}\"", ours);
-        assert!(!request_in_flight(&reply_from_prefs(&text), ours));
+        assert!(!request_in_flight(&[reply_from_prefs(&text)], ours));
 
         // An acked-but-unanswered request from long ago is an abandoned
         // leftover, not a live handler.
         let old_id = ((unix_millis() - 600_000) * 1000).to_string();
         let text = format!("Ack = \"{}\"", old_id);
-        assert!(!request_in_flight(&reply_from_prefs(&text), ours));
+        assert!(!request_in_flight(&[reply_from_prefs(&text)], ours));
 
         // No ack at all, or an unparsable one, is not evidence of life.
-        assert!(!request_in_flight(&reply_from_prefs("Response = \"1:e30=\""), ours));
-        assert!(!request_in_flight(&reply_from_prefs("Ack = \"not-a-number\""), ours));
+        assert!(!request_in_flight(&[reply_from_prefs("Response = \"1:e30=\"")], ours));
+        assert!(!request_in_flight(&[reply_from_prefs("Ack = \"not-a-number\"")], ours));
+    }
+
+    #[test]
+    fn request_in_flight_finds_the_response_on_the_other_channel() {
+        // The ack reached ack.txt, then response.txt failed and the response
+        // went to Fusion.prefs: the handler finished, the loop isn't busy.
+        let busy_id = (unix_millis() * 1000).to_string();
+        let done = base64::engine::general_purpose::STANDARD.encode("{}");
+        let mailbox = BridgeReply { ack: Some(busy_id.clone()), response: None };
+        let prefs = reply_from_prefs(&format!("Response = \"{}:{}\"", busy_id, done));
+        assert!(!request_in_flight(&[mailbox, prefs], "999"));
+
+        // Without that response anywhere, it is still in flight.
+        let mailbox = BridgeReply { ack: Some(busy_id), response: None };
+        assert!(request_in_flight(&[mailbox, BridgeReply::default()], "999"));
     }
 }

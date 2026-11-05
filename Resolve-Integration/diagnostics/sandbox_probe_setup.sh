@@ -40,7 +40,11 @@ if [ "${1:-}" = "--clean" ]; then
 fi
 
 # Matched on the path: Resolve renames its main thread to "GUI Thread".
-if pgrep -f /opt/resolve/bin/resolve >/dev/null 2>&1; then
+case "$(uname -s)" in
+    Darwin) RESOLVE_PROCESS="DaVinci Resolve.app/Contents/MacOS/Resolve" ;;
+    *) RESOLVE_PROCESS="/opt/resolve/bin/resolve" ;;
+esac
+if pgrep -f "$RESOLVE_PROCESS" >/dev/null 2>&1; then
     echo "error: Resolve is running. Close it first, so the prefs backup is current." >&2
     exit 1
 fi
@@ -62,7 +66,19 @@ cp "$BACKUP" "$FIXTURES/Fusion.prefs.backup"
 
 # full.prefs is the real file plus one marker, so loading it is safe whether
 # LoadPrefs merges or replaces. Anchored on the first line of the Global section.
+# A probe run leaves an emptied Global.AutoSubsProbe table behind; it is dropped,
+# because a second table later in Global would win over the inserted marker.
 awk -v token="$TOKEN" '
+    skip {
+        if (/^\t\t\}/) skip = 0
+        next
+    }
+    /^\tGlobal = \{/ { in_global = 1 }
+    in_global && /^\t\}/ { in_global = 0 }
+    in_global && /^\t\tAutoSubsProbe = \{/ {
+        if (!/\},?[ \t\r]*$/) skip = 1
+        next
+    }
     !done && /^\tGlobal = \{/ {
         print
         print "\t\tAutoSubsProbe = {"
