@@ -328,6 +328,4 @@ export async function cancelPresetEdit(): Promise<{ ok?: true; error?: string }>
   return callResolve({ func: 'CancelPresetEdit' });
 }
 
-export async function ensureCaptionPreviewDir(): Promise<string> {
-  return invoke<string>('ensure_caption_preview_dir');
-}
+export { ensureCaptionPreviewDir } from '../lib/caption-previews.ts';
