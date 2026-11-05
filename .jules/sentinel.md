@@ -1,3 +1,8 @@
+## 2026-11-05 - Path Traversal Prevention in Caption Preset Previews
+**Vulnerability:** Preset IDs and preview filenames in `AutoSubs-App/src/lib/caption-previews.ts` were joined directly into filesystem paths without validation, allowing path traversal (`../`) to access, delete, or overwrite arbitrary files outside the `caption-previews` folder.
+**Learning:** Functions that manage user-contributed or imported assets (such as preset previews) must strictly validate IDs and filenames using whitelist validation (alphanumeric/hyphens/underscores and `.png` extension) before passing them to Tauri filesystem and asset protocol APIs.
+**Prevention:** Always validate asset IDs and filenames with dedicated sanitizers/validators before joining them with application storage directories, rejecting directory traversal characters, null bytes, and non-whitelisted extensions.
+
 ## 2026-10-30 - Safe External URL Navigation and Opener Capability Enforcement
 **Vulnerability:** External URLs rendered from remote GitHub release notes in Markdown and promotional CTA cards invoked `@tauri-apps/plugin-shell`'s unconstrained `open` method without protocol validation. This permitted arbitrary URI scheme execution (such as `file://`, `javascript:`, or malicious protocol handlers) and bypassed Tauri v2's capability configuration for `@tauri-apps/plugin-opener`.
 **Learning:** In Tauri v2 applications, `@tauri-apps/plugin-shell:open` executes whatever URI or binary target is passed if permitted, while `@tauri-apps/plugin-opener:open_url` enforces permission scopes configured under `capabilities/default.json` (`opener:allow-open-url`).
