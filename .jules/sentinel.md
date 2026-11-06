@@ -1,3 +1,8 @@
+## 2026-11-12 - Prototype Pollution and Input Sanitization in Preset Import
+**Vulnerability:** In `AutoSubs-App/src/contexts/PresetsContext.tsx`, `parseImportedPreset` accepted user-supplied JSON from clipboard paste or file imports without bounds on string lengths, without stripping dangerous control characters, and without guarding nested `macroSettings` objects against prototype pollution keys (`__proto__`, `constructor`, `prototype`).
+**Learning:** External configuration objects loaded into persistent application stores and passed down to component trees or native scripting bridges can pollute JavaScript prototypes or degrade application performance if not validated for key safety and input length boundaries.
+**Prevention:** Sanitize object keys recursively to reject prototype-polluting keys (`__proto__`, `constructor`, `prototype`), enforce strict character length and control character constraints on human-readable metadata, and validate numeric version fields before persisting.
+
 ## 2026-11-05 - Path Traversal Prevention in Caption Preset Previews
 **Vulnerability:** Preset IDs and preview filenames in `AutoSubs-App/src/lib/caption-previews.ts` were joined directly into filesystem paths without validation, allowing path traversal (`../`) to access, delete, or overwrite arbitrary files outside the `caption-previews` folder.
 **Learning:** Functions that manage user-contributed or imported assets (such as preset previews) must strictly validate IDs and filenames using whitelist validation (alphanumeric/hyphens/underscores and `.png` extension) before passing them to Tauri filesystem and asset protocol APIs.

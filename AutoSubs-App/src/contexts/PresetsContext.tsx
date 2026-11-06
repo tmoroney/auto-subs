@@ -3,6 +3,9 @@ import { load, Store } from '@tauri-apps/plugin-store';
 import { CaptionPreset } from '@/types';
 import { BUILT_IN_PRESETS, DEFAULT_PRESET_ID, isBuiltInPresetId } from '@/presets/built-in-presets';
 import { deletePresetPreview } from '@/lib/caption-previews';
+import { parseImportedPreset } from '@/lib/preset-import';
+
+export { parseImportedPreset } from '@/lib/preset-import';
 
 const STORE_FILE = 'autosubs-presets.json';
 const STORE_KEY = 'userPresets';
@@ -35,38 +38,6 @@ function genId(): string {
 
 function nowIso(): string {
     return new Date().toISOString();
-}
-
-// Minimal runtime validation for imported JSON blobs. Since macroSettings is
-// opaque, we only verify the wrapper shape and type of leaf fields.
-function parseImportedPreset(json: string): CaptionPreset {
-    let raw: any;
-    try {
-        raw = JSON.parse(json);
-    } catch {
-        throw new Error('Not valid JSON.');
-    }
-    if (!raw || typeof raw !== 'object') throw new Error('Expected a JSON object.');
-    if (typeof raw.name !== 'string' || raw.name.trim() === '') {
-        throw new Error('Preset is missing a name.');
-    }
-    if (typeof raw.version !== 'number') {
-        throw new Error('Preset is missing a version.');
-    }
-    if (raw.macroSettings == null || typeof raw.macroSettings !== 'object' || Array.isArray(raw.macroSettings)) {
-        throw new Error('Preset is missing macroSettings.');
-    }
-    const now = nowIso();
-    return {
-        id: genId(),
-        name: raw.name.trim(),
-        description: typeof raw.description === 'string' ? raw.description : undefined,
-        builtIn: false,
-        version: raw.version,
-        createdAt: now,
-        updatedAt: now,
-        macroSettings: raw.macroSettings as Record<string, unknown>,
-    };
 }
 
 export function PresetsProvider({ children }: { children: React.ReactNode }) {
