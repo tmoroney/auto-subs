@@ -9,10 +9,15 @@
 //!
 //! * Rust -> Lua: we atomically write `request.lua` (a `return {...}` chunk
 //!   carrying an id and a JSON body) into a shared mailbox directory. The Lua
-//!   loop picks it up with `loadfile`.
-//! * Lua -> Rust: the Lua side calls `fusion:SetPrefs` + `SavePrefs()`, which
-//!   writes `Fusion.prefs` to disk immediately. We poll that file for an
-//!   `Ack = "<id>"` (request picked up) and `Response = "<id>:<base64 json>"`.
+//!   loop picks it up with `loadfile`, or on Resolve 21.1.2, which removed
+//!   `loadfile`, with `fu:OpenFile` + `ReadLine` and `load`. `ReadLine` cuts a
+//!   line at 65535 bytes, so long bodies span several lines.
+//! * Lua -> Rust: an ack (request picked up, the id) and a response
+//!   (`<id>:<base64 json>`). 21.1.2 also removed `fu:SavePrefs`, so there the
+//!   Lua side writes them to `ack.txt` and `response.txt` in the mailbox with
+//!   `fu:OpenFile` + `WriteLine`. Older versions call `fusion:SetPrefs` +
+//!   `SavePrefs()`, which writes `Fusion.prefs` to disk immediately, as
+//!   `Ack = "<id>"` and `Response = "<id>:<base64 json>"`. We poll both.
 //!
 //! The mailbox directory is `<data_local_dir>/com.autosubs/resolve-bridge`
 //! (LOCALAPPDATA on Windows, ~/Library/Application Support on macOS,
@@ -22,7 +27,7 @@
 //! request file at a time.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -60,6 +65,13 @@ const BUSY_ACK_MAX_AGE_MS: u64 = 120_000;
 /// exit), so extending per-poll without a ceiling would mask a dead bridge
 /// for up to BUSY_ACK_MAX_AGE_MS instead of detecting it promptly.
 const MAX_BUSY_WAIT: Duration = Duration::from_secs(60);
+
+/// Longest piece of a request body on one line of `request.lua`. Well under
+/// the 65535 bytes `ReadLine` returns per line on the Lua side.
+const REQUEST_LINE_BYTES: usize = 32 * 1024;
+
+const ACK_FILE: &str = "ack.txt";
+const RESPONSE_FILE: &str = "response.txt";
 
 /// Serialises mailbox requests: only one request.lua exists at a time.
 static REQUEST_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
@@ -142,9 +154,33 @@ pub(crate) fn fusion_prefs_path() -> Option<PathBuf> {
     best.map(|(_, p)| p)
 }
 
+/// Split a body into pieces of at most `REQUEST_LINE_BYTES`, on char
+/// boundaries. A piece must not end in `]` plus exactly `level` `=`s: with the
+/// closing bracket behind it that reads as an earlier close of the string.
+fn request_pieces(body: &str, level: usize) -> Vec<&str> {
+    let false_close = format!("]{}", "=".repeat(level));
+    let mut pieces = Vec::new();
+    let mut rest = body;
+    while rest.len() > REQUEST_LINE_BYTES {
+        let mut end = REQUEST_LINE_BYTES;
+        while !rest.is_char_boundary(end) {
+            end -= 1;
+        }
+        if rest[..end].ends_with(&false_close) {
+            end -= 1;
+        }
+        pieces.push(&rest[..end]);
+        rest = &rest[end..];
+    }
+    pieces.push(rest);
+    pieces
+}
+
 /// Build the request chunk: `return { id = "<id>", body = [==[<json>]==] }`
 /// where the long-bracket level is the smallest `n` such that `]` + `=`*n +
-/// `]` does not appear in the body.
+/// `]` does not appear in the body. A long body becomes a `table.concat` of one
+/// string per line. Serialized JSON has no raw newlines, so a line break can
+/// only ever come from here.
 fn encode_request(id: &str, body: &str) -> String {
     let mut level = 1usize;
     loop {
@@ -155,7 +191,19 @@ fn encode_request(id: &str, body: &str) -> String {
         level += 1;
     }
     let eq = "=".repeat(level);
-    format!("return {{ id = \"{}\", body = [{}[{}]{}] }}", id, eq, body, eq)
+    let pieces = request_pieces(body, level);
+    if let [only] = pieces[..] {
+        return format!("return {{ id = \"{}\", body = [{}[{}]{}] }}\n", id, eq, only, eq);
+    }
+    let lines: Vec<String> = pieces
+        .iter()
+        .map(|piece| format!("[{}[{}]{}],", eq, piece, eq))
+        .collect();
+    format!(
+        "return {{ id = \"{}\", body = table.concat({{\n{}\n}}) }}\n",
+        id,
+        lines.join("\n")
+    )
 }
 
 /// Extract the value of `key = "..."` assignments from the prefs file text.
@@ -291,15 +339,70 @@ fn decode_response<'a>(value: &'a str, id: &str) -> Option<Result<String, String
     }
 }
 
-/// True when the prefs file shows the Lua loop alive but busy: an `Ack` for
-/// a different, still-recent request id with no matching `Response` yet —
+/// What the Lua side last reported through one of the two reply channels.
+#[derive(Debug, Default)]
+struct BridgeReply {
+    ack: Option<String>,
+    response: Option<String>,
+}
+
+impl BridgeReply {
+    /// The request id of the ack, for telling which channel is newer.
+    fn ack_id(&self) -> u64 {
+        self.ack.as_deref().and_then(|a| a.parse().ok()).unwrap_or(0)
+    }
+}
+
+fn reply_from_prefs(text: &str) -> BridgeReply {
+    BridgeReply {
+        ack: pref_value(text, "Ack").map(str::to_owned),
+        response: pref_value(text, "Response").map(str::to_owned),
+    }
+}
+
+/// Read bytes, not a UTF-8 string: Resolve writes prefs in the user's ANSI code
+/// page on Windows, so a non-ASCII profile path makes the file invalid UTF-8
+/// and a strict read would report a healthy bridge as offline forever. Every
+/// key and value we parse is ASCII.
+fn read_prefs_reply(path: Option<&Path>) -> BridgeReply {
+    path.and_then(|p| fs::read(p).ok())
+        .map(|bytes| reply_from_prefs(&String::from_utf8_lossy(&bytes)))
+        .unwrap_or_default()
+}
+
+/// A reply file's value, or None while it is missing or empty. WriteLine ends
+/// it with a line break, which isn't part of the value. A file caught
+/// half-written is no problem: its id or its base64 won't match.
+fn read_reply_file(path: &Path) -> Option<String> {
+    let bytes = fs::read(path).ok()?;
+    let text = String::from_utf8_lossy(&bytes);
+    let value = text.trim();
+    (!value.is_empty()).then(|| value.to_owned())
+}
+
+fn read_mailbox_reply(dir: &Path) -> BridgeReply {
+    BridgeReply {
+        ack: read_reply_file(&dir.join(ACK_FILE)),
+        response: read_reply_file(&dir.join(RESPONSE_FILE)),
+    }
+}
+
+/// True when the replies show the Lua loop alive but busy: the newest ack is
+/// for a different, still-recent request id with no matching response yet —
 /// i.e. a handler is in flight. This happens when a caller's timeout fired
 /// while its handler kept running (the template scan on a large media pool
 /// can outlive the frontend's patience by tens of seconds); the loop will
 /// pick our request up when it finishes. A very old acked-but-unanswered id
 /// is an abandoned leftover, not evidence of life.
-fn request_in_flight(text: &str, id: &str) -> bool {
-    let Some(ack) = pref_value(text, "Ack") else {
+///
+/// The response is looked up on every channel, not only the one holding the
+/// newest ack: the loop falls back to prefs per write, so an ack can land in
+/// the mailbox while its response lands in `Fusion.prefs`.
+fn request_in_flight(replies: &[BridgeReply], id: &str) -> bool {
+    let Some(latest) = replies.iter().max_by_key(|reply| reply.ack_id()) else {
+        return false;
+    };
+    let Some(ack) = latest.ack.as_deref() else {
         return false;
     };
     if ack == id {
@@ -311,10 +414,12 @@ fn request_in_flight(text: &str, id: &str) -> bool {
     if unix_millis().saturating_sub(encoded / 1000) > BUSY_ACK_MAX_AGE_MS {
         return false;
     }
-    match pref_value(text, "Response") {
-        Some(value) => decode_response(value, ack).is_none(),
-        None => true,
-    }
+    !replies.iter().any(|reply| {
+        reply
+            .response
+            .as_deref()
+            .is_some_and(|value| decode_response(value, ack).is_some())
+    })
 }
 
 /// If the payload carries a string `filePath`, read that file and attach the
@@ -375,7 +480,7 @@ pub async fn send_resolve_payload(
     fs::rename(&tmp_path, &request_path)
         .map_err(|e| format!("could not publish mailbox request: {}", e))?;
 
-    let result = wait_for_response(&id, timeout).await;
+    let result = wait_for_response(&dir, &id, timeout).await;
     delete_request_file(&request_path);
     result
 }
@@ -390,8 +495,8 @@ pub fn clear_stale_request() {
     }
 }
 
-async fn wait_for_response(id: &str, timeout: Duration) -> Result<String, String> {
-    let prefs_path = fusion_prefs_path().ok_or_else(|| RESOLVE_OFFLINE_MESSAGE.to_string())?;
+async fn wait_for_response(dir: &Path, id: &str, timeout: Duration) -> Result<String, String> {
+    let prefs_path = fusion_prefs_path();
 
     let deadline = Instant::now() + timeout;
     let busy_cap = Instant::now() + MAX_BUSY_WAIT;
@@ -399,32 +504,28 @@ async fn wait_for_response(id: &str, timeout: Duration) -> Result<String, String
     let mut acked = false;
 
     loop {
-        // Read bytes, not a UTF-8 string: Resolve writes prefs in the user's
-        // ANSI code page on Windows, so a non-ASCII profile path makes the
-        // file invalid UTF-8 and a strict read would report a healthy bridge
-        // as offline forever. Every key and value we parse is ASCII.
-        if let Ok(bytes) = fs::read(&prefs_path) {
-            let text = String::from_utf8_lossy(&bytes);
-            if let Some(value) = pref_value(&text, "Response") {
-                if let Some(result) = decode_response(value, id) {
-                    return result;
-                }
+        // Which channel the loop answers on depends on the Resolve version,
+        // and an upgrade leaves the other one holding stale values.
+        let replies = [read_mailbox_reply(dir), read_prefs_reply(prefs_path.as_deref())];
+        for reply in &replies {
+            if let Some(result) = reply
+                .response
+                .as_deref()
+                .and_then(|value| decode_response(value, id))
+            {
+                return result;
             }
-            if !acked {
-                if let Some(ack) = pref_value(&text, "Ack") {
-                    if ack == id {
-                        acked = true;
-                    }
-                }
-                // An ack for a different request with no response yet means
-                // the loop is busy inside a handler, not dead — our request
-                // is next in line. Keep waiting instead of reporting a false
-                // disconnect, but never past busy_cap: the same evidence is
-                // left behind when the bridge dies mid-handler, so an
-                // unbounded extension would mask a dead bridge too.
-                if request_in_flight(&text, id) {
-                    ack_deadline = (Instant::now() + BUSY_HOLD).min(busy_cap);
-                }
+        }
+        if !acked {
+            acked = replies.iter().any(|reply| reply.ack.as_deref() == Some(id));
+            // An ack for a different request with no response yet means the
+            // loop is busy inside a handler, not dead — our request is next
+            // in line. Keep waiting instead of reporting a false disconnect,
+            // but never past busy_cap: the same evidence is left behind when
+            // the bridge dies mid-handler, so an unbounded extension would
+            // mask a dead bridge too.
+            if request_in_flight(&replies, id) {
+                ack_deadline = (Instant::now() + BUSY_HOLD).min(busy_cap);
             }
         }
 
@@ -483,7 +584,7 @@ mod tests {
         // Simple body: level 1 ([=[ ... ]=]) suffices; note "]]" inside the
         // body must not close the string.
         let out = encode_request("42", "{\"a\":1}");
-        assert_eq!(out, "return { id = \"42\", body = [=[{\"a\":1}]=] }");
+        assert_eq!(out, "return { id = \"42\", body = [=[{\"a\":1}]=] }\n");
 
         // Body containing "]]" is still fine at level 1 (only "]=]" closes).
         let out = encode_request("1", "x]]y");
@@ -496,6 +597,103 @@ mod tests {
         // Body containing "]=]" and "]==]" forces level 3.
         let out = encode_request("3", "a]=]b]==]c");
         assert!(out.contains("[===[a]=]b]==]c]===]"));
+    }
+
+    /// The strings a Lua reader would rebuild from a multi-line chunk.
+    fn decoded_lines(chunk: &str, eq: &str) -> Vec<String> {
+        let open = format!("[{}[", eq);
+        let close = format!("]{}],", eq);
+        chunk
+            .lines()
+            .filter_map(|line| line.strip_prefix(&open)?.strip_suffix(&close))
+            .map(str::to_owned)
+            .collect()
+    }
+
+    #[test]
+    fn encode_request_splits_long_bodies_into_short_lines() {
+        // Multi-byte chars straddling every split point.
+        let body = "{\"text\":\"".to_owned() + &"日本語äöü".repeat(40_000) + "\"}";
+        let chunk = encode_request("7", &body);
+
+        assert!(chunk.starts_with("return { id = \"7\", body = table.concat({\n"));
+        assert!(chunk.ends_with("\n}) }\n"));
+        assert!(chunk.lines().count() > 3);
+        assert!(chunk.lines().all(|line| line.len() < 65_535));
+        assert_eq!(decoded_lines(&chunk, "=").concat(), body);
+    }
+
+    #[test]
+    fn encode_request_keeps_a_body_at_the_limit_on_one_line() {
+        let body = "x".repeat(REQUEST_LINE_BYTES);
+        let chunk = encode_request("1", &body);
+        assert_eq!(chunk.lines().count(), 1);
+        assert!(chunk.contains(&body));
+    }
+
+    #[test]
+    fn request_pieces_never_end_in_a_false_close() {
+        // Without the check the first piece would end in `]=`, which together
+        // with the `]=]` behind it closes the Lua string two bytes early.
+        let mut body = "x".repeat(REQUEST_LINE_BYTES - 2);
+        body.push_str("]=");
+        body.push_str(&"y".repeat(100));
+
+        let pieces = request_pieces(&body, 1);
+        assert_eq!(pieces.concat(), body);
+        assert_eq!(pieces.len(), 2);
+        assert!(pieces[0].ends_with(']'));
+
+        // The same bytes are harmless at a higher level, so nothing moves.
+        let pieces = request_pieces(&body, 2);
+        assert!(pieces[0].ends_with("]="));
+        assert_eq!(pieces.concat(), body);
+    }
+
+    #[test]
+    fn read_reply_file_trims_the_line_ending_and_treats_empty_as_missing() {
+        let dir = std::env::temp_dir().join(format!("autosubs-reply-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+
+        assert_eq!(read_mailbox_reply(&dir).ack, None);
+
+        fs::write(dir.join(ACK_FILE), b"123\n").unwrap();
+        fs::write(dir.join(RESPONSE_FILE), b"").unwrap();
+        let reply = read_mailbox_reply(&dir);
+        assert_eq!(reply.ack.as_deref(), Some("123"));
+        assert_eq!(reply.response, None);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn half_written_response_file_is_ignored() {
+        let dir = std::env::temp_dir().join(format!("autosubs-partial-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let encoded = base64::engine::general_purpose::STANDARD.encode("{\"ok\":true,\"n\":12345}");
+
+        // Cut at a base64 quantum, so the prefix still decodes: the JSON check
+        // has to catch it.
+        fs::write(dir.join(RESPONSE_FILE), format!("7:{}", &encoded[..12])).unwrap();
+        let reply = read_mailbox_reply(&dir);
+        assert!(decode_response(reply.response.as_deref().unwrap(), "7").is_none());
+
+        fs::write(dir.join(RESPONSE_FILE), format!("7:{}\n", encoded)).unwrap();
+        let reply = read_mailbox_reply(&dir);
+        let body = decode_response(reply.response.as_deref().unwrap(), "7").unwrap().unwrap();
+        assert_eq!(body, "{\"n\":12345,\"ok\":true}");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn newest_ack_wins_between_channels() {
+        let stale = reply_from_prefs("Ack = \"100\"\n");
+        let fresh = BridgeReply { ack: Some("200".into()), response: None };
+        let replies = [stale, fresh];
+        let latest = replies.iter().max_by_key(|reply| reply.ack_id()).unwrap();
+        assert_eq!(latest.ack.as_deref(), Some("200"));
+
+        // A channel without an ack never outranks one with an ack.
+        assert_eq!(BridgeReply::default().ack_id(), 0);
     }
 
     #[test]
@@ -546,25 +744,40 @@ mod tests {
         let busy_id = (unix_millis() * 1000).to_string();
         let ours = "999";
         let text = format!("Ack = \"{}\"\n", busy_id);
-        assert!(request_in_flight(&text, ours));
+        assert!(request_in_flight(&[reply_from_prefs(&text)], ours));
 
         // A response for that id means the handler finished.
         let done = base64::engine::general_purpose::STANDARD.encode("{}");
         let text = format!("Ack = \"{}\"\nResponse = \"{}:{}\"", busy_id, busy_id, done);
-        assert!(!request_in_flight(&text, ours));
+        assert!(!request_in_flight(&[reply_from_prefs(&text)], ours));
 
         // Our own ack is not "someone else is busy".
         let text = format!("Ack = \"{}\"", ours);
-        assert!(!request_in_flight(&text, ours));
+        assert!(!request_in_flight(&[reply_from_prefs(&text)], ours));
 
         // An acked-but-unanswered request from long ago is an abandoned
         // leftover, not a live handler.
         let old_id = ((unix_millis() - 600_000) * 1000).to_string();
         let text = format!("Ack = \"{}\"", old_id);
-        assert!(!request_in_flight(&text, ours));
+        assert!(!request_in_flight(&[reply_from_prefs(&text)], ours));
 
         // No ack at all, or an unparsable one, is not evidence of life.
-        assert!(!request_in_flight("Response = \"1:e30=\"", ours));
-        assert!(!request_in_flight("Ack = \"not-a-number\"", ours));
+        assert!(!request_in_flight(&[reply_from_prefs("Response = \"1:e30=\"")], ours));
+        assert!(!request_in_flight(&[reply_from_prefs("Ack = \"not-a-number\"")], ours));
+    }
+
+    #[test]
+    fn request_in_flight_finds_the_response_on_the_other_channel() {
+        // The ack reached ack.txt, then response.txt failed and the response
+        // went to Fusion.prefs: the handler finished, the loop isn't busy.
+        let busy_id = (unix_millis() * 1000).to_string();
+        let done = base64::engine::general_purpose::STANDARD.encode("{}");
+        let mailbox = BridgeReply { ack: Some(busy_id.clone()), response: None };
+        let prefs = reply_from_prefs(&format!("Response = \"{}:{}\"", busy_id, done));
+        assert!(!request_in_flight(&[mailbox, prefs], "999"));
+
+        // Without that response anywhere, it is still in flight.
+        let mailbox = BridgeReply { ack: Some(busy_id), response: None };
+        assert!(request_in_flight(&[mailbox, BridgeReply::default()], "999"));
     }
 }

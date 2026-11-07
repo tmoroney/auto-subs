@@ -13,6 +13,10 @@
 //! new scripts without a reinstall. Templates live in the bundled resources
 //! with `[[__AUTOSUBS_RESOURCES_FOLDER__]]` / `[[__AUTOSUBS_APP_EXECUTABLE__]]`
 //! placeholders; we substitute raw bytes and write only when content differs.
+//! The template we install is `AutoSubs.bundled.lua`, which the build generates
+//! with the Lua modules inlined because Resolve 21.1.2 can't load files
+//! (`scripts/gen-resolve-linux.js`). A build that skipped that step still gets
+//! the plain template, which works on Resolve versions that have `loadfile`.
 //!
 //! Release builds only: a dev build must not install the production launcher
 //! next to the `AutoSubs (Dev).lua` that `npm run setup-resolve` writes.
@@ -34,6 +38,9 @@ const EXECUTABLE_PLACEHOLDER: &[u8] = b"[[__AUTOSUBS_APP_EXECUTABLE__]]";
 // that don't know about it (macOS pkg, shared Linux package) get the
 // env-derived path fallback automatically.
 const MAILBOX_PLACEHOLDER: &[u8] = b"__AUTOSUBS_MAILBOX_DIR__";
+
+const BUNDLED_TEMPLATE: &str = "resources/AutoSubs.bundled.lua";
+const PLAIN_TEMPLATE: &str = "resources/AutoSubs.lua";
 
 /// Entry point from Tauri setup. Never fails the app: anything unexpected is a
 /// `tracing::warn` and we move on.
@@ -115,7 +122,7 @@ fn install<R: tauri::Runtime>(app: &tauri::AppHandle<R>, create_tree: bool) -> R
 
     write_template(
         &resource_dir,
-        "resources/AutoSubs.lua",
+        launcher_template(&resource_dir),
         &scripts_root.join("Utility").join("AutoSubs.lua"),
         &resources_bytes,
         &executable_bytes,
@@ -128,6 +135,16 @@ fn install<R: tauri::Runtime>(app: &tauri::AppHandle<R>, create_tree: bool) -> R
     let _ = fs::remove_dir_all(utility.join("AutoSubs"));
 
     Ok(())
+}
+
+/// The launcher template to install: inlined modules when the build made them.
+fn launcher_template(resource_dir: &Path) -> &'static str {
+    if resource_dir.join(BUNDLED_TEMPLATE).is_file() {
+        BUNDLED_TEMPLATE
+    } else {
+        tracing::warn!("{BUNDLED_TEMPLATE} missing, installing the launcher without inlined modules");
+        PLAIN_TEMPLATE
+    }
 }
 
 /// Delete the startup scriptlib 3.10.0 installed into the Scripts root.
@@ -349,6 +366,39 @@ mod tests {
 
         // Absent file is a no-op.
         remove_startup_scriptlib(&root);
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn launcher_template_prefers_the_bundled_file() {
+        let root = std::env::temp_dir().join(format!("autosubs-template-{}", std::process::id()));
+        fs::create_dir_all(root.join("resources")).unwrap();
+        fs::write(root.join(PLAIN_TEMPLATE), b"plain").unwrap();
+        assert_eq!(launcher_template(&root), PLAIN_TEMPLATE);
+
+        fs::write(root.join(BUNDLED_TEMPLATE), b"bundled").unwrap();
+        assert_eq!(launcher_template(&root), BUNDLED_TEMPLATE);
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn write_template_fills_placeholders_around_a_module_bundle() {
+        let root = std::env::temp_dir().join(format!("autosubs-bundle-{}", std::process::id()));
+        fs::create_dir_all(root.join("resources")).unwrap();
+        fs::write(
+            root.join(BUNDLED_TEMPLATE),
+            b"local r = [[__AUTOSUBS_RESOURCES_FOLDER__]]\n\
+              local m = __AUTOSUBS_MAILBOX_DIR__\n\
+              local b = { [\"core\"] = [==[\nreturn \"]=]\"\n]==] }\n",
+        )
+        .unwrap();
+
+        let target = root.join("out").join("AutoSubs.lua");
+        write_template(&root, BUNDLED_TEMPLATE, &target, b"/res", b"/exe", b"[[/box]]").unwrap();
+        let written = fs::read_to_string(&target).unwrap();
+        assert!(written.contains("local r = [[/res]]"));
+        assert!(written.contains("local m = [[/box]]"));
+        assert!(written.contains("[==[\nreturn \"]=]\"\n]==]"));
         fs::remove_dir_all(&root).unwrap();
     }
 

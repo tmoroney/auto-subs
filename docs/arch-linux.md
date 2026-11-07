@@ -61,7 +61,7 @@ how you get GPU acceleration on Linux; picking an ONNX model will not use it.
 ### Building from source
 
 ```bash
-sudo pacman -S base-devel clang cmake nodejs npm rustup
+sudo pacman -S base-devel clang cmake nodejs npm rustup vulkan-headers shaderc
 
 cd AutoSubs-App
 npm install
@@ -107,7 +107,8 @@ app and Resolve agree without any configuration.
 |---|---|
 | Launcher (Workspace ▸ Scripts) | `~/.local/share/DaVinciResolve/Fusion/Scripts/Utility/AutoSubs.lua` |
 | Mailbox (Rust ⇄ Lua) | `~/.local/share/com.autosubs/resolve-bridge/request.lua` |
-| Response channel | `Global.AutoSubsBridge.Ack` / `.Response` in `~/.local/share/DaVinciResolve/Fusion/Profiles/Default/Fusion.prefs` |
+| Response channel (21.1.2) | `ack.txt` / `response.txt` next to `request.lua` |
+| Response channel (before 21.1.2) | `Global.AutoSubsBridge.Ack` / `.Response` in `~/.local/share/DaVinciResolve/Fusion/Profiles/Default/Fusion.prefs` |
 
 The launcher is a template file with
 `[[__AUTOSUBS_RESOURCES_FOLDER__]]` placeholders that get substituted at
@@ -125,7 +126,7 @@ is why first use creates an **AutoSubs** bin.
 ### Verifying the bridge
 
 With Resolve open and the bridge started from the Scripts menu, running a request by hand should
-produce a `Response` key:
+produce a `response.txt` in the mailbox (a `Response` key in `Fusion.prefs` before 21.1.2):
 
 1. **Workspace ▸ Console**, switch to the **Lua** tab.
 2. Look for `[AutoSubs]` lines. `Export started with PID: …` is the audio
