@@ -2,7 +2,11 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { load, Store } from '@tauri-apps/plugin-store';
 import { CaptionPreset } from '@/types';
 import { BUILT_IN_PRESETS, DEFAULT_PRESET_ID, isBuiltInPresetId } from '@/presets/built-in-presets';
-import { deletePresetPreview } from '@/lib/caption-previews';
+import {
+    deletePresetPreview,
+    isValidPresetId,
+    isValidPresetPreviewFilename,
+} from '@/lib/caption-previews';
 import { parseImportedPreset } from '@/lib/preset-import';
 
 export { parseImportedPreset } from '@/lib/preset-import';
@@ -61,7 +65,14 @@ export function PresetsProvider({ children }: { children: React.ReactNode }) {
                     setUserPresets(stored.filter((p) => p && !p.builtIn && !isBuiltInPresetId(p.id)));
                 }
                 if (storedPreviews && typeof storedPreviews === 'object') {
-                    setPreviewImages(storedPreviews);
+                    // Sentinel Security: Sanitize stored preview images against path traversal
+                    const sanitized: PreviewImages = {};
+                    for (const [k, v] of Object.entries(storedPreviews)) {
+                        if (isValidPresetId(k) && v && isValidPresetPreviewFilename(v.file)) {
+                            sanitized[k] = v;
+                        }
+                    }
+                    setPreviewImages(sanitized);
                 }
             } catch (err) {
                 console.error('Failed to load presets store:', err);
@@ -157,9 +168,16 @@ export function PresetsProvider({ children }: { children: React.ReactNode }) {
     }
 
     async function setPresetPreview(id: string, filename: string) {
+        // Sentinel Security: Validate preset ID and preview filename before storing
+        if (!isValidPresetId(id)) {
+            throw new Error(`[file-security] Invalid preset id: "${id}"`);
+        }
+        if (!isValidPresetPreviewFilename(filename)) {
+            throw new Error(`[file-security] Invalid preset preview filename: "${filename}"`);
+        }
         await persistPreviewImages({
             ...previewImages,
-            [id]: { file: filename, updatedAt: nowIso() },
+            [id.trim()]: { file: filename.trim(), updatedAt: nowIso() },
         });
     }
 
