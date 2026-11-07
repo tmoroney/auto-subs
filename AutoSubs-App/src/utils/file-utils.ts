@@ -641,18 +641,26 @@ export async function listSubtitleDocumentIndex(): Promise<
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
+// Bolt Optimization:
+// Query the cached transcript index first instead of calling `listSubtitleDocuments()`.
+// `listSubtitleDocuments()` performs an O(N) disk scan over every transcript file in the
+// directory, executing stat() and full JSON file reads for unindexed documents.
+// Using `listSubtitleDocumentIndex()` reads all transcript metadata in a single fast O(1)
+// JSON read, eliminating dozens/hundreds of filesystem stat and read calls on timeline/file switch.
+// Falls back to `listSubtitleDocuments()` only if no match is found in the index.
 export async function resolveSubtitleDocumentFilename(
   isStandaloneMode: boolean,
   selectedFile: string | null,
   timelineId?: string,
 ): Promise<string | null> {
-  const transcripts = await listSubtitleDocuments();
+  const targetDisplayName =
+    isStandaloneMode && selectedFile
+      ? stripExtension(getFileName(selectedFile))
+      : null;
 
-  const matchingTranscript = transcripts.find((transcript) => {
-    if (isStandaloneMode && selectedFile) {
-      return (
-        transcript.displayName === stripExtension(getFileName(selectedFile))
-      );
+  const matchesTranscript = (transcript: SubtitleDocumentListItem) => {
+    if (targetDisplayName) {
+      return transcript.displayName === targetDisplayName;
     }
 
     if (!isStandaloneMode && timelineId) {
@@ -660,7 +668,18 @@ export async function resolveSubtitleDocumentFilename(
     }
 
     return false;
-  });
+  };
+
+  // Fast path: query single cached index file
+  const indexedTranscripts = await listSubtitleDocumentIndex();
+  const indexMatch = indexedTranscripts.find(matchesTranscript);
+  if (indexMatch) {
+    return indexMatch.filename;
+  }
+
+  // Fallback path: full disk scan if file was added externally without index update
+  const transcripts = await listSubtitleDocuments();
+  const matchingTranscript = transcripts.find(matchesTranscript);
 
   if (matchingTranscript) {
     return matchingTranscript.filename;
