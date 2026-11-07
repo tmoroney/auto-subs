@@ -7,6 +7,13 @@
 -- Scripts and copy the whole Console output. Without the setup script only the
 -- enumeration sections run.
 --
+-- On macOS with 21.2 the Console can stay empty, and Resolve may crash a few
+-- seconds after the probe ends (SIGSEGV in Fusion::loadstringval on a separate
+-- ScriptState thread, seen in 2 of 3 runs; probably the RunScript, Execute or
+-- LoadComp tests, which the bridge never uses). Everything is printed to stdout
+-- as well, so start Resolve from a terminal with stdout redirected to a file:
+--   "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/MacOS/Resolve" > probe.log 2>&1
+--
 -- What it touches:
 --   * fu:LoadPrefs, where it exists, reloads Fusion's preferences from the fixture
 --     files. The setup script backs Fusion.prefs up first, and the replace-or-merge

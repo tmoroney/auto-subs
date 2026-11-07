@@ -39,7 +39,7 @@ The Lua side must not use `io`, `ffi`, `package`, `require`, `loadfile`, `dofile
 
 #### What 21.1.2 leaves for file access
 
-Measured with [`diagnostics/sandbox_probe.lua`](diagnostics/sandbox_probe.lua) on Linux. Re-run the probe when a Resolve update breaks the bridge.
+Measured with [`diagnostics/sandbox_probe.lua`](diagnostics/sandbox_probe.lua) on Linux, and again on macOS 15 (Apple Silicon) with Resolve 21.2 free, which gives the same results apart from the `GetSubFolderList` row; the `fu:SetData` flush was not measured there. Re-run the probe when a Resolve update breaks the bridge.
 
 | Call | Result on 21.1.2 |
 |---|---|
@@ -50,7 +50,7 @@ Measured with [`diagnostics/sandbox_probe.lua`](diagnostics/sandbox_probe.lua) o
 | `fu:SetData(key, value)` | Writes `Fusion.prefs` to disk at once as a side effect, so the launcher uses it where `SavePrefs` is gone. A big value lands in the file too |
 | `fu:RunScript(path)` | Works, starts within 50 ms from a Scripts-menu loop, in a separate Lua state without a shared `_G`. Parses `.py` files as Lua |
 | `fu:LoadComp(path, true, true, true)` | Reads a comp hidden. `comp:Save` and `comp:SaveCopyAs` are nil |
-| `MediaStorage:GetSubFolderList(path)` | Empty for anything outside the registered Media Storage volumes |
+| `MediaStorage:GetSubFolderList(path)` | Empty for anything outside the registered Media Storage volumes. On macOS the boot volume is one of them (`/Volumes/Macintosh HD`), so any path under the home folder lists, as `/Volumes/Macintosh HD/Users/...` |
 
 Never touch `fu.UIManager`, not even to test whether it exists: on the free edition that lookup alone opens the "You have reached a limitation" upgrade dialog.
 
@@ -115,7 +115,7 @@ npm run dev             # starts the app in dev mode
 
 - **Lua**: Use `print()` — output appears in Resolve's Console (**Script → Console**)
 - **Bridge**: Check Rust backend logs for `resolve_bridge` requests; the mailbox dir is `<data_local_dir>/com.autosubs/resolve-bridge`. Replies land in `ack.txt` and `response.txt` there, or in `Fusion.prefs` under `Global.AutoSubsBridge.*` before 21.1.2
-- **Sandbox**: `Resolve-Integration/diagnostics/sandbox_probe.lua` reports what the current Resolve version still allows. Run `sh sandbox_probe_setup.sh` next to it with Resolve closed, then start **AutoSubs Sandbox Probe** from Workspace → Scripts
+- **Sandbox**: `Resolve-Integration/diagnostics/sandbox_probe.lua` reports what the current Resolve version still allows. Run `sh sandbox_probe_setup.sh` next to it with Resolve closed, then start **AutoSubs Sandbox Probe** from Workspace → Scripts. On macOS with 21.2 the Console can stay empty, and Resolve may crash a few seconds after the probe ends (SIGSEGV in `Fusion::loadstringval`, in a separate script thread; the bridge never uses the calls involved). Start Resolve from a terminal with stdout redirected (`"/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/MacOS/Resolve" > probe.log 2>&1`) to keep the output either way
 - **Fusion**: Inspect tool inputs in the Fusion inspector or check node connections in the Flow view
 
 ### Common Issues
