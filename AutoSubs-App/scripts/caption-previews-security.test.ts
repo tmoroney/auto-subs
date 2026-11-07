@@ -46,4 +46,37 @@ assert.equal(isValidPresetPreviewFilename(""), false);
 assert.equal(isValidPresetPreviewFilename(null), false);
 assert.equal(isValidPresetPreviewFilename(undefined), false);
 
+// 5. PresetsContext validation guards test
+{
+  function validatePresetPreviewUpdate(id: string, filename: string) {
+    if (!isValidPresetId(id)) {
+      throw new Error(`[file-security] Invalid preset id: "${id}"`);
+    }
+    if (!isValidPresetPreviewFilename(filename)) {
+      throw new Error(`[file-security] Invalid preset preview filename: "${filename}"`);
+    }
+  }
+
+  // Valid inputs pass
+  assert.doesNotThrow(() => validatePresetPreviewUpdate("preset-1", "preset-1.png"));
+
+  // Path traversal in ID throws
+  assert.throws(
+    () => validatePresetPreviewUpdate("../bad-preset", "preset-1.png"),
+    /\[file-security\] Invalid preset id/,
+  );
+
+  // Path traversal in filename throws
+  assert.throws(
+    () => validatePresetPreviewUpdate("preset-1", "../evil.png"),
+    /\[file-security\] Invalid preset preview filename/,
+  );
+
+  // Invalid filename extension throws
+  assert.throws(
+    () => validatePresetPreviewUpdate("preset-1", "evil.exe"),
+    /\[file-security\] Invalid preset preview filename/,
+  );
+}
+
 console.log("caption-previews security tests passed");
