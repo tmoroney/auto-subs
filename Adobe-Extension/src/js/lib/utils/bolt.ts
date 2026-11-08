@@ -2,6 +2,9 @@ import CSInterface, { CSEvent } from "../cep/csinterface";
 import Vulcan, { VulcanMessage } from "../cep/vulcan";
 import { ns } from "../../../shared/shared";
 import { fs } from "../cep/node";
+import { isSafeExternalUrl } from "./url-security";
+
+export { isSafeExternalUrl };
 
 export const csi = new CSInterface();
 export const vulcan = new Vulcan();
@@ -117,7 +120,7 @@ export const evalTS = <
           const parsed = JSON.parse(res);
           if (
             typeof parsed.name === "string" &&
-            (<string>parsed.name).toLowerCase().includes("error")
+            (parsed.name as string).toLowerCase().includes("error")
           ) {
             console.error(parsed.message);
             reject(parsed);
@@ -239,10 +242,15 @@ export const initBolt = (log = true) => {
 export const posix = (str: string) => str.replace(/\\/g, "/");
 
 export const openLinkInBrowser = (url: string) => {
+  if (!isSafeExternalUrl(url)) {
+    console.warn("[url-security] Blocked attempt to open unsafe URL:", url);
+    return;
+  }
+  const safeUrl = url.trim();
   if (window.cep) {
-    csi.openURLInDefaultBrowser(url);
+    csi.openURLInDefaultBrowser(safeUrl);
   } else {
-    location.href = url;
+    location.href = safeUrl;
   }
 };
 

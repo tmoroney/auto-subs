@@ -1,3 +1,8 @@
+## 2026-11-19 - Safe External URL Validation in Adobe CEP Extension
+**Vulnerability:** In `Adobe-Extension/src/js/lib/utils/bolt.ts`, `openLinkInBrowser` invoked `csi.openURLInDefaultBrowser` (or `location.href`) with arbitrary user or bridge-supplied URL strings without protocol validation, allowing potential execution of dangerous schemes (`javascript:`, `file:`, `data:`, `shell:`).
+**Learning:** Browser/OS-level opener bridges in Adobe CEP extensions can execute arbitrary URI schemes unless strictly validated on the client side, bypassing expected web browsing boundaries.
+**Prevention:** Strictly validate that external navigation targets use safe web schemes (`http:` or `https:`) before passing them to `csi.openURLInDefaultBrowser` or assigning `location.href`.
+
 ## 2026-11-12 - Prototype Pollution and Input Sanitization in Preset Import
 **Vulnerability:** In `AutoSubs-App/src/contexts/PresetsContext.tsx`, `parseImportedPreset` accepted user-supplied JSON from clipboard paste or file imports without bounds on string lengths, without stripping dangerous control characters, and without guarding nested `macroSettings` objects against prototype pollution keys (`__proto__`, `constructor`, `prototype`).
 **Learning:** External configuration objects loaded into persistent application stores and passed down to component trees or native scripting bridges can pollute JavaScript prototypes or degrade application performance if not validated for key safety and input length boundaries.
