@@ -19,6 +19,11 @@ class CredentialTests(unittest.TestCase):
         self.assertNotIn(value, str(run.call_args.args))
         self.assertNotIn("P12_PASSWORD", run.call_args.kwargs["env"])
         self.assertIn('\\"quotes\\"', run.call_args.kwargs["input"])
+    def test_interactive_status_failure_is_rejected(self):
+        with patch.object(HELPER.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "unlock-keychain: returned -25291")):
+            with self.assertRaisesRegex(RuntimeError, "output withheld"):
+                HELPER.security("unlock-keychain", "-p", "dummy", "missing")
+
     def test_refuse_line_separators(self):
         for value in ["a\nb", "a\rb", "a\0b"]:
             with self.assertRaises(ValueError): HELPER.quote(value)

@@ -22,6 +22,12 @@ def checked(condition):
 
 
 class NativeKeychainTransportTests(unittest.TestCase):
+    def test_command_failure_is_not_success(self):
+        with tempfile.TemporaryDirectory(prefix="missing keychain ") as directory:
+            missing = str(Path(directory) / "does-not-exist.keychain-db")
+            with self.assertRaisesRegex(RuntimeError, "output withheld"):
+                HELPER.security("unlock-keychain", "-p", "dummy-not-a-secret", missing)
+
     def test_create_unlock_import_partition_and_delete(self):
         with tempfile.TemporaryDirectory(prefix="auto-subs signing smoke ") as directory:
             folder = Path(directory)
