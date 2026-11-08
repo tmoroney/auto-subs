@@ -20,29 +20,50 @@ def quote(value):
 
 
 def child_env():
-    return {k: v for k, v in os.environ.items() if k not in {
-        "KEYCHAIN_PASSWORD", "P12_PASSWORD", "APPLE_APP_PASSWORD",
-        "BUILD_CERTIFICATE_BASE64", "BUILD_CERT_BASE64", "SIGNING_CERTIFICATE_P12",
-        "SIGNING_CERTIFICATE_PASSWORD", "P12_PWD", "KEYCHAIN_PWD",
-        "NOTARY_APP_PASSWORD", "APP_CERTIFICATE_PASSWORD", "INSTALLER_CERTIFICATE_PASSWORD",
-        "TAURI_SIGNING_PRIVATE_KEY", "TAURI_SIGNING_PRIVATE_KEY_PASSWORD",
-    }}
+    return {
+        k: v
+        for k, v in os.environ.items()
+        if k
+        not in {
+            "KEYCHAIN_PASSWORD",
+            "P12_PASSWORD",
+            "APPLE_APP_PASSWORD",
+            "BUILD_CERTIFICATE_BASE64",
+            "BUILD_CERT_BASE64",
+            "SIGNING_CERTIFICATE_P12",
+            "SIGNING_CERTIFICATE_PASSWORD",
+            "P12_PWD",
+            "KEYCHAIN_PWD",
+            "NOTARY_APP_PASSWORD",
+            "APP_CERTIFICATE_PASSWORD",
+            "INSTALLER_CERTIFICATE_PASSWORD",
+            "TAURI_SIGNING_PRIVATE_KEY",
+            "TAURI_SIGNING_PRIVATE_KEY_PASSWORD",
+        }
+    }
 
 
 def security(*args):
     # One command per invocation: propagate its exit status and never log input.
     line = " ".join(quote(a) for a in args) + "\n"
     result = subprocess.run(
-        ["/usr/bin/security", "-i"], input=line, text=True,
-        capture_output=True, env=child_env(), check=False,
+        ["/usr/bin/security", "-i"],
+        input=line,
+        text=True,
+        capture_output=True,
+        env=child_env(),
+        check=False,
     )
     # One command per interpreter. Also fail on its explicit status diagnostic,
     # even on OS versions where the interpreter's exit status may differ.
-    diagnostics = [line.strip() for line in (result.stderr or "").split("\n") if line.strip()]
+    diagnostics = [
+        line.strip() for line in (result.stderr or "").split("\n") if line.strip()
+    ]
     success_status = re.compile(r"^[a-z][a-z-]*: returned 0$")
-    if result.returncode or any(not success_status.fullmatch(line) for line in diagnostics):
+    if result.returncode or any(
+        not success_status.fullmatch(line) for line in diagnostics
+    ):
         raise RuntimeError("Keychain operation failed (output withheld)")
-
 
 
 def parse_keychain_list(output):
@@ -51,7 +72,12 @@ def parse_keychain_list(output):
         value = line.strip()
         if not value:
             continue
-        if len(value) < 3 or not value.startswith('"/') or not value.endswith('"') or "\x00" in value:
+        if (
+            len(value) < 3
+            or not value.startswith('"/')
+            or not value.endswith('"')
+            or "\x00" in value
+        ):
             raise RuntimeError("Unexpected keychain search list output (withheld)")
         paths.append(value[1:-1])
     return paths
@@ -63,12 +89,32 @@ def import_certificate():
     security("create-keychain", "-p", password, keychain)
     security("set-keychain-settings", "-lut", "21600", keychain)
     security("unlock-keychain", "-p", password, keychain)
-    security("import", os.environ["CERTIFICATE_PATH"], "-P",
-             os.environ["P12_PASSWORD"], "-T", "/usr/bin/codesign", "-k", keychain)
-    security("set-key-partition-list", "-S", "apple-tool:,apple:,codesign:",
-             "-s", "-k", password, keychain)
-    current = subprocess.run(["/usr/bin/security", "list-keychains", "-d", "user"],
-                             capture_output=True, text=True, env=child_env(), check=True)
+    security(
+        "import",
+        os.environ["CERTIFICATE_PATH"],
+        "-P",
+        os.environ["P12_PASSWORD"],
+        "-T",
+        "/usr/bin/codesign",
+        "-k",
+        keychain,
+    )
+    security(
+        "set-key-partition-list",
+        "-S",
+        "apple-tool:,apple:,codesign:",
+        "-s",
+        "-k",
+        password,
+        keychain,
+    )
+    current = subprocess.run(
+        ["/usr/bin/security", "list-keychains", "-d", "user"],
+        capture_output=True,
+        text=True,
+        env=child_env(),
+        check=True,
+    )
     search = parse_keychain_list(current.stdout)
     if keychain not in search:
         search.append(keychain)
@@ -80,16 +126,25 @@ def store_notary_credentials():
     # a real TTY (getpass can use /dev/tty), with echo disabled before spawning.
     password = os.environ["APPLE_APP_PASSWORD"]
     quote(password)  # Refuse multiline input before interacting with a prompt.
-    command = ["xcrun", "notarytool", "store-credentials", "ci-notary",
-               "--apple-id", os.environ["APPLE_ID"], "--team-id",
-               os.environ["APPLE_TEAM_ID"], "--keychain", os.environ["KEYCHAIN_PATH"]]
+    command = [
+        "xcrun",
+        "notarytool",
+        "store-credentials",
+        "ci-notary",
+        "--apple-id",
+        os.environ["APPLE_ID"],
+        "--team-id",
+        os.environ["APPLE_TEAM_ID"],
+        "--keychain",
+        os.environ["KEYCHAIN_PATH"],
+    ]
     pid, master = pty.fork()
     if pid == 0:
         attrs = termios.tcgetattr(0)
         attrs[3] &= ~termios.ECHO
         termios.tcsetattr(0, termios.TCSANOW, attrs)
         # Fixed notarytool command; no shell or secret-bearing argument.
-        os.execvpe(command[0], command, child_env())  # noqa: S606
+        os.execvpe(command[0], command, child_env())
     output = b""
     sent = False
     status = None
@@ -124,10 +179,25 @@ if __name__ == "__main__":
     if sys.argv[1:] == ["import-certificate"]:
         import_certificate()
     elif sys.argv[1:] == ["import-additional-certificate"]:
-        security("import", os.environ["CERTIFICATE_PATH"], "-P", os.environ["P12_PASSWORD"],
-                 "-T", "/usr/bin/productsign", "-k", os.environ["KEYCHAIN_PATH"])
-        security("set-key-partition-list", "-S", "apple-tool:,apple:,codesign:", "-s", "-k",
-                 os.environ["KEYCHAIN_PASSWORD"], os.environ["KEYCHAIN_PATH"])
+        security(
+            "import",
+            os.environ["CERTIFICATE_PATH"],
+            "-P",
+            os.environ["P12_PASSWORD"],
+            "-T",
+            "/usr/bin/productsign",
+            "-k",
+            os.environ["KEYCHAIN_PATH"],
+        )
+        security(
+            "set-key-partition-list",
+            "-S",
+            "apple-tool:,apple:,codesign:",
+            "-s",
+            "-k",
+            os.environ["KEYCHAIN_PASSWORD"],
+            os.environ["KEYCHAIN_PATH"],
+        )
     elif sys.argv[1:] == ["store-notary-credentials"]:
         store_notary_credentials()
     else:
