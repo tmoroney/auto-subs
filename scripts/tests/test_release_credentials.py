@@ -30,6 +30,14 @@ class CredentialTests(unittest.TestCase):
         for bad in ['not a quoted path', '"relative"', '"/tmp/path" garbage']:
             with self.assertRaises(RuntimeError): HELPER.parse_keychain_list(bad)
 
+    def test_unicode_keychain_path(self):
+        path = "/tmp/a\u2028b\u0085keychain"
+        self.assertEqual(HELPER.parse_keychain_list('    "' + path + '"\n'), [path])
+
+    def test_success_status_diagnostic(self):
+        with patch.object(HELPER.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "set-keychain-settings: returned 0")):
+            HELPER.security("set-keychain-settings", "-lut", "21600", "dummy")
+
     def test_refuse_line_separators(self):
         for value in ["a\nb", "a\rb", "a\0b"]:
             with self.assertRaises(ValueError): HELPER.quote(value)

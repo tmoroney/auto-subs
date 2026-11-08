@@ -38,14 +38,16 @@ def security(*args):
     )
     # One command per interpreter. Also fail on its explicit status diagnostic,
     # even on OS versions where the interpreter's exit status may differ.
-    failed = re.search(r"returned\s+(-?\d+)", result.stderr or "")
-    if result.returncode or result.stderr or (failed and int(failed.group(1)) != 0):
+    diagnostics = [line.strip() for line in (result.stderr or "").split("\n") if line.strip()]
+    success_status = re.compile(r"^[a-z][a-z-]*: returned 0$")
+    if result.returncode or any(not success_status.fullmatch(line) for line in diagnostics):
         raise RuntimeError("Keychain operation failed (output withheld)")
+
 
 
 def parse_keychain_list(output):
     paths = []
-    for line in output.splitlines():
+    for line in output.split("\n"):
         value = line.strip()
         if not value:
             continue
