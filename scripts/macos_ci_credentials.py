@@ -6,7 +6,6 @@ import pty
 import re
 import select
 import signal
-import shlex
 import subprocess
 import sys
 import termios
@@ -44,6 +43,18 @@ def security(*args):
         raise RuntimeError("Keychain operation failed (output withheld)")
 
 
+def parse_keychain_list(output):
+    paths = []
+    for line in output.splitlines():
+        value = line.strip()
+        if not value:
+            continue
+        if len(value) < 3 or not value.startswith('"/') or not value.endswith('"') or "\x00" in value:
+            raise RuntimeError("Unexpected keychain search list output (withheld)")
+        paths.append(value[1:-1])
+    return paths
+
+
 def import_certificate():
     keychain = os.environ["KEYCHAIN_PATH"]
     password = os.environ["KEYCHAIN_PASSWORD"]
@@ -56,7 +67,7 @@ def import_certificate():
              "-s", "-k", password, keychain)
     current = subprocess.run(["/usr/bin/security", "list-keychains", "-d", "user"],
                              capture_output=True, text=True, env=child_env(), check=True)
-    search = shlex.split(current.stdout)
+    search = parse_keychain_list(current.stdout)
     if keychain not in search:
         search.append(keychain)
     security("list-keychains", "-d", "user", "-s", *search)

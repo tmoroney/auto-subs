@@ -31,7 +31,7 @@ class NativeKeychainTransportTests(unittest.TestCase):
     def test_create_unlock_import_partition_and_delete(self):
         with tempfile.TemporaryDirectory(prefix="auto-subs signing smoke ") as directory:
             folder = Path(directory)
-            keychain = folder / "transport.keychain-db"
+            keychain = folder / 'transport "quoted" \\ keychain-db'
             key = folder / "test.key"
             cert = folder / "test.crt"
             bundle = folder / "test.p12"

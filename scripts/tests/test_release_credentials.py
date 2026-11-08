@@ -24,6 +24,12 @@ class CredentialTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "output withheld"):
                 HELPER.security("unlock-keychain", "-p", "dummy", "missing")
 
+    def test_keychain_list_preserves_literal_quotes_and_backslashes(self):
+        path = '/tmp/a "quoted" \\ keychain'
+        self.assertEqual(HELPER.parse_keychain_list('    "' + path + '"\n'), [path])
+        for bad in ['not a quoted path', '"relative"', '"/tmp/path" garbage']:
+            with self.assertRaises(RuntimeError): HELPER.parse_keychain_list(bad)
+
     def test_refuse_line_separators(self):
         for value in ["a\nb", "a\rb", "a\0b"]:
             with self.assertRaises(ValueError): HELPER.quote(value)
