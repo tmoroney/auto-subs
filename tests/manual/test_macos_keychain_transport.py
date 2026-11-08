@@ -35,7 +35,7 @@ class NativeKeychainTransportTests(unittest.TestCase):
 
     def test_notary_private_tty_prompt(self):
         with tempfile.TemporaryDirectory(prefix="notary prompt smoke ") as directory:
-            folder = Path(directory)
+            folder = Path(directory).resolve()
             executable = folder / "xcrun"
             marker = folder / "passed"
             executable.write_text(
@@ -64,8 +64,8 @@ class NativeKeychainTransportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(
             prefix="auto-subs signing smoke "
         ) as directory:
-            folder = Path(directory)
-            keychain = folder / 'transport "quoted" \\ keychain-db'
+            folder = Path(directory).resolve()
+            keychain = folder / 'transport "quoted" \\ keychain.keychain-db'
             key = folder / "test.key"
             cert = folder / "test.crt"
             bundle = folder / "test.p12"
@@ -146,7 +146,7 @@ class NativeKeychainTransportTests(unittest.TestCase):
                     check=True,
                 )
                 current = HELPER.parse_keychain_list(current_result.stdout)
-                checked(str(keychain) in current)
+                self.assertIn(str(keychain.resolve()), current)
                 checked(set(original).issubset(current))
                 # Prove the password was not silently truncated by -i quoting.
                 HELPER.security("lock-keychain", str(keychain))
