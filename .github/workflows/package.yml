@@ -92,23 +92,22 @@ jobs:
         echo "$INSTALLER_CERTIFICATE_BASE64" | base64 --decode > $INSTALLER_CERT_PATH
 
         # Create and configure temporary keychain
-        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        export KEYCHAIN_PATH="$KEYCHAIN_PATH" CERTIFICATE_PATH="$APP_CERT_PATH"
+        export KEYCHAIN_PASSWORD="$KEYCHAIN_PASSWORD" P12_PASSWORD="$APP_CERTIFICATE_PASSWORD"
+        python3 scripts/macos_ci_credentials.py import-certificate
         security list-keychains -s $KEYCHAIN_PATH
 
         # Import Application certificate
-        security import $APP_CERT_PATH -P "$APP_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-        security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
         # Import Installer certificate
-        security import $INSTALLER_CERT_PATH -P "$INSTALLER_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-        security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        export CERTIFICATE_PATH="$INSTALLER_CERT_PATH" P12_PASSWORD="$INSTALLER_CERTIFICATE_PASSWORD"
+        python3 scripts/macos_ci_credentials.py import-additional-certificate
 
         # Import Notarization credentials
-        echo "$APPLE_NOTARIZE_KEY" | base64 --decode > Notarization_AuthKey.p8
+        umask 077
+        printf '%s' "$APPLE_NOTARIZE_KEY" | base64 --decode > "$RUNNER_TEMP/Notarization_AuthKey.p8"
         xcrun notarytool store-credentials "AC_PASSWORD" \
-          --key "Notarization_AuthKey.p8" \
+          --key "$RUNNER_TEMP/Notarization_AuthKey.p8" \
           --key-id "$APPLE_NOTARIZE_ID" \
           --issuer "$APPLE_ISSUER"
       
@@ -179,11 +178,12 @@ jobs:
         echo 'CMAKE_ARGS=-DGGML_I8MM=OFF -DGGML_NATIVE=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3' >> "$GITHUB_ENV"
 
     - name: Build Tauri
+      env:
+        TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       run: |
         cd AutoSubs-App
         export APPLE_SIGNING_IDENTITY="Developer ID Application: ${{ secrets.APPLE_IDENTITY }}"
-        export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
-        export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
         npm run tauri build -- -- --no-default-features --features "${{ matrix.features }}"
 
     - name: Create Mac Package
@@ -336,10 +336,11 @@ jobs:
           npm ci --prefix AutoSubs-App
 
       - name: Build Tauri (Linux x86_64)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           cd AutoSubs-App
-          export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
-          export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
           # Disable default features (mac-specific) for Linux build
           npm run tauri build -- -- --no-default-features --features linux
 

@@ -91,13 +91,11 @@ jobs:
 
           echo "$APP_CERTIFICATE_BASE64" | base64 --decode > "$APP_CERT_PATH"
 
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          export KEYCHAIN_PATH="$KEYCHAIN_PATH" CERTIFICATE_PATH="$APP_CERT_PATH"
+          export KEYCHAIN_PASSWORD="$KEYCHAIN_PASSWORD" P12_PASSWORD="$APP_CERTIFICATE_PASSWORD"
+          python3 scripts/macos_ci_credentials.py import-certificate
           security list-keychains -s "$KEYCHAIN_PATH"
 
-          security import "$APP_CERT_PATH" -P "$APP_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
       - name: Install dependencies
         run: |
