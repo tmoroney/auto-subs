@@ -40,7 +40,7 @@ def security(*args):
     # One command per interpreter. Also fail on its explicit status diagnostic,
     # even on OS versions where the interpreter's exit status may differ.
     failed = re.search(r"returned\s+(-?\d+)", result.stderr or "")
-    if result.returncode or (failed and int(failed.group(1)) != 0):
+    if result.returncode or result.stderr or (failed and int(failed.group(1)) != 0):
         raise RuntimeError("Keychain operation failed (output withheld)")
 
 
