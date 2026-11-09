@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { evalTS } from "../lib/utils/bolt";
+import { isValidSrtFilePath } from "../lib/utils/file-security";
 
 interface QueuedMessage {
   id: string;
@@ -204,7 +205,8 @@ export const useWebSocket = (port: number) => {
         break;
       }
       case "request_import_srt": {
-        if (!isRecord(message.payload) || !isNonEmptyString(message.payload.filePath)) {
+        // Sentinel Security: Validate that filePath is safe, points to an .srt file, and contains no path traversal
+        if (!isRecord(message.payload) || !isValidSrtFilePath(message.payload.filePath)) {
           addLog("Rejected malformed SRT import request", "error");
           sendMessage({ type: "import_srt_response", payload: JSON.stringify({ success: false, error: "Malformed SRT import request" }), sessionId: message.sessionId, operationId: opId });
           break;

@@ -1,3 +1,8 @@
+## 2026-11-26 - Path Traversal Prevention in Adobe CEP SRT Import Bridge
+**Vulnerability:** In `Adobe-Extension/src/js/main/useWebSocket.ts`, incoming `request_import_srt` WebSocket messages accepted arbitrary `filePath` strings without validation, passing them directly to ExtendScript `importSRTFile` (`app.project.importFiles` in Premiere or `new File(filePath).read()` in After Effects). Malicious or malformed inputs containing directory traversal (`..`), null bytes, or non-SRT extensions could target arbitrary filesystem locations.
+**Learning:** WebSocket handlers accepting filesystem paths from local bridge protocols must enforce path traversal checks and strict file extension constraints before invoking host-level scripting or application file import APIs.
+**Prevention:** Validate incoming file paths with `isValidSrtFilePath`, verifying string bounds, forbidding path traversal (`..`), rejecting control characters/null bytes, and strictly requiring the `.srt` extension.
+
 ## 2026-11-19 - Safe External URL Validation in Adobe CEP Extension
 **Vulnerability:** In `Adobe-Extension/src/js/lib/utils/bolt.ts`, `openLinkInBrowser` invoked `csi.openURLInDefaultBrowser` (or `location.href`) with arbitrary user or bridge-supplied URL strings without protocol validation, allowing potential execution of dangerous schemes (`javascript:`, `file:`, `data:`, `shell:`).
 **Learning:** Browser/OS-level opener bridges in Adobe CEP extensions can execute arbitrary URI schemes unless strictly validated on the client side, bypassing expected web browsing boundaries.
