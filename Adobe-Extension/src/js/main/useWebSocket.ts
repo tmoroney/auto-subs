@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { evalTS } from "../lib/utils/bolt";
-import { isValidSrtFilePath } from "../lib/utils/file-security";
+import {
+  isValidSrtFilePath,
+  isValidExportFolderPath,
+  isValidPresetFilePath,
+} from "../lib/utils/file-security";
 
 interface QueuedMessage {
   id: string;
@@ -190,7 +194,13 @@ export const useWebSocket = (port: number) => {
         }
 
         const { exportFolder, selectedTracks, selectedRange, presetPath } = message.payload;
-        if (!isNonEmptyString(exportFolder) || !isNumberArray(selectedTracks) || !isValidRange(selectedRange) || (presetPath !== undefined && typeof presetPath !== "string")) {
+        // Sentinel Security: Validate export folder, range, track numbers, and optional preset path to prevent path traversal
+        if (
+          !isValidExportFolderPath(exportFolder) ||
+          !isNumberArray(selectedTracks) ||
+          !isValidRange(selectedRange) ||
+          (presetPath !== undefined && !isValidPresetFilePath(presetPath))
+        ) {
           addLog("Rejected malformed audio export request", "error");
           sendMessage({ type: "audio_export_response", payload: JSON.stringify({ success: false, error: "Malformed audio export request" }), sessionId: message.sessionId });
           break;
