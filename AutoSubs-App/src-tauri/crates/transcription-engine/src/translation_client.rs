@@ -53,8 +53,19 @@ fn normalize_google_lang(code: &str, is_target: bool) -> String {
 
 /// Translates text from one language to another.
 pub async fn translate_text(text: &str, from: &str, to: &str) -> Result<String> {
-    let client = reqwest::Client::new();
+    let client = http_client();
     translate_text_with_client(&client, text, from, to).await
+}
+
+/// reqwest has no timeout by default, so a connection that stalls instead of
+/// failing would hang the run with no error. A timeout surfaces as a
+/// retryable error and goes through the normal backoff.
+fn http_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(20))
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new())
 }
 
 fn backoff(attempt: u32) -> Duration {
@@ -153,7 +164,7 @@ pub async fn translate_batch(
 
     // One shared client: per-segment `Client::new()` defeats connection reuse,
     // which makes the translate endpoint throttle much sooner.
-    let client = std::sync::Arc::new(reqwest::Client::new());
+    let client = std::sync::Arc::new(http_client());
     let concurrency: usize = 2;
     let mut out: Vec<Option<String>> = vec![None; n];
     let attempted = texts.iter().filter(|t| !t.trim().is_empty()).count();
