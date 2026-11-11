@@ -17,7 +17,6 @@ import {
   Search,
   Send,
   Type,
-  Users,
   X,
 } from "lucide-react";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -42,6 +41,7 @@ import { useErrorDialog } from "@/contexts/ErrorDialogContext";
 import { useAudioPreview } from "@/contexts/AudioPreviewContext";
 import { useSettingsStore } from "@/stores/settings-store";
 import { getDensityCharLimits } from "@/api/formatting-api";
+import { languageDisplayName } from "@/utils/language-display-name";
 import {
   applyStylesToTimeline,
   checkTrackConflicts,
@@ -76,11 +76,14 @@ function formatTime(seconds: number) {
 }
 
 function relativeDate(date: Date | undefined, language: string) {
-  if (!date) return "";
-  const days = Math.floor((date.getTime() - Date.now()) / 86_400_000);
-  const formatter = new Intl.RelativeTimeFormat(language, { numeric: "auto" });
-  if (Math.abs(days) < 1) return formatter.format(0, "day");
-  return formatter.format(days, "day");
+  if (!date || !Number.isFinite(date.getTime())) return "";
+  try {
+    const days = Math.floor((date.getTime() - Date.now()) / 86_400_000);
+    const formatter = new Intl.RelativeTimeFormat(language, { numeric: "auto" });
+    return formatter.format(Math.abs(days) < 1 ? 0 : days, "day");
+  } catch {
+    return "";
+  }
 }
 
 function presetSampleStyle(preset: CaptionPreset): React.CSSProperties {
@@ -202,10 +205,10 @@ export function TranscriptPage({
   const duration = document?.markOut != null
     ? Math.max(0, document.markOut - (document.markIn ?? 0))
     : null;
-  const languageName = currentSubtitleDocumentLanguage
-    ? new Intl.DisplayNames([i18n.resolvedLanguage || i18n.language], { type: "language" })
-        .of(currentSubtitleDocumentLanguage) ?? currentSubtitleDocumentLanguage
-    : "";
+  const languageName = languageDisplayName(
+    currentSubtitleDocumentLanguage,
+    i18n.resolvedLanguage || i18n.language,
+  );
   const metadata = [
     languageName,
     duration !== null ? formatTime(duration) : "",
@@ -514,7 +517,6 @@ export function TranscriptPage({
             <Menu.Trigger
               render={
                 <button type="button" className="as-transcript-chip as-speakers-trigger">
-                  <Users aria-hidden="true" />
                   <span className="as-speaker-dots">
                     {speakers.slice(0, 4).map((speaker, index) => (
                       <span
@@ -810,11 +812,15 @@ function ExportMenu({
       />
       <MenuPopup className="as-export-menu">
         {EXPORT_FORMATS.map(({ format, icon: Icon, titleKey, descriptionKey }) => (
-          <MenuItem key={format} onClick={() => void onExport(format)}>
-            <Icon />
+          <MenuItem
+            key={format}
+            className="as-export-menu-item"
+            onClick={() => void onExport(format)}
+          >
+            <Icon className="as-export-menu-icon" size={16} />
             <span className="as-export-menu-copy">
-              <span>{t(titleKey)}</span>
-              <small>{t(descriptionKey)}</small>
+              <span className="as-export-menu-title">{t(titleKey)}</span>
+              <small className="as-export-menu-description">{t(descriptionKey)}</small>
             </span>
           </MenuItem>
         ))}

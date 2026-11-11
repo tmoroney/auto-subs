@@ -4,7 +4,6 @@ import type { CSSProperties } from "react";
 import { Segmented } from "@/components/kit";
 import type { Speaker } from "@/types";
 import { DEFAULT_COLORS } from "@/utils/speaker-colors";
-import { speakerDisplayColor } from "@/utils/speaker-index";
 
 interface SpeakerMenuProps {
   speakers: Speaker[];
@@ -27,10 +26,6 @@ export function SpeakerMenu({ speakers, onSpeakerChange }: SpeakerMenuProps) {
         return (
           <section className="as-speaker-menu-person" key={index}>
             <div className="as-speaker-name-row">
-              <span
-                className="as-speaker-row-dot"
-                style={{ backgroundColor: speakerDisplayColor(speaker, index) }}
-              />
               <input
                 className="as-speaker-name-input"
                 value={speaker.name}
