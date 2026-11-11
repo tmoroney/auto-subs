@@ -6,9 +6,11 @@ import { useTranslation } from "react-i18next";
 import {
   ArrowUpDown,
   BookOpen,
+  Check,
   Download,
   Globe2,
   Search,
+  Sparkles,
   Target,
   Trash2,
   Zap,
@@ -386,16 +388,32 @@ export function ModelsPage({ onBack }: Props) {
             </span>
           </Menu.Trigger>
           <MenuPopup className="as-sort-menu">
+            <div className="as-sort-heading">{t("models.filters.sortBy")}</div>
             <Menu.RadioGroup
               value={sort}
               onValueChange={(value) => setSort(value as ModelSort)}
             >
               {(["recommended", "accuracy", "speed"] as ModelSort[]).map(
-                (value) => (
-                  <MenuRadioItem key={value} value={value}>
-                    {t(`models.filters.${value}`)}
-                  </MenuRadioItem>
-                ),
+                (value) => {
+                  const SortIcon =
+                    value === "recommended"
+                      ? Sparkles
+                      : value === "accuracy"
+                        ? Target
+                        : Zap;
+
+                  return (
+                    <MenuRadioItem
+                      key={value}
+                      value={value}
+                      className="as-menu-radio as-sort-option"
+                    >
+                      <Check className="as-menu-check" />
+                      <SortIcon className="as-sort-option-icon" />
+                      {t(`models.filters.${value}`)}
+                    </MenuRadioItem>
+                  );
+                },
               )}
             </Menu.RadioGroup>
           </MenuPopup>

@@ -246,7 +246,8 @@
       "accuracy": "准确性",
       "recommended": "推荐",
       "search": "搜索",
-      "speed": "速度"
+      "speed": "速度",
+      "sortBy": "排序方式"
     },
     "englishOnly": {
       "title": "英语专用模型",
@@ -768,7 +769,6 @@
       "title": "转录文本",
       "view": "视图",
       "textPerSubtitle": "每条字幕的文本",
-      "formatFootnote": "字幕会立即重新排版，不会重新转录。",
       "matches": "{{count}} 个匹配",
       "track": "轨道",
       "putOnTrack": "字幕放置到",
@@ -797,6 +797,11 @@
       "refreshTemplates": "刷新模板",
       "apply": "更新时间线字幕",
       "editFusion": "在 Fusion 中编辑"
+    },
+    "connectSteps": {
+      "openResolve": "在 DaVinci Resolve 中打开时间线",
+      "openPremiere": "在 Premiere Pro 中打开序列",
+      "autoConnect": "AutoSubs 会自动连接"
     }
   }
 }

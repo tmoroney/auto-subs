@@ -250,7 +250,8 @@
       "accuracy": "Accuracy",
       "recommended": "Recommended",
       "search": "Search",
-      "speed": "Speed"
+      "speed": "Speed",
+      "sortBy": "Sort by"
     },
     "englishOnly": {
       "title": "English-Only Models",
@@ -788,7 +789,6 @@
       "title": "Transcript",
       "view": "View",
       "textPerSubtitle": "Text per subtitle",
-      "formatFootnote": "Changes re-flow the subtitles instantly. Nothing is transcribed again.",
       "matches": "{{count}} matches",
       "track": "Track",
       "putOnTrack": "Put subtitles on",
@@ -817,6 +817,11 @@
       "refreshTemplates": "Refresh templates",
       "apply": "Update captions on timeline",
       "editFusion": "Edit in Fusion"
+    },
+    "connectSteps": {
+      "openResolve": "Open a timeline in DaVinci Resolve",
+      "openPremiere": "Open a sequence in Premiere Pro",
+      "autoConnect": "AutoSubs connects on its own"
     }
   }
 }

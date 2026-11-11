@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Menu, MenuPopup, MenuRadioItem } from "@/components/kit/menu"
 import { Switch as KitSwitch } from "@/components/kit/switch"
+import { Segmented } from "@/components/kit/segmented"
+import { Button as KitButton } from "@/components/kit/button"
 import { Badge } from "@/components/ui/badge"
 import {
     Dialog,
@@ -29,6 +31,14 @@ type SettingUpdateHandler = <K extends keyof Settings>(
     key: K,
     value: Settings[K],
 ) => void;
+
+const TEXT_DENSITIES: Settings["textDensity"][] = [
+    "single",
+    "less",
+    "standard",
+    "more",
+    "custom",
+]
 
 interface TextFormattingPanelProps {
     /** Show Cancel / Apply buttons at the bottom */
@@ -129,28 +139,56 @@ export function TextFormattingPanel({
                             <Label className={settingLabelClass}>{t("actionBar.format.textDensityTitle")}</Label>
                             <p className={settingDescriptionClass}>{t("actionBar.format.textDensityDescription")}</p>
                         </div>
-                        <Select
-                            value={textDensity}
-                            onValueChange={(value) => changeSetting("textDensity", value as Settings["textDensity"])}
-                        >
-                            <SelectTrigger className="w-32">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="single">{t("actionBar.format.textDensity.single")}</SelectItem>
-                                <SelectItem value="less">{t("actionBar.format.textDensity.less")}</SelectItem>
-                                <SelectItem value="standard">{t("actionBar.format.textDensity.standard")}</SelectItem>
-                                <SelectItem value="more">{t("actionBar.format.textDensity.more")}</SelectItem>
-                                <SelectItem value="custom">{t("actionBar.format.textDensity.custom")}</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        {compactTranscriptMenu ? (
+                            <Menu.Root>
+                                <Menu.Trigger className="as-settings-select as-format-density-trigger">
+                                    {t(`actionBar.format.textDensity.${textDensity}`)}
+                                    <ChevronDown size={14} aria-hidden="true" />
+                                </Menu.Trigger>
+                                <MenuPopup className="as-format-case-menu">
+                                    <Menu.RadioGroup
+                                        value={textDensity}
+                                        onValueChange={(value: string) =>
+                                            changeSetting("textDensity", value as Settings["textDensity"])
+                                        }
+                                    >
+                                        {TEXT_DENSITIES.map((value) => (
+                                            <MenuRadioItem
+                                                key={value}
+                                                value={value}
+                                                className="as-format-case-option"
+                                            >
+                                                <Check className="as-format-case-check" />
+                                                <span>{t(`actionBar.format.textDensity.${value}`)}</span>
+                                            </MenuRadioItem>
+                                        ))}
+                                    </Menu.RadioGroup>
+                                </MenuPopup>
+                            </Menu.Root>
+                        ) : (
+                            <Select
+                                value={textDensity}
+                                onValueChange={(value) => changeSetting("textDensity", value as Settings["textDensity"])}
+                            >
+                                <SelectTrigger className="w-32">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="single">{t("actionBar.format.textDensity.single")}</SelectItem>
+                                    <SelectItem value="less">{t("actionBar.format.textDensity.less")}</SelectItem>
+                                    <SelectItem value="standard">{t("actionBar.format.textDensity.standard")}</SelectItem>
+                                    <SelectItem value="more">{t("actionBar.format.textDensity.more")}</SelectItem>
+                                    <SelectItem value="custom">{t("actionBar.format.textDensity.custom")}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        )}
                     </div>
                 )}
 
                 {/* Custom line limit (only shown when custom density is selected) */}
                 {(!hideDensity || showCustomDensityLimit) && textDensity === "custom" && (
-                    <div className={settingRowClass}>
-                        <div>
+                    <div className={`${settingRowClass} ${compactTranscriptMenu ? "as-custom-limit--compact" : ""}`}>
+                        <div className={compactTranscriptMenu ? "as-format-setting-copy" : undefined}>
                             <Label className={settingLabelClass}>
                                 {customDensityUnit === "words"
                                     ? t("actionBar.format.customWordsTitle")
@@ -162,34 +200,67 @@ export function TextFormattingPanel({
                                     : t("actionBar.format.customCharsDescription")}
                             </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Select
-                                value={customDensityUnit}
-                                onValueChange={(value) => changeSetting("customDensityUnit", value as Settings["customDensityUnit"])}
-                            >
-                                <SelectTrigger className="w-28">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="chars">{t("actionBar.density.characters")}</SelectItem>
-                                    <SelectItem value="words">{t("actionBar.density.words")}</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Input
-                                type="number"
-                                min="1"
-                                max={customDensityUnit === "words" ? "20" : "100"}
-                                step="1"
-                                value={customDensityUnit === "words" ? customMaxWordsPerLine : customMaxCharsPerLine}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                    const n = Math.max(1, Math.floor(Number(e.target.value) || 0));
-                                    changeSetting(
-                                        customDensityUnit === "words" ? "customMaxWordsPerLine" : "customMaxCharsPerLine",
-                                        n,
-                                    );
-                                }}
-                                className="w-20"
-                            />
+                        <div className={`as-custom-limit-controls ${compactTranscriptMenu ? "as-custom-limit-controls--compact" : ""}`}>
+                            {compactTranscriptMenu ? (
+                                <Segmented
+                                    ariaLabel={t("actionBar.format.customCharsTitle")}
+                                    value={customDensityUnit}
+                                    onValueChange={(value) =>
+                                        changeSetting("customDensityUnit", value as Settings["customDensityUnit"])
+                                    }
+                                    options={[
+                                        { value: "chars", label: t("actionBar.density.characters") },
+                                        { value: "words", label: t("actionBar.density.words") },
+                                    ]}
+                                    className="as-custom-limit-segmented"
+                                />
+                            ) : (
+                                <Select
+                                    value={customDensityUnit}
+                                    onValueChange={(value) => changeSetting("customDensityUnit", value as Settings["customDensityUnit"])}
+                                >
+                                    <SelectTrigger className="w-28">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="chars">{t("actionBar.density.characters")}</SelectItem>
+                                        <SelectItem value="words">{t("actionBar.density.words")}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )}
+                            {compactTranscriptMenu ? (
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max={customDensityUnit === "words" ? "20" : "100"}
+                                    step="1"
+                                    value={customDensityUnit === "words" ? customMaxWordsPerLine : customMaxCharsPerLine}
+                                    onChange={(e) => {
+                                        const n = Math.max(1, Math.floor(Number(e.target.value) || 0));
+                                        changeSetting(
+                                            customDensityUnit === "words" ? "customMaxWordsPerLine" : "customMaxCharsPerLine",
+                                            n,
+                                        );
+                                    }}
+                                    className="as-format-number-input"
+                                />
+                            ) : (
+                                <Input
+                                    type="number"
+                                    min="1"
+                                    max={customDensityUnit === "words" ? "20" : "100"}
+                                    step="1"
+                                    value={customDensityUnit === "words" ? customMaxWordsPerLine : customMaxCharsPerLine}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                        const n = Math.max(1, Math.floor(Number(e.target.value) || 0));
+                                        changeSetting(
+                                            customDensityUnit === "words" ? "customMaxWordsPerLine" : "customMaxCharsPerLine",
+                                            n,
+                                        );
+                                    }}
+                                    className="w-20"
+                                />
+                            )}
                         </div>
                     </div>
                 )}
@@ -288,13 +359,22 @@ export function TextFormattingPanel({
                     <div className="flex items-center gap-2">
                         <Dialog open={openCensorDialog} onOpenChange={setOpenCensorDialog}>
                             <DialogTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-8"
-                                >
-                                    <Settings2 className="size-4" />
-                                </Button>
+                                {compactTranscriptMenu ? (
+                                    <KitButton
+                                        variant="icon"
+                                        aria-label={t("actionBar.censor.title")}
+                                    >
+                                        <Settings2 />
+                                    </KitButton>
+                                ) : (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-8"
+                                    >
+                                        <Settings2 className="size-4" />
+                                    </Button>
+                                )}
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-[520px]">
                                 <DialogHeader>

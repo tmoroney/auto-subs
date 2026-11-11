@@ -201,7 +201,7 @@ function AppContentBody() {
                     active={activeSource === "resolve"}
                     icon={
                       <img
-                        className="size-4"
+                        className="size-5"
                         src="/davinci-resolve-logo.png"
                         alt=""
                       />
@@ -214,7 +214,7 @@ function AppContentBody() {
                     active={activeSource === "premiere"}
                     icon={
                       <img
-                        className="size-4"
+                        className="size-5"
                         src="/premiere-logo.png"
                         alt=""
                       />
@@ -225,7 +225,7 @@ function AppContentBody() {
                   />
                   <SourceButton
                     active={activeSource === "file"}
-                    icon={<FileAudio className="size-4" />}
+                    icon={<FileAudio className="size-5" />}
                     label={t("actionBar.mode.fileInput")}
                     onClick={selectFile}
                   />
@@ -292,7 +292,7 @@ function AppContentBody() {
                         </span>
                       </div>
                     )}
-                    {filteredDocuments.slice(0, 6).map((document) => (
+                    {filteredDocuments.map((document) => (
                       <button
                         key={document.filename}
                         type="button"

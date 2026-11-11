@@ -7,18 +7,29 @@ export { Menu };
 export function MenuPopup({
   children,
   className,
+  style,
 }: {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   return (
     <Menu.Portal>
-      <Menu.Positioner sideOffset={5}>
+      <Menu.Positioner
+        sideOffset={5}
+        collisionPadding={8}
+        style={{ zIndex: 90 }}
+      >
         <Menu.Popup
           className={cn(
-            "z-50 min-w-40 overflow-hidden rounded-[var(--as-radius)] border border-[var(--as-line-strong)] bg-[var(--as-pop)] p-1 text-[var(--as-fg)] shadow-xl outline-none",
+            "min-w-40 max-h-[var(--available-height)] overflow-x-hidden overflow-y-auto rounded-[var(--as-radius)] border border-[var(--as-line-strong)] bg-[var(--as-pop)] p-1 text-[var(--as-fg)] shadow-xl outline-none",
             className,
           )}
+          style={{
+            maxHeight: "var(--available-height)",
+            overflowY: "auto",
+            ...style,
+          }}
         >
           {children}
         </Menu.Popup>
@@ -36,7 +47,7 @@ export function MenuItem({
     <Menu.Item
       {...props}
       className={cn(
-        "flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-[var(--as-card-hover)] data-[disabled]:pointer-events-none data-[disabled]:opacity-45",
+        "flex min-h-8 cursor-default select-none items-center gap-2 rounded-lg px-3 py-1 text-sm outline-none data-[highlighted]:bg-[var(--as-card-hover)] data-[disabled]:pointer-events-none data-[disabled]:opacity-45",
         className,
       )}
     >
@@ -54,7 +65,7 @@ export function MenuRadioItem({
     <Menu.RadioItem
       {...props}
       className={cn(
-        "flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-[var(--as-card-hover)]",
+        "flex min-h-8 cursor-default select-none items-center gap-2 rounded-lg px-3 py-1 text-sm outline-none data-[highlighted]:bg-[var(--as-card-hover)]",
         className,
       )}
     >

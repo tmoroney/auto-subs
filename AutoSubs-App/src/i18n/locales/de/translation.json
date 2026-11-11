@@ -246,7 +246,8 @@
       "accuracy": "Genauigkeit",
       "recommended": "Empfohlen",
       "search": "Suche",
-      "speed": "Tempo"
+      "speed": "Tempo",
+      "sortBy": "Sortieren nach"
     },
     "englishOnly": {
       "title": "Nur-Englisch-Modelle",
@@ -768,7 +769,6 @@
       "title": "Transkript",
       "view": "Ansicht",
       "textPerSubtitle": "Text je Untertitel",
-      "formatFootnote": "Untertitel werden sofort neu umbrochen. Es wird nichts neu transkribiert.",
       "matches": "{{count}} Treffer",
       "track": "Spur",
       "putOnTrack": "Untertitel auf Spur",
@@ -797,6 +797,11 @@
       "refreshTemplates": "Vorlagen laden",
       "apply": "Untertitel aktualisieren",
       "editFusion": "In Fusion bearbeiten"
+    },
+    "connectSteps": {
+      "openResolve": "Öffne eine Timeline in DaVinci Resolve",
+      "openPremiere": "Öffne eine Sequenz in Premiere Pro",
+      "autoConnect": "AutoSubs verbindet sich automatisch"
     }
   }
 }

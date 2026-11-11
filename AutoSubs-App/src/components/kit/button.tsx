@@ -41,7 +41,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
         ref={ref}
         className={cn(
-          "inline-flex shrink-0 items-center justify-center font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none",
+          "inline-flex shrink-0 items-center justify-center font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
           variants[variant],
           variant === "icon" ? "size-9 rounded-[var(--as-radius)]" : sizes[size],
           className,

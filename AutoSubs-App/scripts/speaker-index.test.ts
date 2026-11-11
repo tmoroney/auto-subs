@@ -3,7 +3,9 @@ import test from "node:test";
 import {
   getSpeakerIdBase,
   getSpeakerIndexForId,
+  speakerDisplayColor,
 } from "../src/utils/speaker-index.ts";
+import { DEFAULT_COLORS } from "../src/utils/speaker-colors.ts";
 
 test("maps 0-based speaker ids to their corresponding speaker", () => {
   const subtitles = [{ speaker_id: "0" }, { speaker_id: "1" }];
@@ -39,4 +41,21 @@ test("maps non-numeric speaker ids to the first speaker", () => {
 
 test("falls back to the first speaker for out-of-range ids", () => {
   assert.equal(getSpeakerIndexForId("3", 1, 2), 0);
+});
+
+test("uses explicit fill and outline colors", () => {
+  assert.equal(
+    speakerDisplayColor({ style: "Fill", color: "#ff0000" }, 2),
+    "#ff0000",
+  );
+  assert.equal(
+    speakerDisplayColor({ style: "Outline", color: "#00ff00" }, 4),
+    "#00ff00",
+  );
+});
+
+test("uses the palette by speaker index when color styling is disabled", () => {
+  assert.equal(speakerDisplayColor({ style: "None", color: "#000000" }, 2), DEFAULT_COLORS[2]);
+  assert.equal(speakerDisplayColor({ style: "Fill", color: "" }, 1), DEFAULT_COLORS[1]);
+  assert.equal(speakerDisplayColor({ style: "None", color: "" }, 9), DEFAULT_COLORS[1]);
 });

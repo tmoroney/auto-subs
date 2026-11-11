@@ -250,7 +250,8 @@
       "accuracy": "Точность",
       "recommended": "Рекомендуемые",
       "search": "Поиск",
-      "speed": "Скорость"
+      "speed": "Скорость",
+      "sortBy": "Сортировка"
     },
     "englishOnly": {
       "title": "Модели только для английского",
@@ -780,7 +781,6 @@
       "title": "Расшифровка",
       "view": "Вид",
       "textPerSubtitle": "Текст на субтитр",
-      "formatFootnote": "Субтитры перестраиваются сразу. Повторная расшифровка не нужна.",
       "matches": "Совпадений: {{count}}",
       "track": "Дорожка",
       "putOnTrack": "Добавить субтитры на",
@@ -811,6 +811,11 @@
       "refreshTemplates": "Обновить шаблоны",
       "apply": "Обновить субтитры",
       "editFusion": "Изменить в Fusion"
+    },
+    "connectSteps": {
+      "openResolve": "Откройте таймлайн в DaVinci Resolve",
+      "openPremiere": "Откройте секвенцию в Premiere Pro",
+      "autoConnect": "AutoSubs подключится автоматически"
     }
   }
 }

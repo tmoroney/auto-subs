@@ -246,7 +246,8 @@
       "accuracy": "Précision",
       "recommended": "Recommandé",
       "search": "Recherche",
-      "speed": "Vitesse"
+      "speed": "Vitesse",
+      "sortBy": "Trier par"
     },
     "englishOnly": {
       "title": "Modèles uniquement anglais",
@@ -768,7 +769,6 @@
       "title": "Transcription",
       "view": "Vue",
       "textPerSubtitle": "Texte par sous-titre",
-      "formatFootnote": "Les sous-titres se réorganisent aussitôt. Rien n'est retranscrit.",
       "matches": "{{count}} résultats",
       "track": "Piste",
       "putOnTrack": "Placer les sous-titres sur",
@@ -797,6 +797,11 @@
       "refreshTemplates": "Actualiser les modèles",
       "apply": "Mettre à jour les sous-titres",
       "editFusion": "Modifier dans Fusion"
+    },
+    "connectSteps": {
+      "openResolve": "Ouvrez une timeline dans DaVinci Resolve",
+      "openPremiere": "Ouvrez une séquence dans Premiere Pro",
+      "autoConnect": "AutoSubs se connecte automatiquement"
     }
   }
 }

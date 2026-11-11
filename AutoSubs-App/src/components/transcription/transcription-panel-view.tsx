@@ -256,23 +256,46 @@ export function TranscriptionPanelView({
                   ? t("redesign.connectPremiere")
                   : t("redesign.connectResolve")}
               </h1>
-              <p className="as-disconnected-meta">
-                {isPremiereSource
-                  ? t("redesign.premiereInstructions")
-                  : t("redesign.resolveInstructions")}{" "}
-                <span className="as-path">
-                  {isPremiereSource
-                    ? t("redesign.premierePath")
-                    : t("redesign.resolvePath")}
-                </span>
-              </p>
-              <button
-                type="button"
-                className="as-link as-link--muted"
+              <ol className="as-connect-steps">
+                <li>
+                  <span className="as-connect-number">1</span>
+                  <span className="as-connect-instruction">
+                    {t(
+                      isPremiereSource
+                        ? "redesign.connectSteps.openPremiere"
+                        : "redesign.connectSteps.openResolve",
+                    )}
+                  </span>
+                </li>
+                <li>
+                  <span className="as-connect-number">2</span>
+                  <span className="as-connect-instruction">
+                    {isPremiereSource
+                      ? t("redesign.premiereInstructions")
+                      : t("redesign.resolveInstructions")}{" "}
+                    <span className="as-path">
+                      {isPremiereSource
+                        ? t("redesign.premierePath")
+                        : t("redesign.resolvePath")}
+                    </span>
+                  </span>
+                </li>
+                <li>
+                  <span className="as-connect-number">3</span>
+                  <span className="as-connect-instruction">
+                    {t("redesign.connectSteps.autoConnect")}
+                  </span>
+                </li>
+              </ol>
+              <Button
+                variant="tone"
+                size="lg"
+                className="as-use-file-button"
                 onClick={() => setSelectedIntegration("standalone")}
               >
+                <FileAudio aria-hidden="true" />
                 {t("redesign.useFile")}
-              </button>
+              </Button>
             </div>
           ) : (
             <>

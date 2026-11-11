@@ -207,7 +207,8 @@
       "accuracy": "정확도",
       "recommended": "추천",
       "search": "검색",
-      "speed": "속도"
+      "speed": "속도",
+      "sortBy": "정렬 기준"
     },
     "base": {
       "badge": "다국어",
@@ -768,7 +769,6 @@
       "title": "스크립트",
       "view": "보기",
       "textPerSubtitle": "자막별 텍스트",
-      "formatFootnote": "자막이 즉시 다시 배치됩니다. 다시 받아쓰지 않습니다.",
       "matches": "{{count}}개 일치",
       "track": "트랙",
       "putOnTrack": "자막을 넣을 트랙",
@@ -797,6 +797,11 @@
       "refreshTemplates": "템플릿 새로고침",
       "apply": "타임라인 자막 업데이트",
       "editFusion": "Fusion에서 편집"
+    },
+    "connectSteps": {
+      "openResolve": "DaVinci Resolve에서 타임라인 열기",
+      "openPremiere": "Premiere Pro에서 시퀀스 열기",
+      "autoConnect": "AutoSubs가 자동으로 연결됩니다"
     }
   }
 }

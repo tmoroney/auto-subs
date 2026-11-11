@@ -17,6 +17,7 @@ import {
   Search,
   Send,
   Type,
+  Users,
   X,
 } from "lucide-react";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -24,11 +25,11 @@ import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { downloadDir } from "@tauri-apps/api/path";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Button, Menu, MenuItem, MenuPopup, MenuRadioItem, MenuSeparator, Popover } from "@/components/kit";
+import { Button, Menu, MenuItem, MenuPopup, MenuRadioItem, MenuSeparator } from "@/components/kit";
 import { Input } from "@/components/ui/input";
 import { SubtitleList } from "@/components/subtitles/subtitle-list";
 import { TextFormattingPanel } from "@/components/settings/text-formatting-panel";
-import { SpeakerSettings } from "@/components/common/speaker-settings";
+import { SpeakerMenu } from "@/components/transcript/speaker-menu";
 import { EXPORT_FORMATS, type ExportFormat } from "@/components/common/export-popover";
 import { PresetThumbnail } from "@/components/captions/preset-thumbnail";
 import { FusionPresetEditor } from "@/components/captions/fusion-preset-editor";
@@ -50,7 +51,11 @@ import {
 import { describeError } from "@/components/transcription/utils";
 import { describeCaptionStyle, isStyleAvailable, resolveCaptionStyle } from "@/lib/caption-style";
 import { groupTranscriptSegments } from "@/utils/group-transcript-segments";
-import { getSpeakerIdBase, getSpeakerIndexForId } from "@/utils/speaker-index";
+import {
+  getSpeakerIdBase,
+  getSpeakerIndexForId,
+  speakerDisplayColor,
+} from "@/utils/speaker-index";
 import type { CaptionPreset, Settings, Template, Track } from "@/types";
 import type { SubtitleDocumentListItem, TranscriptSourceType } from "@/utils/file-utils";
 
@@ -423,7 +428,10 @@ export function TranscriptPage({
                 </button>
               }
             />
-            <MenuPopup className="as-format-menu">
+            <MenuPopup
+              className="as-format-menu"
+              style={{ maxHeight: "min(560px, var(--available-height))" }}
+            >
               <div className="as-menu-heading">{t("redesign.transcript.textPerSubtitle")}</div>
               <Menu.RadioGroup value={settings.textDensity} onValueChange={(value: string) => handleDensityChange(value as TextDensity)}>
                 {DENSITIES.map((density) => (
@@ -485,7 +493,6 @@ export function TranscriptPage({
                 compactTranscriptMenu
                 onSettingChange={handleSettingChange}
               />
-              <p className="as-format-footer">{t("redesign.transcript.formatFootnote")}</p>
             </MenuPopup>
           </Menu.Root>
         )}
@@ -500,43 +507,40 @@ export function TranscriptPage({
             <ChevronRight />
           </button>
         )}
-        {view === "subtitles" && (
-          <span className="as-transcript-toolbar-break" aria-hidden="true" />
-        )}
         {speakers.length > 1 && (
-          <Popover.Root>
-            <Popover.Trigger
+          <Menu.Root>
+            <Menu.Trigger
               render={
                 <button type="button" className="as-transcript-chip as-speakers-trigger">
+                  <Users aria-hidden="true" />
                   <span className="as-speaker-dots">
                     {speakers.slice(0, 4).map((speaker, index) => (
-                      <span key={`${speaker.name}-${index}`} style={{ backgroundColor: speaker.color }} />
+                      <span
+                        key={`${speaker.name}-${index}`}
+                        style={{ backgroundColor: speakerDisplayColor(speaker, index) }}
+                      />
                     ))}
                   </span>
-                  <span>{t("captions.speakerCount", { count: speakers.length })}</span>
+                  <span className="as-speaker-count">
+                    {t("captions.speakerCount", { count: speakers.length })}
+                  </span>
                 </button>
               }
             />
-            <Popover.Portal>
-              <Popover.Positioner side="bottom" align="start" sideOffset={6}>
-                <Popover.Popup className="as-speakers-popover">
-                  {speakers.map((speaker, index) => (
-                    <div key={`${speaker.name}-${index}`} className="as-speaker-settings-row">
-                      <span className="as-speaker-row-dot" style={{ backgroundColor: speaker.color }} />
-                      <SpeakerSettings
-                        speaker={speaker}
-                        onSpeakerChange={(updated) => {
-                          const next = [...speakers];
-                          next[index] = updated;
-                          void updateSpeakers(next);
-                        }}
-                      />
-                    </div>
-                  ))}
-                </Popover.Popup>
-              </Popover.Positioner>
-            </Popover.Portal>
-          </Popover.Root>
+            <MenuPopup
+              className="as-speaker-menu-popup"
+              style={{ maxHeight: "min(480px, var(--available-height))" }}
+            >
+              <SpeakerMenu
+                speakers={speakers}
+                onSpeakerChange={(index, updated) => {
+                  const next = [...speakers];
+                  next[index] = updated;
+                  void updateSpeakers(next);
+                }}
+              />
+            </MenuPopup>
+          </Menu.Root>
         )}
         <Button
           variant="icon"
@@ -620,16 +624,24 @@ export function TranscriptPage({
           <div className="as-original-transcript">
             {segmentGroups.map((group, index) => {
               const first = group.segments[0];
-              const name = group.speakerId
-                ? speakers[
-                    getSpeakerIndexForId(group.speakerId, speakerIdBase, speakers.length)
-                  ]?.name
-                : "";
+              const speakerIndex = group.speakerId
+                ? getSpeakerIndexForId(group.speakerId, speakerIdBase, speakers.length)
+                : 0;
+              const speaker = group.speakerId ? speakers[speakerIndex] : undefined;
+              const name = speaker?.name ?? "";
               return (
                 <section className="as-original-block" key={`${first?.start}-${index}`}>
                   {speakers.length > 0 && (
                     <div className="as-original-meta">
-                      <span>{name || t("subtitles.unknownSpeaker")}</span>
+                      <span
+                        style={
+                          speaker
+                            ? { color: speakerDisplayColor(speaker, speakerIndex) }
+                            : undefined
+                        }
+                      >
+                        {name || t("subtitles.unknownSpeaker")}
+                      </span>
                       <time>{formatTime(first?.start ?? 0)}</time>
                     </div>
                   )}

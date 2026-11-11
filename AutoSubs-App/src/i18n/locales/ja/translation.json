@@ -207,7 +207,8 @@
       "accuracy": "精度",
       "recommended": "おすすめ",
       "search": "検索",
-      "speed": "速度"
+      "speed": "速度",
+      "sortBy": "並べ替え"
     },
     "base": {
       "badge": "多言語",
@@ -768,7 +769,6 @@
       "title": "文字起こし",
       "view": "表示",
       "textPerSubtitle": "字幕ごとのテキスト",
-      "formatFootnote": "字幕はすぐに再配置されます。再文字起こしは行いません。",
       "matches": "{{count}} 件",
       "track": "トラック",
       "putOnTrack": "字幕を配置するトラック",
@@ -797,6 +797,11 @@
       "refreshTemplates": "テンプレートを更新",
       "apply": "タイムラインの字幕を更新",
       "editFusion": "Fusionで編集"
+    },
+    "connectSteps": {
+      "openResolve": "DaVinci Resolveでタイムラインを開く",
+      "openPremiere": "Premiere Proでシーケンスを開く",
+      "autoConnect": "AutoSubsが自動で接続します"
     }
   }
 }

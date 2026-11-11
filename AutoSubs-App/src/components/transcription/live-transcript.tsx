@@ -61,22 +61,24 @@ export function LiveTranscript({
       onScroll={handleScroll}
     >
       <div className="as-setup-content as-live-content">
-        <div className="as-eyebrow">
-          {isFileMode ? (
-            <FileAudio className="as-file-source-icon" aria-hidden="true" />
-          ) : (
-            <span className="as-source-dot" />
-          )}
-          {sourceName}
-          {!isFileMode && projectName && (
-            <span className="as-eyebrow-meta">· {projectName}</span>
-          )}
-        </div>
-        <h1 className="as-title">{title}</h1>
-        <div className="as-meta">
-          {language}
-          {language && modelName ? " · " : ""}
-          {modelName}
+        <div className="as-live-header">
+          <div className="as-eyebrow">
+            {isFileMode ? (
+              <FileAudio className="as-file-source-icon" aria-hidden="true" />
+            ) : (
+              <span className="as-source-dot" />
+            )}
+            {sourceName}
+            {!isFileMode && projectName && (
+              <span className="as-eyebrow-meta">· {projectName}</span>
+            )}
+          </div>
+          <h1 className="as-title">{title}</h1>
+          <div className="as-meta">
+            {language}
+            {language && modelName ? " · " : ""}
+            {modelName}
+          </div>
         </div>
         <div className="as-live-transcript" aria-live="polite">
           {blocks.map((block, blockIndex) => {

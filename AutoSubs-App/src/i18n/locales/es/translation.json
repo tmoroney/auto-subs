@@ -246,7 +246,8 @@
       "accuracy": "Precisión",
       "recommended": "Recomendado",
       "search": "Buscar",
-      "speed": "Velocidad"
+      "speed": "Velocidad",
+      "sortBy": "Ordenar por"
     },
     "englishOnly": {
       "title": "Modelos solo en inglés",
@@ -768,7 +769,6 @@
       "title": "Transcripción",
       "view": "Vista",
       "textPerSubtitle": "Texto por subtítulo",
-      "formatFootnote": "Los subtítulos se ajustan al instante. No se vuelve a transcribir nada.",
       "matches": "{{count}} coincidencias",
       "track": "Pista",
       "putOnTrack": "Poner subtítulos en",
@@ -797,6 +797,11 @@
       "refreshTemplates": "Actualizar plantillas",
       "apply": "Actualizar subtítulos",
       "editFusion": "Editar en Fusion"
+    },
+    "connectSteps": {
+      "openResolve": "Abre una línea de tiempo en DaVinci Resolve",
+      "openPremiere": "Abre una secuencia en Premiere Pro",
+      "autoConnect": "AutoSubs se conecta automáticamente"
     }
   }
 }

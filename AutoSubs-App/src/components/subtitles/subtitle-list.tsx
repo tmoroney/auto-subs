@@ -6,7 +6,11 @@ import { ArrowDown, ArrowUp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { moveEdgeWord, type WordMoveDirection } from "@/utils/word-move"
-import { getSpeakerIdBase, getSpeakerIndexForId } from "@/utils/speaker-index"
+import {
+    getSpeakerIdBase,
+    getSpeakerIndexForId,
+    speakerDisplayColor,
+} from "@/utils/speaker-index"
 
 const ESTIMATED_SUBTITLE_ROW_HEIGHT = 96;
 const SUBTITLE_ROW_OVERSCAN = 8;
@@ -315,6 +319,8 @@ const SubtitleList = ({
                 if (!item) return null;
                 const { subtitle, index } = item;
                 const isSelected = selectedIndex === index;
+                const speakerIndex = getSpeakerIndex(subtitle.speaker_id);
+                const speaker = speakers[speakerIndex] ?? speakers[0];
 
                 return (
                     <div
@@ -330,9 +336,9 @@ const SubtitleList = ({
                                 <span
                                     className="as-subtitle-speaker-dot"
                                     style={{
-                                        backgroundColor:
-                                            speakers[getSpeakerIndex(subtitle.speaker_id)]?.color ??
-                                            speakers[0]?.color,
+                                        backgroundColor: speaker
+                                            ? speakerDisplayColor(speaker, speakerIndex)
+                                            : undefined,
                                     }}
                                 />
                             )}
