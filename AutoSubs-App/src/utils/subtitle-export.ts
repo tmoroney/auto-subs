@@ -14,6 +14,8 @@ import type { Speaker, Subtitle } from "@/types";
  */
 export interface RawTranscriptExport {
   language?: string;
+  /** Why translation was skipped; the segments are then in the source language. */
+  translationError?: string;
   processingTime?: number;
   speakers: Speaker[];
   segments: Subtitle[];
@@ -36,6 +38,7 @@ export interface RawTranscriptExportMetadata {
 /** Fields read from a saved subtitle document. Storage-only keys are ignored. */
 export interface RawTranscriptSource {
   language?: string;
+  translationError?: string;
   processingTime?: number;
   createdAt?: string;
   speakers?: Speaker[];
@@ -229,6 +232,7 @@ export function buildRawTranscriptExport(input: {
 }): RawTranscriptExport {
   const document = input.document ?? undefined;
   const language = cleanString(document?.language);
+  const translationError = cleanString(document?.translationError);
   const processingTime = cleanNumber(document?.processingTime);
   const originalSegments = segmentList(document?.originalSegments);
   const editedSegments = segmentList(document?.editedSegments);
@@ -236,6 +240,7 @@ export function buildRawTranscriptExport(input: {
 
   return {
     ...(language ? { language } : {}),
+    ...(translationError ? { translationError } : {}),
     ...(processingTime !== undefined ? { processingTime } : {}),
     speakers: input.speakers ?? [],
     segments: input.subtitles ?? [],

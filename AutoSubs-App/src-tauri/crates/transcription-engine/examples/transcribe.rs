@@ -1,6 +1,6 @@
 use eyre::{Result, eyre};
 use std::sync::Arc;
-use transcription_engine::{Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, SegmentStage, TextCase, TranscribeOptions};
+use transcription_engine::{Callbacks, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, SegmentStage, TextCase, TranscribeOptions, TranscribeOutput};
 
 struct CliArgs {
     audio_path: String,
@@ -175,11 +175,14 @@ async fn main() -> Result<()> {
     };
 
     let mut engine = Engine::new(config);
-    let (segments, _, language) = engine
+    let TranscribeOutput { segments, language, translation_error, .. } = engine
         .transcribe_audio(&args.audio_path, options, None, None, None, None, Some(content_formatting), Some(callbacks))
         .await?;
 
     println!("\nTranscribed {} segments (language: {})", segments.len(), language);
+    if let Some(err) = translation_error {
+        println!("Translation skipped, kept the source language: {err}");
+    }
 
     let json = serde_json::to_string_pretty(&segments)?;
     std::fs::write(&args.output_path, json.as_bytes())?;

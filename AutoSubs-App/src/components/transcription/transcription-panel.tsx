@@ -1,6 +1,7 @@
 import * as React from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useModels } from "@/contexts/ModelsContext";
 import { useProgress } from "@/contexts/ProgressContext";
@@ -378,6 +379,19 @@ export function TranscriptionPanel({
       const transcript = await invoke("transcribe_audio", { options });
 
       completeAllProgressSteps();
+
+      if ((transcript as { translationError?: string }).translationError) {
+        toast.warning(
+          tErr("errorDialog.translationUnavailable.title", "Translation unavailable"),
+          {
+            description: tErr(
+              "errorDialog.translationUnavailable.message",
+              "Couldn't reach the translation service. Your subtitles were kept in the original language.",
+            ),
+            duration: 10000,
+          },
+        );
+      }
 
       await processTranscriptionResults(
         transcript as any,

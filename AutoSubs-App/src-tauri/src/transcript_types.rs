@@ -66,5 +66,13 @@ pub struct Transcript {
     #[serde(rename = "originalSegments")]
     pub original_segments: Vec<Segment>,
     pub speakers: Vec<Speaker>,
+    /// Set when translation was requested but the service was unreachable;
+    /// the segments are then in the source language.
+    #[serde(
+        rename = "translationError",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub translation_error: Option<String>,
 }
 

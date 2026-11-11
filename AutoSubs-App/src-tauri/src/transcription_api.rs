@@ -12,7 +12,7 @@ use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, Runtime, command};
 use transcription_engine::{
     Callbacks, CensorStyle, ContentFormatting, DiarizeBackend, Engine, EngineConfig, LabeledProgressFn, PostProcessConfig, ProgressType, SegmentStage,
-    Segment as WDSegment, TextCase, TextDensity, TranscribeOptions, process_segments,
+    Segment as WDSegment, TextCase, TextDensity, TranscribeOptions, TranscribeOutput, process_segments,
 };
 
 // Frontend-compatible progress data type
@@ -525,7 +525,12 @@ pub async fn transcribe_audio<R: Runtime>(
         // `raw_segments` preserves the engine's pre-formatting word data (used as
         // `originalSegments` for reformatting). `segments` are fully formatted for display.
         tracing::info!("transcription pipeline started");
-        let (raw_segments, segments, output_language) = engine
+        let TranscribeOutput {
+            segments: raw_segments,
+            formatted_segments: segments,
+            language: output_language,
+            translation_error,
+        } = engine
             .transcribe_audio(
                 &audio_path.to_string_lossy(),
                 transcribe_options,
@@ -599,6 +604,7 @@ pub async fn transcribe_audio<R: Runtime>(
             segments,
             original_segments: app_raw_segments,
             speakers,
+            translation_error,
         })
     }
     .await;

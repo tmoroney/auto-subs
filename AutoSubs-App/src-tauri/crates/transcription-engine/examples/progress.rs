@@ -1,7 +1,7 @@
 use eyre::{Result, eyre};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
-use transcription_engine::{Callbacks, Engine, EngineConfig, ProgressType, TranscribeOptions};
+use transcription_engine::{Callbacks, Engine, EngineConfig, ProgressType, TranscribeOptions, TranscribeOutput};
 
 static DOWNLOAD_COUNT: AtomicU32 = AtomicU32::new(0);
 static DIARIZE_COUNT: AtomicU32 = AtomicU32::new(0);
@@ -122,7 +122,7 @@ async fn main() -> Result<()> {
     };
 
     let mut engine = Engine::new(EngineConfig::default());
-    let (segments, _formatted_segments, language) = engine
+    let TranscribeOutput { segments, language, .. } = engine
         .transcribe_audio(&args.audio_path, options, None, None, None, None, None, Some(callbacks))
         .await?;
 
