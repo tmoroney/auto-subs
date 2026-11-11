@@ -51,6 +51,8 @@ export interface StoredSubtitleDocument {
   createdAt: string;
   processingTime?: number;
   language?: string;
+  /** Why translation was skipped; the segments are then in the source language. */
+  translationError?: string;
   speakers: Speaker[];
   originalSegments: Subtitle[];
   /** Unformatted source with user corrections, created on the first edited reformat. */
@@ -744,6 +746,7 @@ export async function saveSubtitleDocument(
       createdAt: metadata.createdAt,
       processingTime: transcript.processing_time_sec,
       language: transcript.language,
+      ...(transcript.translationError ? { translationError: transcript.translationError } : {}),
       metadata,
       timelineId: metadata.timelineId,
       timelineName: metadata.timelineName,

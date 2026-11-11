@@ -149,6 +149,27 @@ test("raw JSON omits source arrays and metadata that were never stored", () => {
   assert.deepEqual(exported.segments[0].words, []);
 });
 
+test("raw JSON records why translation was skipped, and only when it was", () => {
+  const reason = "translation failed for 5 of 5 segments in batch; service appears unreachable";
+  const skipped = buildRawTranscriptExport({
+    document: { ...document, translationError: reason },
+    subtitles: [current],
+    speakers,
+  });
+  assert.equal(skipped.translationError, reason);
+  assert.equal(skipped.language, "en");
+
+  const translated = buildRawTranscriptExport({ document, subtitles: [current], speakers });
+  assert.equal("translationError" in translated, false);
+
+  const blank = buildRawTranscriptExport({
+    document: { ...document, translationError: "  " },
+    subtitles: [current],
+    speakers,
+  });
+  assert.equal("translationError" in blank, false);
+});
+
 test("visible cues and speakers win over a stale saved document", async () => {
   const savedCue = { ...current, text: "stale cue", end: 9 };
   const savedSpeakers = [{ ...speakers[0], name: "Old name" }];
