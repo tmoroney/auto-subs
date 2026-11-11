@@ -697,6 +697,10 @@
   "errorDialog": {
     "addToTimelineFailed": "字幕をタイムラインに追加できませんでした",
     "clipsBlocked": "出力トラックにキャプションを配置できませんでした。「Add to New Track」を試してください。",
-    "reformatFailed": "再整形に失敗"
+    "reformatFailed": "再整形に失敗",
+    "translationUnavailable": {
+      "title": "翻訳できませんでした",
+      "message": "翻訳サービスに接続できませんでした。字幕は元の言語のままです。"
+    }
   }
 }

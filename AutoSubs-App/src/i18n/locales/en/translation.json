@@ -717,6 +717,10 @@
   "errorDialog": {
     "addToTimelineFailed": "Couldn't add subtitles to timeline",
     "clipsBlocked": "Couldn't place captions on the output track. Try 'Add to New Track'.",
-    "reformatFailed": "Reformat failed"
+    "reformatFailed": "Reformat failed",
+    "translationUnavailable": {
+      "title": "Translation unavailable",
+      "message": "Couldn't reach the translation service. Your subtitles were kept in the original language."
+    }
   }
 }

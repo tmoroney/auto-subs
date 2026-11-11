@@ -697,6 +697,10 @@
   "errorDialog": {
     "addToTimelineFailed": "No se pudieron añadir los subtítulos a la línea de tiempo",
     "clipsBlocked": "No se pudieron colocar los subtítulos en la pista de salida. Prueba 'Add to New Track'.",
-    "reformatFailed": "Error al reformatear"
+    "reformatFailed": "Error al reformatear",
+    "translationUnavailable": {
+      "title": "Traducción no disponible",
+      "message": "No se pudo conectar con el servicio de traducción. Los subtítulos se mantienen en el idioma original."
+    }
   }
 }
