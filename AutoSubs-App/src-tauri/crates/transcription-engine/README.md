@@ -76,6 +76,6 @@ Set `translate_target` on `TranscribeOptions`. The engine will use native transl
 
 ## Notes
 
-- `Engine::transcribe_audio` returns `(original_segments, formatted_segments, output_language)`.
+- `Engine::transcribe_audio` returns a `TranscribeOutput`: `segments` (engine output before formatting), `formatted_segments`, `language` (the language the segments are in), and `translation_error` (set when Google Translate couldn't be reached and the segments were kept in the source language).
 - `ContentFormatting` controls text case, punctuation stripping, censored words, and the censor style.
 - `PostProcessConfig` can be tuned directly if you need custom line/length limits.
