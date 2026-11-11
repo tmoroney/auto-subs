@@ -384,6 +384,18 @@ fn build_post_process_config(
     pp_cfg
 }
 
+pub struct TranscribeOutput {
+    /// Engine output before formatting, with untouched word data.
+    pub segments: Vec<Segment>,
+    /// Display-ready segments (line wrapping and content formatting applied).
+    pub formatted_segments: Vec<Segment>,
+    /// Language the segments are in.
+    pub language: String,
+    /// Set when translation was requested but the service was unreachable.
+    /// The segments are then in the source language rather than the target.
+    pub translation_error: Option<String>,
+}
+
 pub struct Engine {
     cfg: EngineConfig,
     models: crate::model_manager::ModelManager,
@@ -474,7 +486,7 @@ impl Engine {
         custom_max_words_per_line: Option<usize>,
         content_formatting: Option<ContentFormatting>,
         cb: Option<Callbacks>,
-    ) -> eyre::Result<(Vec<Segment>, Vec<Segment>, String)> {
+    ) -> eyre::Result<TranscribeOutput> {
         let cb = cb.unwrap_or_default();
         if !std::path::PathBuf::from(audio_path).exists() {
             eyre::bail!("audio file doesn't exist")
@@ -607,6 +619,7 @@ impl Engine {
                 None
             };
 
+        let mut translation_error: Option<String> = None;
         let (mut segments, detected_lang) = if let Some(pipeline) = translation_pipeline {
             let submitter = pipeline.submitter().clone();
             let next_index = Arc::new(AtomicUsize::new(0));
@@ -634,8 +647,20 @@ impl Engine {
             drop(submit_cb);
 
             // The pipeline may still be translating the final batch; finish it
-            // and use its ordered output as the authoritative segments.
-            let mut translated = pipeline.finish().await?;
+            // and use its ordered output as the authoritative segments. If the
+            // service was unreachable, keep the finished transcription in the
+            // source language rather than failing the whole run.
+            let translated = match pipeline.finish().await {
+                Ok(translated) => Some(translated),
+                Err(e) => match e.downcast::<crate::translation_pipeline::TranslationUnavailable>() {
+                    Ok(unavailable) => {
+                        tracing::warn!("{unavailable}; keeping the transcription in the source language");
+                        translation_error = Some(unavailable.0);
+                        None
+                    }
+                    Err(e) => return Err(e),
+                },
+            };
 
             // With `from_lang = auto`, we couldn't know before detection whether
             // the source already matches the target. If detection resolved to the
@@ -647,24 +672,25 @@ impl Engine {
                 .zip(detected_lang.as_deref())
                 .map(|(target, detected)| detected == target)
                 .unwrap_or(false);
-            if detected_matches_target {
-                (_segments, detected_lang)
-            } else {
-                // The engine's returned vector has had overlapping boundaries clamped,
-                // but the translation pipeline snapshots segments before that clamping.
-                // Apply the clamped timings from the engine to the translated segments
-                // so the final transcript cannot contain overlapping intervals.
-                for (i, clamped) in _segments.iter().enumerate() {
-                    if let Some(seg) = translated.get_mut(i) {
-                        seg.start = clamped.start;
-                        seg.end = clamped.end.max(clamped.start);
-                        crate::translation_client::regenerate_words_uniform(seg);
+            match translated.filter(|_| !detected_matches_target) {
+                None => (_segments, detected_lang),
+                Some(mut translated) => {
+                    // The engine's returned vector has had overlapping boundaries clamped,
+                    // but the translation pipeline snapshots segments before that clamping.
+                    // Apply the clamped timings from the engine to the translated segments
+                    // so the final transcript cannot contain overlapping intervals.
+                    for (i, clamped) in _segments.iter().enumerate() {
+                        if let Some(seg) = translated.get_mut(i) {
+                            seg.start = clamped.start;
+                            seg.end = clamped.end.max(clamped.start);
+                            crate::translation_client::regenerate_words_uniform(seg);
+                        }
                     }
-                }
 
-                // Prefer the detected language from the engine; fall back to the
-                // user-specified source language.
-                (translated, detected_lang)
+                    // Prefer the detected language from the engine; fall back to the
+                    // user-specified source language.
+                    (translated, detected_lang)
+                }
             }
         } else {
             crate::engines::run_engine(
@@ -756,13 +782,13 @@ impl Engine {
         // Determine the final output language of the transcript.
         // - Native translation (Whisper→en or Canary→supported) => the target
         // - Post-translation via Google Translate => the target
-        // - Otherwise => effective (detected or user-specified) language
+        // - Otherwise (including a failed post-translation) => effective
+        //   (detected or user-specified) language
         // Since `translate_target` always carries the target when translation
         // is on (including "en"), this covers both native and Google paths.
-        let output_lang: String = if let Some(ref to_lang) = translate_to {
-            to_lang.clone()
-        } else {
-            effective_lang.to_string()
+        let output_lang: String = match (&translate_to, &translation_error) {
+            (Some(to_lang), None) => to_lang.clone(),
+            _ => effective_lang.to_string(),
         };
 
         // Build a config from the output language, not the source language.
@@ -805,7 +831,12 @@ impl Engine {
             audio_duration_sec / elapsed.as_secs_f64()
         );
 
-        Ok((segments, formatted_segments, output_lang))
+        Ok(TranscribeOutput {
+            segments,
+            formatted_segments,
+            language: output_lang,
+            translation_error,
+        })
     }
 
     pub async fn delete_whisper_model(&self, model_name: &str) -> eyre::Result<()> {

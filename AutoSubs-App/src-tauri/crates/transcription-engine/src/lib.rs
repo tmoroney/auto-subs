@@ -13,7 +13,7 @@ pub mod formatting;
 pub mod post_process;
 
 // Re-exports (crate users only need these)
-pub use engine::{Engine, EngineConfig, ContentFormatting};
+pub use engine::{Engine, EngineConfig, ContentFormatting, TranscribeOutput};
 pub use vad::get_segments;
 pub use types::{Callbacks, DiarizeBackend, LabeledProgressFn, NewSegmentFn, SegmentStage, SpeakersIdentifiedFn, TranscribeOptions, Segment, WordTimestamp, ProgressType};
 pub use model_manager::ModelManager;

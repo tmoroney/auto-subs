@@ -7,7 +7,7 @@ Whisper-rs, transcribe-rs ONNX engines, and AutoSubs' diarization/VAD pipeline w
 ```rust
 use transcription_engine::{
     Callbacks, CensorStyle, ContentFormatting, Engine, EngineConfig, ProgressType, Segment, TextCase,
-    TranscribeOptions,
+    TranscribeOptions, TranscribeOutput,
 };
 
 #[tokio::main]
@@ -37,7 +37,7 @@ async fn main() -> eyre::Result<()> {
         is_cancelled: None,
     };
 
-    let (segments, formatted_segments, language) = engine
+    let TranscribeOutput { segments, formatted_segments, language, .. } = engine
         .transcribe_audio(
             "./audio.wav",
             options,
@@ -72,7 +72,7 @@ let cues = process_segments(&segments, &cfg);
 
 ## Translation
 
-Set `translate_target` on `TranscribeOptions`. The engine will use native translation when available and fall back to Google Translate otherwise.
+Set `translate_target` on `TranscribeOptions`. The engine will use native translation when available and fall back to Google Translate otherwise. If Google Translate can't be reached, the transcription is still returned in the source language and `TranscribeOutput::translation_error` says why.
 
 ## Notes
 

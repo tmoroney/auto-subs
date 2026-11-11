@@ -282,6 +282,11 @@ async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
 
     match result {
         Ok(transcript) => {
+            if let Some(err) = &transcript.translation_error {
+                eprintln!(
+                    "autosubs: warning: translation service unreachable, output is in the source language ({err})"
+                );
+            }
             let mut rendered = match format {
                 OutputFormat::Json => serde_json::to_string_pretty(&transcript)
                     .unwrap_or_else(|e| fail(&format!("failed to serialize transcript: {e}"))),
