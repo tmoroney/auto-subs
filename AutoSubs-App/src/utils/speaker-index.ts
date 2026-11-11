@@ -1,13 +1,17 @@
-import type { Speaker, Subtitle } from "@/types";
+import type { Speaker } from "@/types";
 import { DEFAULT_COLORS } from "./speaker-colors.ts";
 
-export function getSpeakerIdBase(subtitles: Pick<Subtitle, "speaker_id">[]) {
-  const hasZero = subtitles.some((subtitle) => subtitle.speaker_id === "0");
+export function getSpeakerIdBase(
+  subtitles: { speaker_id?: string | number | null }[],
+) {
+  const hasZero = subtitles.some(
+    (subtitle) => String(subtitle.speaker_id) === "0",
+  );
   return hasZero ? 0 : 1;
 }
 
 export function getSpeakerIndexForId(
-  speakerId: string | undefined,
+  speakerId: string | number | undefined,
   speakerIdBase: number,
   speakerCount: number,
 ) {

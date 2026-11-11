@@ -16,6 +16,15 @@ test("maps 0-based speaker ids to their corresponding speaker", () => {
   assert.equal(getSpeakerIndexForId("1", speakerIdBase, 2), 1);
 });
 
+test("detects a numeric zero-based speaker id from JSON", () => {
+  const subtitles = [{ speaker_id: 0 }, { speaker_id: 1 }];
+  const speakerIdBase = getSpeakerIdBase(subtitles);
+
+  assert.equal(speakerIdBase, 0);
+  assert.equal(getSpeakerIndexForId(0, speakerIdBase, 2), 0);
+  assert.equal(getSpeakerIndexForId(1, speakerIdBase, 2), 1);
+});
+
 test("maps 1-based speaker ids to their corresponding speaker", () => {
   const subtitles = [{ speaker_id: "1" }, { speaker_id: "2" }];
   const speakerIdBase = getSpeakerIdBase(subtitles);

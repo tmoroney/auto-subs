@@ -227,7 +227,8 @@
     "colors": {
       "fill": "填充",
       "outline": "轮廓"
-    }
+    },
+    "customColor": "自定义颜色"
   },
   "modelStatus": {
     "cached": "已缓存",

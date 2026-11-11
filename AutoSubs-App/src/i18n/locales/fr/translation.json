@@ -227,7 +227,8 @@
     "colors": {
       "fill": "Remplissage",
       "outline": "Contour"
-    }
+    },
+    "customColor": "Couleur personnalisée"
   },
   "modelStatus": {
     "cached": "En cache",

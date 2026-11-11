@@ -231,7 +231,8 @@
       "none": "None",
       "fill": "Fill",
       "outline": "Outline"
-    }
+    },
+    "customColor": "Custom colour"
   },
   "modelStatus": {
     "cached": "Downloaded",

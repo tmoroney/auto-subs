@@ -486,7 +486,8 @@
     "name": "名前",
     "namePlaceholder": "話者名を入力",
     "outputTrack": "出力トラック",
-    "title": "話者を編集"
+    "title": "話者を編集",
+    "customColor": "カスタムカラー"
   },
   "subtitles": {
     "addToTimeline": "タイムラインに送信",

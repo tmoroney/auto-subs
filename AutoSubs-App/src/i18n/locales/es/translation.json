@@ -227,7 +227,8 @@
     "colors": {
       "fill": "Relleno",
       "outline": "Contorno"
-    }
+    },
+    "customColor": "Color personalizado"
   },
   "modelStatus": {
     "cached": "En caché",

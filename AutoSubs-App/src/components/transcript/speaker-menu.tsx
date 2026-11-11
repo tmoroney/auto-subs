@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { CSSProperties } from "react";
 import { Segmented } from "@/components/kit";
 import type { Speaker } from "@/types";
 import { DEFAULT_COLORS } from "@/utils/speaker-colors";
@@ -20,6 +21,8 @@ export function SpeakerMenu({ speakers, onSpeakerChange }: SpeakerMenuProps) {
       <div className="as-speaker-menu-heading">{t("subtitles.speakers")}</div>
       {speakers.map((speaker, index) => {
         const style = speaker.style || "None";
+        const speakerColor = speaker.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+        const hasCustomColor = !DEFAULT_COLORS.includes(speakerColor);
 
         return (
           <section className="as-speaker-menu-person" key={index}>
@@ -69,15 +72,23 @@ export function SpeakerMenu({ speakers, onSpeakerChange }: SpeakerMenuProps) {
                     {speaker.color === color && <Check aria-hidden="true" />}
                   </button>
                 ))}
-                <input
-                  type="color"
+                <label
                   className="as-speaker-custom-color"
-                  value={speaker.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length]}
-                  aria-label={`${t("speakerEditor.style")}: ${t("speakerEditor.colors.fill")}`}
-                  onChange={(event) =>
-                    onSpeakerChange(index, { ...speaker, color: event.target.value })
-                  }
-                />
+                  style={{
+                    "--as-speaker-custom-color-center": hasCustomColor
+                      ? speakerColor
+                      : "var(--as-pop)",
+                  } as CSSProperties}
+                >
+                  <input
+                    type="color"
+                    value={speakerColor}
+                    aria-label={t("speakerEditor.customColor")}
+                    onChange={(event) =>
+                      onSpeakerChange(index, { ...speaker, color: event.target.value })
+                    }
+                  />
+                </label>
               </div>
             )}
           </section>

@@ -486,7 +486,8 @@
     "name": "이름",
     "namePlaceholder": "화자 이름 입력",
     "outputTrack": "출력 트랙",
-    "title": "화자 편집"
+    "title": "화자 편집",
+    "customColor": "사용자 지정 색상"
   },
   "subtitles": {
     "addToTimeline": "타임라인으로 전송",

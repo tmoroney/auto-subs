@@ -381,9 +381,10 @@ export function TranscriptPage({
   };
 
   const selectedStyle = resolveCaptionStyle(style, presets.getPreset);
-  const formatLabel = `${t("redesign.transcript.lineCountSummary", {
+  const formatLineCountLabel = t("redesign.transcript.lineCountSummary", {
     count: settings.maxLinesPerSubtitle,
-  })} · ${t(`actionBar.format.textDensity.${settings.textDensity}`)}`;
+  });
+  const formatDensityLabel = t(`actionBar.format.textDensity.${settings.textDensity}`);
   const title = sourceType === "standalone"
     ? t("actionBar.mode.fileInput")
     : sourceType === "premiere"
@@ -423,7 +424,8 @@ export function TranscriptPage({
               render={
                 <button type="button" className="as-transcript-chip as-format-trigger" aria-label={t("actionBar.rows.format")}>
                   <AlignLeft />
-                  <span>{formatLabel}</span>
+                  <span className="as-format-line-count">{formatLineCountLabel}</span>
+                  <span className="as-format-density"> · {formatDensityLabel}</span>
                   <ChevronDown />
                 </button>
               }
@@ -503,7 +505,7 @@ export function TranscriptPage({
             onClick={onOpenStyles}
           >
             <Type />
-            <span>{styleLabel}</span>
+            <span className="as-style-label">{styleLabel}</span>
             <ChevronRight />
           </button>
         )}

@@ -227,7 +227,8 @@
     "colors": {
       "fill": "Füllung",
       "outline": "Kontur"
-    }
+    },
+    "customColor": "Eigene Farbe"
   },
   "modelStatus": {
     "cached": "Im Cache",
