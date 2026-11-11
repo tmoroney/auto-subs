@@ -14,11 +14,7 @@ interface DraftTranscriptPanelProps {
   segments: DraftSubtitle[];
   /** True once the run has finished, so any in-flight reveal fast-forwards. */
   isComplete?: boolean;
-  /**
-   * Progress of the step currently running, 0-100. Drawn as a hairline along
-   * the top edge so the user has global context without having to be scrolled
-   * somewhere they did not choose to be.
-   */
+  /** Progress of the step currently running, 0-100. */
   progress?: number;
   isFullScreen?: boolean;
   onClose?: () => void;
@@ -276,7 +272,6 @@ export function DraftTranscriptPanel({
           </Button>
         </div>
         
-        {/* Progress bar below the border */}
         <div className="absolute bottom-[-6px] left-0 right-0 h-1.5 w-full bg-border">
           <div
             className="h-full bg-primary"

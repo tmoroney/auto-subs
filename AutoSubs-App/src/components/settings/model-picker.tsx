@@ -1,4 +1,4 @@
-import { HardDrive, MemoryStick, Lightbulb, Feather } from "lucide-react"
+import { ChevronRight, HardDrive, MemoryStick, Lightbulb, Feather } from "lucide-react"
 import { CircleCheckIcon } from "@/components/ui/icons/circle-check"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -11,7 +11,6 @@ import { Model } from "@/types"
 import { sortedModelsForLanguage, type ModelSort } from "@/lib/models"
 import { cn } from "@/lib/utils"
 import * as React from "react"
-import { ChevronsUpDownIcon, type ChevronsUpDownIconHandle } from "@/components/ui/icons/chevrons-up-down"
 
 /** Tick-only cached marker; the label lives in the tooltip to keep the row quiet. */
 function ModelCachedBadge({ isDownloaded }: { isDownloaded: boolean }) {
@@ -81,6 +80,7 @@ interface ModelPickerProps {
   onOpenChange: (open: boolean) => void
   isSmallScreen: boolean
   triggerClassName?: string
+  triggerSubtitle?: string
 }
 
 export function ModelPicker({
@@ -94,9 +94,9 @@ export function ModelPicker({
   onOpenChange,
   isSmallScreen,
   triggerClassName,
+  triggerSubtitle,
 }: ModelPickerProps) {
   const { t } = useTranslation()
-  const chevronsIconRef = React.useRef<ChevronsUpDownIconHandle>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [activeSort, setActiveSort] = React.useState<ModelSort>('recommended')
 
@@ -129,12 +129,6 @@ export function ModelPicker({
               triggerClassName,
             )}
             aria-expanded={open}
-            onMouseEnter={() => {
-              chevronsIconRef.current?.startAnimation()
-            }}
-            onMouseLeave={() => {
-              chevronsIconRef.current?.stopAnimation()
-            }}
           >
             <div className="flex items-center gap-1.5">
               <img
@@ -142,11 +136,14 @@ export function ModelPicker({
                 alt={t(modelsState[selectedModelIndex].label) + " icon"}
                 className="size-6 object-contain rounded"
               />
-              <div className="flex items-center gap-1">
-                <span className="truncate">{t(modelsState[selectedModelIndex].label)}</span>
+              <div className="flex min-w-0 flex-col items-start gap-0.5">
+                <span className="as-model-name truncate">{t(modelsState[selectedModelIndex].label)}</span>
+                {triggerSubtitle && (
+                  <span className="as-model-caption">{triggerSubtitle}</span>
+                )}
               </div>
             </div>
-            <ChevronsUpDownIcon ref={chevronsIconRef} className="ml-auto" />
+            <ChevronRight className="ml-auto size-3.5 text-[var(--as-fg-muted)]" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-96 p-0 overflow-hidden" align="center">
