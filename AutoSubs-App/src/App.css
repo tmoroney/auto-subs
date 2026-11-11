@@ -1769,7 +1769,7 @@ body.app-panel-resizing * {
 .as-send-compact-label { display: none; }
 .as-export-icon { width: 40px !important; height: 40px !important; padding: 0 !important; color: var(--as-fg-secondary); }
 .as-export-primary { gap: 8px; }
-.as-export-menu { width: 300px; min-width: 300px; max-width: calc(100vw - 16px); }
+.as-export-menu { width: 340px; min-width: 340px; max-width: calc(100vw - 16px); }
 .as-export-menu .as-export-menu-item { min-height: 48px; gap: 10px; padding: 8px 10px; }
 .as-export-menu-icon { width: 16px; height: 16px; flex: none; color: var(--as-fg-muted); }
 .as-export-menu-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }

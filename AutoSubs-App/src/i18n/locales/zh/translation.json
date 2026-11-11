@@ -83,7 +83,7 @@
     "exportFormats": {
       "srt": {
         "title": "字幕 (.srt)",
-        "description": "适用于 YouTube、VLC 等应用的标准字幕格式，包含时间戳。"
+        "description": "适用于视频平台的带时间戳字幕。"
       },
       "srtSpeakers": {
         "title": "带说话人的SRT",

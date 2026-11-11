@@ -156,7 +156,7 @@
     "exportFormats": {
       "srt": {
         "title": "字幕 (.srt)",
-        "description": "YouTube や VLC などで使える標準的な字幕形式です。タイムスタンプを含みます。"
+        "description": "動画向けのタイムスタンプ付き字幕。"
       },
       "srtSpeakers": {
         "title": "話者付きSRT",
@@ -168,7 +168,7 @@
       },
       "txt": {
         "title": "文字起こし (.txt)",
-        "description": "利用可能な場合は話者ラベルを含む、LLM 向けのプレーンテキスト書き出しです。"
+        "description": "LLM向けの話者ラベル付きテキスト。"
       },
       "json": {
         "title": "生JSON (.json)",
