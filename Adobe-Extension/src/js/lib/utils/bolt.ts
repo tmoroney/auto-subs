@@ -3,8 +3,9 @@ import Vulcan, { VulcanMessage } from "../cep/vulcan";
 import { ns } from "../../../shared/shared";
 import { fs } from "../cep/node";
 import { isSafeExternalUrl } from "./url-security";
+import { buildEvalFileScript } from "./file-security";
 
-export { isSafeExternalUrl };
+export { isSafeExternalUrl, buildEvalFileScript };
 
 export const csi = new CSInterface();
 export const vulcan = new Vulcan();
@@ -136,14 +137,8 @@ export const evalTS = <
 };
 
 export const evalFile = (file: string) => {
-  return evalES(
-    "typeof $ !== 'undefined' ? $.evalFile(\"" +
-      file +
-      '") : fl.runScript(FLfile.platformPathToURI("' +
-      file +
-      '"));',
-    true
-  );
+  // Sentinel Security: Safely serialize path using buildEvalFileScript to prevent ExtendScript code injection
+  return evalES(buildEvalFileScript(file), true);
 };
 
 /**

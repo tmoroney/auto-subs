@@ -28,6 +28,22 @@ export const isValidSrtFilePath = (filePath: unknown): filePath is string => {
 };
 
 /**
+ * Sentinel Security: Safely constructs an ExtendScript snippet to load a script file,
+ * escaping the file path using JSON stringification to prevent string literal breakout
+ * and arbitrary ExtendScript injection.
+ */
+export const buildEvalFileScript = (file: string): string => {
+  const fileLiteral = JSON.stringify(file);
+  return (
+    "typeof $ !== 'undefined' ? $.evalFile(" +
+    fileLiteral +
+    ") : fl.runScript(FLfile.platformPathToURI(" +
+    fileLiteral +
+    "));"
+  );
+};
+
+/**
  * Sentinel Security: Validates that an incoming directory path for audio export
  * is well-formed, does not contain directory traversal sequences, null bytes,
  * or non-printable control characters.
