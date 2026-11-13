@@ -339,7 +339,7 @@ git tag 1.0.0
 git push origin --tags
 ```
 
-Then your new build will be available under GitHub Releases. For more info, see the [YML config](.github\workflows\main.yml)
+Then your new build will be available under GitHub Releases. For more info, see the [release workflow](../.github/workflows/release-dmg.yml)
 
 ---
 
