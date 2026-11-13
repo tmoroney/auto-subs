@@ -202,6 +202,20 @@ export function preserveSubtitleEdits(
                     });
                 }
             }
+            // Precompute each edited token's display weight once and build a prefix
+            // sum so any gap's weight is O(1). The original re-sliced + reduced
+            // `edited` and called Array.from() per token for every anchor gap,
+            // allocating a sub-array and an intermediate array per token per pass.
+            const tokenWeights = new Array<number>(edited.length);
+            const weightPrefix = new Array<number>(edited.length + 1);
+            let weightAcc = 0;
+            weightPrefix[0] = 0;
+            for (let i = 0; i < edited.length; i++) {
+                tokenWeights[i] = Array.from(edited[i].text).length;
+                weightAcc += tokenWeights[i];
+                weightPrefix[i + 1] = weightAcc;
+            }
+
             for (let index = 0; index <= anchors.length; index++) {
                 const left = anchors[index - 1];
                 const right = anchors[index];
@@ -209,11 +223,11 @@ export function preserveSubtitleEdits(
                 const toIndex = right ? right.next : edited.length;
                 const fromTime = left ? Number(sourceWords[left.previous].word.end) : runFrom;
                 const toTime = right ? Number(sourceWords[right.previous].word.start) : runTo;
-                const weight = edited.slice(fromIndex, toIndex).reduce((sum, token) => sum + Array.from(token.text).length, 0);
+                const weight = weightPrefix[toIndex] - weightPrefix[fromIndex];
                 let consumed = 0;
                 for (let next = fromIndex; next < toIndex; next++) {
                     replacements[next].word.start = fromTime + (toTime - fromTime) * consumed / weight;
-                    consumed += Array.from(edited[next].text).length;
+                    consumed += tokenWeights[next];
                     replacements[next].word.end = fromTime + (toTime - fromTime) * consumed / weight;
                 }
                 if (right) {
