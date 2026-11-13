@@ -4,7 +4,7 @@ import { generateTranscriptTxt } from "./transcript-txt.ts";
 import { generateFcpxml } from "./fcpxml-utils.ts";
 
 /** Export formats offered by the subtitle export menu. */
-export type SubtitleExportFormat = "srt" | "srt-speakers" | "fcpxml" | "txt" | "json";
+export type SubtitleExportFormat = "srt" | "srt-speakers" | "srt-colors" | "fcpxml" | "txt" | "json";
 
 /**
  * Formats whose file body is built straight from cues and speakers. `json`
@@ -26,6 +26,7 @@ export function subtitleExportDialogOptions(
   switch (format) {
     case "srt":
     case "srt-speakers":
+    case "srt-colors":
       return {
         defaultPath: `${baseName}.srt`,
         filters: [{ name: "SRT Files", extensions: ["srt"] }],
@@ -50,8 +51,9 @@ export function subtitleExportDialogOptions(
 
 /**
  * Builds the file body for an srt or txt export. Only `srt-speakers` prefixes
- * cues with speaker names; plain `srt` stays caption text only, and `txt` is
- * the speaker-grouped transcript.
+ * cues with speaker names and only `srt-colors` wraps them in the speaker's
+ * `<font color>` (which Resolve imports as per-subtitle styling); plain `srt`
+ * stays caption text only, and `txt` is the speaker-grouped transcript.
  */
 export function buildSubtitleExportContent(
   format: SubtitleExportTextFormat,
@@ -65,8 +67,10 @@ export function buildSubtitleExportContent(
       return generateFcpxml(subtitles, { speakers });
     case "srt":
     case "srt-speakers":
+    case "srt-colors":
       return generateSrt(subtitles, {
         includeSpeakerLabels: format === "srt-speakers",
+        colorBySpeaker: format === "srt-colors",
         speakers,
       });
   }

@@ -123,7 +123,7 @@ pub(crate) fn fusion_support_dir() -> Option<PathBuf> {
 }
 
 /// Locate `Fusion/Profiles/*/Fusion.prefs`, most recently modified wins.
-fn fusion_prefs_path() -> Option<PathBuf> {
+pub(crate) fn fusion_prefs_path() -> Option<PathBuf> {
     let profiles = fusion_support_dir()?.join("Fusion").join("Profiles");
     let mut best: Option<(SystemTime, PathBuf)> = None;
     for entry in fs::read_dir(profiles).ok()?.flatten() {
@@ -162,7 +162,7 @@ fn encode_request(id: &str, body: &str) -> String {
 /// The key must start at a word boundary (the preceding char is not part of
 /// an identifier) so e.g. `PlaybackAck` can't match `Ack`. Returns the last
 /// match so a stale earlier section can't win.
-fn pref_value<'a>(text: &'a str, key: &str) -> Option<&'a str> {
+pub(crate) fn pref_value<'a>(text: &'a str, key: &str) -> Option<&'a str> {
     let needle = format!("{} = \"", key);
     let mut result = None;
     let mut offset = 0;

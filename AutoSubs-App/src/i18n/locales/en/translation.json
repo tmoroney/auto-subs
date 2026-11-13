@@ -30,6 +30,10 @@
       "notFound": "Not found",
       "errorTitle": "Command-line tool"
     },
+    "openFromResolve": {
+      "title": "Open from Resolve",
+      "description": "Clicking AutoSubs in Resolve's Scripts menu opens the app"
+    },
     "openLogsFolder": "Open Logs Folder",
     "reset": {
       "button": "Reset Settings",
@@ -69,6 +73,7 @@
     "importFile": "Import File",
     "exportAsSrt": "Export as SRT",
     "exportAsSrtSpeakers": "Export SRT with speakers",
+    "exportAsSrtColors": "Export SRT speaker colours",
     "exportAsTxt": "Export as TXT",
     "exportAsJson": "Export as JSON",
     "exportFailed": "Couldn't save the export file.",
@@ -83,6 +88,10 @@
       "srtSpeakers": {
         "title": "SRT with speakers",
         "description": "Speaker name on each caption."
+      },
+      "srtColors": {
+        "title": "SRT speaker colours",
+        "description": "One subtitle per line, coloured by speaker."
       },
       "txt": {
         "title": "Transcript (.txt)",

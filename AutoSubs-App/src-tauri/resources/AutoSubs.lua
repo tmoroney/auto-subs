@@ -41,6 +41,9 @@ end
 -- when a profile name isn't representable in the system's ANSI code page. Left
 -- unsubstituted it reads as a nil global and bootstrap falls back to the env
 -- path (fine on macOS/Linux, where env strings are UTF-8).
+-- open_app: ask the app's "Open from Resolve" watcher to open AutoSubs. Only
+-- this production launcher sets it, so the Dev script never opens the
+-- installed app.
 local boot = assert(loadfile(bootstrap_path))()
 boot(resources_folder, app_executable, false,
-    { mode = "manual", mailbox_dir = __AUTOSUBS_MAILBOX_DIR__ })
+    { mode = "manual", mailbox_dir = __AUTOSUBS_MAILBOX_DIR__, open_app = true })

@@ -30,6 +30,10 @@
       "notFound": "Introuvable",
       "errorTitle": "Outil en ligne de commande"
     },
+    "openFromResolve": {
+      "title": "Ouvrir depuis Resolve",
+      "description": "Ouvre l'app depuis le menu Scripts de Resolve"
+    },
     "openLogsFolder": "Ouvrir le dossier des logs",
     "reset": {
       "button": "Réinitialiser les paramètres",
@@ -69,6 +73,7 @@
     "importFile": "Importer le fichier",
     "exportAsSrt": "Exporter en SRT",
     "exportAsSrtSpeakers": "SRT avec locuteurs",
+    "exportAsSrtColors": "SRT avec couleurs des locuteurs",
     "exportAsTxt": "Exporter en TXT",
     "exportAsJson": "Exporter en JSON",
     "exportFailed": "Impossible d'enregistrer le fichier exporté.",
@@ -83,6 +88,10 @@
       "srtSpeakers": {
         "title": "SRT avec locuteurs",
         "description": "Nom du locuteur sur chaque ligne."
+      },
+      "srtColors": {
+        "title": "SRT couleurs locuteurs",
+        "description": "Un sous-titre par ligne, couleur du locuteur."
       },
       "txt": {
         "title": "Transcription (.txt)",

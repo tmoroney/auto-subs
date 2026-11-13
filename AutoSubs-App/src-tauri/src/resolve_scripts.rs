@@ -227,7 +227,7 @@ fn app_executable_path() -> Option<PathBuf> {
 }
 
 /// Walk `<name>.app/Contents/MacOS/<bin>` up to the `.app`. Identity elsewhere.
-fn bundle_root(exe: &Path) -> Option<PathBuf> {
+pub(crate) fn bundle_root(exe: &Path) -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
         // exe = Foo.app/Contents/MacOS/foo -> parent=MacOS, ..=Contents, ..=Foo.app
