@@ -22,10 +22,12 @@ export function PresetThumbnail({
   preset,
   selected,
   className,
+  fallback,
 }: {
   preset: CaptionPreset;
   selected?: boolean;
   className?: string;
+  fallback?: React.ReactNode;
 }) {
   const [src, setSrc] = React.useState<string | null>(null);
   const [failed, setFailed] = React.useState(false);
@@ -77,7 +79,7 @@ export function PresetThumbnail({
           onError={() => setFailed(true)}
         />
       ) : (
-        <ImageIcon className="size-4 text-white/40" />
+        fallback ?? <ImageIcon className="size-4 text-white/40" />
       )}
 
       {selected && (

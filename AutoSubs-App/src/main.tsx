@@ -6,6 +6,8 @@ import "@fontsource/figtree/400.css";
 import "@fontsource/figtree/500.css";
 import "@fontsource/figtree/600.css";
 import "@fontsource/figtree/700.css";
+import "@fontsource/source-serif-4/400.css";
+import "@fontsource/source-serif-4/600.css";
 import "./App.css";
 import { GlobalProvider } from "@/contexts/GlobalProvider";
 import { Toaster } from "@/components/ui/sonner";

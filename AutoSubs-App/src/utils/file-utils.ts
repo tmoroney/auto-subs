@@ -71,6 +71,7 @@ export interface SubtitleDocumentListItem {
   filename: string;
   displayName: string;
   createdAt: Date;
+  sourceType?: TranscriptSourceType;
   transcriptId?: string;
   timelineId?: string;
   timelineName?: string;
@@ -557,6 +558,7 @@ export async function listSubtitleDocuments(): Promise<SubtitleDocumentListItem[
             displayName:
               metadata?.displayName?.trim() || stripExtension(entry.name),
             createdAt,
+            sourceType: metadata?.sourceType,
             transcriptId: metadata?.transcriptId,
             timelineId: metadata?.timelineId,
             timelineName: metadata?.timelineName,
@@ -603,6 +605,7 @@ export async function listSubtitleDocumentIndex(): Promise<
         displayName:
           metadata?.displayName?.trim() || stripExtension(item.filename),
         createdAt,
+        sourceType: metadata?.sourceType,
         transcriptId: metadata?.transcriptId,
         timelineId: metadata?.timelineId,
         timelineName: metadata?.timelineName,

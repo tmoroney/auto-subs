@@ -6,14 +6,13 @@ import { Label } from "@/components/ui/label"
 import { Check } from "lucide-react"
 import { Speaker, Track } from "@/types"
 import { useTranslation } from "react-i18next"
+import { DEFAULT_COLORS } from "@/utils/speaker-colors"
 
 interface SpeakerSettingsProps {
     speaker: Speaker
     onSpeakerChange: (updated: Speaker) => void
     tracks?: Track[]
 }
-
-const DEFAULT_COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"]
 
 export function SpeakerSettings({ speaker, onSpeakerChange, tracks }: SpeakerSettingsProps) {
     const { t } = useTranslation()
