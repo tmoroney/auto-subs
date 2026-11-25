@@ -49,6 +49,8 @@ autosubs --version
 
 **Performance:**
 - `--gpu` / `--no-gpu` - Force GPU on/off (default: auto-detect)
+- `--no-dtw` - Disable Whisper word refinement (DTW word timestamps; on by default)
+- `--no-vad` - Disable Speech Detection (VAD; on by default). Use if words are missed
 
 **Advanced:**
 - `--prompt` - Custom prompt to guide transcription

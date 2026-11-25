@@ -182,6 +182,14 @@
           "description": "Disable GPU acceleration (CPU only)."
         },
         {
+          "name": "no-dtw",
+          "description": "Disable Whisper word refinement (DTW word timestamps)."
+        },
+        {
+          "name": "no-vad",
+          "description": "Disable Speech Detection (VAD); use if words are missed."
+        },
+        {
           "name": "density",
           "description": "Subtitle text density: less, standard, more, single, or custom.",
           "takesValue": true
