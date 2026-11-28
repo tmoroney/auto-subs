@@ -9,7 +9,8 @@ publish = false
 [dependencies]
 whisper-rs = { version = "0.16.0", default-features = false, features = ["tracing_backend"] }
 diarize = { path = "../diarize" }
-transcribe-rs = { version = "0.3.12", features = ["onnx", "gigaam-multilingual-v2"] }
+# Temporary pin until the Multilingual-v2 provider is released on crates.io.
+transcribe-rs = { git = "https://github.com/ai-babai/transcribe-rs.git", rev = "9cd478d95688c25eb2b55aa7be3982d081f14bef", features = ["onnx", "gigaam-multilingual-v2"] }
 hf-hub = "0.5.0"
 dirs = "5.0"
 regex = "1"
