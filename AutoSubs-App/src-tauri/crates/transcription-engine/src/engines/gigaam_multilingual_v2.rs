@@ -4,6 +4,7 @@ use std::path::Path;
 
 use eyre::Result;
 use transcribe_rs::TranscriptionResult;
+use transcribe_rs::onnx::Quantization;
 use transcribe_rs::onnx::gigaam_multilingual_v2::{
     GigaamMultilingualV2Model, GigaamMultilingualV2Params,
 };
@@ -25,7 +26,7 @@ impl OnnxEngine for GigaamMultilingualV2Engine {
 
     fn load(model_path: &Path) -> Result<Self> {
         Ok(Self {
-            model: GigaamMultilingualV2Model::load(model_path)?,
+            model: GigaamMultilingualV2Model::load(model_path, &Quantization::Int8)?,
             params: GigaamMultilingualV2Params::default(),
         })
     }

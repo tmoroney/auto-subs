@@ -6415,7 +6415,7 @@ dependencies = [
 [[package]]
 name = "transcribe-rs"
 version = "0.3.12"
-source = "git+https://github.com/ai-babai/transcribe-rs.git?rev=9cd478d95688c25eb2b55aa7be3982d081f14bef#9cd478d95688c25eb2b55aa7be3982d081f14bef"
+source = "git+https://github.com/ai-babai/transcribe-rs.git?rev=fa6c78c02d872494c4b4a53056a41322a8f428ed#fa6c78c02d872494c4b4a53056a41322a8f428ed"
 dependencies = [
  "base64 0.22.1",
  "derive_builder",
