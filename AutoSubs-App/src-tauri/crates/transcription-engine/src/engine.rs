@@ -792,7 +792,8 @@ impl Engine {
         if let Some(callback) = cb.progress.as_deref() {
             callback(0, crate::ProgressType::Finish, "progressSteps.finish");
         }
-        let formatted_segments = process_segments_until(&segments, &pp_cfg, user_offset + audio_duration_sec);
+        let media_end = user_offset + original_samples.len() as f64 / 16_000.0;
+        let formatted_segments = process_segments_until(&segments, &pp_cfg, media_end);
         if let Some(callback) = cb.progress.as_deref() {
             callback(100, crate::ProgressType::Finish, "progressSteps.finish");
         }
