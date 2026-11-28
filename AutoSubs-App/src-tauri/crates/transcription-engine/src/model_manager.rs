@@ -1510,11 +1510,11 @@ struct SortformerLayout {
 mod tests {
     use super::*;
 
-    /// Serve an initial chunk, then wait before sending the rest.
+    /// Serve an initial chunk, then wait for permission to send the rest.
     async fn serve_once(
-        total: usize,
+        body: Vec<u8>,
         first: usize,
-        finish: impl std::future::Future<Output = ()> + Send + 'static,
+        finish: impl std::future::Future<Output = bool> + Send + 'static,
     ) -> String {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -1523,39 +1523,36 @@ mod tests {
             let (mut socket, _) = listener.accept().await.unwrap();
             let mut request = [0u8; 1024];
             let _ = socket.read(&mut request).await;
+            let total = body.len();
             let header = format!("HTTP/1.1 200 OK\r\nContent-Length: {total}\r\n\r\n");
             socket.write_all(header.as_bytes()).await.unwrap();
-            socket.write_all(&vec![7u8; first]).await.unwrap();
-            finish.await;
-            socket.write_all(&vec![7u8; total - first]).await.unwrap();
+            socket.write_all(&body[..first]).await.unwrap();
+            if finish.await {
+                socket.write_all(&body[first..]).await.unwrap();
+            }
         });
         format!("http://{addr}/model.onnx")
     }
 
-    fn temp_dest(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("autosubs-dl-{}-{name}", std::process::id()));
-        let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(&dir).unwrap();
-        dir.join("model.onnx")
-    }
-
     #[tokio::test]
     async fn flat_download_reports_progress_and_finalizes() {
-        let url = serve_once(200_000, 50_000, std::future::ready(())).await;
-        let dest = temp_dest("ok");
+        let url = serve_once(vec![7; 200_000], 50_000, std::future::ready(true)).await;
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("model.onnx");
         let mut last = (0, None);
         download_to_with(&dest, &url, None, |done, total| last = (done, total))
             .await
             .unwrap();
         assert_eq!(last, (200_000, Some(200_000)));
         assert_eq!(fs::metadata(&dest).unwrap().len(), 200_000);
-        assert_eq!(fs::read_dir(dest.parent().unwrap()).unwrap().count(), 1);
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
     }
 
     #[tokio::test]
     async fn flat_download_cancels_while_the_transfer_is_stalled() {
-        let url = serve_once(200_000, 50_000, std::future::pending()).await;
-        let dest = temp_dest("cancel");
+        let url = serve_once(vec![7; 200_000], 50_000, std::future::pending()).await;
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("model.onnx");
         let started = Instant::now();
         let cancelled = move || started.elapsed() > std::time::Duration::from_millis(500);
         let err = download_to_with(&dest, &url, Some(&cancelled), |_, _| {})
@@ -1564,46 +1561,106 @@ mod tests {
         assert!(format!("{err:#}").contains("cancelled"), "{err:#}");
         assert!(started.elapsed() < std::time::Duration::from_secs(5));
         assert!(!dest.exists());
-        assert_eq!(fs::read_dir(dest.parent().unwrap()).unwrap().count(), 0);
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
     }
 
-    #[tokio::test]
-    async fn concurrent_flat_downloads_publish_one_complete_model() {
+    #[derive(Clone, Copy)]
+    enum FirstDownload {
+        Valid,
+        Cancelled,
+        Short,
+    }
+
+    async fn check_concurrent_flat_downloads(first: FirstDownload) {
         use tokio::sync::{Notify, oneshot};
 
+        let (first_size, first_error) = match first {
+            FirstDownload::Valid => (200_000, None),
+            FirstDownload::Cancelled => (200_000, Some("cancelled")),
+            FirstDownload::Short => (50_000, Some("Model blob seems too small")),
+        };
+        let first_body = vec![7; first_size];
+        let second_body = vec![9; 200_000];
         let (finish_first, finish_first_rx) = oneshot::channel();
         let (finish_second, finish_second_rx) = oneshot::channel();
-        let first_url = serve_once(200_000, 50_000, async { finish_first_rx.await.unwrap() }).await;
-        let second_url = serve_once(200_000, 10_000, async { finish_second_rx.await.unwrap() }).await;
+        let first_url = serve_once(first_body.clone(), 10_000, async {
+            finish_first_rx.await.is_ok()
+        }).await;
+        let second_url = serve_once(second_body.clone(), 10_000, async {
+            finish_second_rx.await.is_ok()
+        }).await;
         let first_progress = Notify::new();
         let second_progress = Notify::new();
         let first_finished = Notify::new();
-        let dest = temp_dest("concurrent");
+        let cancelled = AtomicBool::new(false);
+        let is_cancelled = || cancelled.load(Ordering::Relaxed);
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("model.onnx");
 
-        let first = async {
-            let result = download_to_with(&dest, &first_url, None, |_, _| first_progress.notify_one()).await;
+        let first_request = async {
+            let result = download_to_with(&dest, &first_url, Some(&is_cancelled), |_, _| {
+                first_progress.notify_one();
+            }).await;
             first_finished.notify_one();
             result
         };
-        let second = async {
+        let second_request = async {
             first_progress.notified().await;
             download_to_with(&dest, &second_url, None, |_, _| second_progress.notify_one()).await
         };
         let finish = async {
+            // Both requests have written a partial body and neither may publish yet.
             second_progress.notified().await;
             assert!(!dest.exists(), "an unfinished download reached the cache");
-            finish_first.send(()).unwrap();
-            first_finished.notified().await;
-            assert_eq!(fs::read(&dest).unwrap(), vec![7u8; 200_000]);
+            assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 2);
+            if matches!(first, FirstDownload::Cancelled) {
+                cancelled.store(true, Ordering::Relaxed);
+                first_finished.notified().await;
+                drop(finish_first);
+            } else {
+                finish_first.send(()).unwrap();
+                first_finished.notified().await;
+            }
+
+            if first_error.is_some() {
+                assert!(!dest.exists(), "a failed download reached the cache");
+                assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
+            } else {
+                assert!(fs::read(&dest).unwrap() == first_body, "first download did not publish");
+            }
             finish_second.send(()).unwrap();
         };
-        let (first, second, ()) = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-            tokio::join!(first, second, finish)
-        }).await.unwrap();
-        first.unwrap();
-        second.unwrap();
-        assert_eq!(fs::read(&dest).unwrap(), vec![7u8; 200_000]);
-        assert_eq!(fs::read_dir(dest.parent().unwrap()).unwrap().count(), 1);
+
+        let (first_result, second_result, ()) = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            async { tokio::join!(first_request, second_request, finish) },
+        ).await.unwrap();
+        let expected = if let Some(message) = first_error {
+            let err = first_result.unwrap_err();
+            assert!(format!("{err:#}").contains(message), "{err:#}");
+            second_body
+        } else {
+            first_result.unwrap();
+            first_body
+        };
+        second_result.unwrap();
+        assert!(fs::read(&dest).unwrap() == expected, "wrong download was published");
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
+
+    #[tokio::test]
+    async fn concurrent_flat_downloads_preserve_first_published_body() {
+        check_concurrent_flat_downloads(FirstDownload::Valid).await;
+    }
+
+    #[tokio::test]
+    async fn concurrent_flat_download_survives_cancelled_peer() {
+        check_concurrent_flat_downloads(FirstDownload::Cancelled).await;
+    }
+
+    #[tokio::test]
+    async fn concurrent_flat_download_survives_short_peer() {
+        check_concurrent_flat_downloads(FirstDownload::Short).await;
     }
 
     #[test]
