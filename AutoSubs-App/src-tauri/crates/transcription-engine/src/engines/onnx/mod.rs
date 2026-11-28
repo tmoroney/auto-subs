@@ -1,7 +1,9 @@
 use crate::types::{
     LabeledProgressFn, NewSegmentFn, ProgressType, Segment, SpeechSegment, WordTimestamp,
 };
-use crate::utils::{interpolate_word_timestamps, push_segment_clamped, split_speech_segment};
+use crate::utils::{
+    interpolate_word_timestamps, push_segment_clamped, split_speech_segment_borrowed,
+};
 use eyre::{bail, Result};
 use transcribe_rs::{TranscriptionResult, TranscriptionSegment};
 #[cfg(all(target_os = "windows", feature = "directml"))]
@@ -96,9 +98,9 @@ pub async fn run_onnx_pipeline<E: OnnxEngine>(
 ) -> Result<(Vec<Segment>, Option<String>)> {
     let cancelled = || abort.as_ref().map(|c| c()).unwrap_or(false);
 
-    let mut expanded: Vec<SpeechSegment> = Vec::new();
+    let mut expanded = Vec::new();
     for seg in &speech_segments {
-        expanded.extend(split_speech_segment(seg, E::MAX_SEGMENT_SECONDS));
+        expanded.extend(split_speech_segment_borrowed(seg, E::MAX_SEGMENT_SECONDS));
     }
 
     let total = expanded.len().max(1);
@@ -158,7 +160,7 @@ pub async fn run_onnx_pipeline<E: OnnxEngine>(
         };
 
         let segment = Segment {
-            speaker_id: speech_segment.speaker_id.clone(),
+            speaker_id: speech_segment.speaker_id.map(str::to_owned),
             start: segment_start,
             end: segment_end,
             text,

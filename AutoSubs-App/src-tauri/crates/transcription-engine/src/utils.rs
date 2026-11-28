@@ -136,22 +136,52 @@ pub fn find_low_energy_split(
     }
 }
 
-/// Split a speech segment into chunks no longer than `max_seconds` (at 16 kHz),
-/// preserving absolute timing and speaker id. Used by ONNX backends that process
-/// a whole clip per call (Moonshine, SenseVoice, Canary, Cohere) to bound memory.
-///
-/// Boundaries are nudged back onto the quietest frame within the last ~1 s of
-/// each chunk so a chunk edge does not cut through a word, which makes models
-/// emit half-words (or, for normalizing models, stray symbols).
+pub(crate) struct SpeechChunk<'a> {
+    pub start: f64,
+    pub end: f64,
+    pub samples: &'a [i16],
+    pub speaker_id: Option<&'a str>,
+}
+
+/// Split a speech segment into owned chunks no longer than `max_seconds`,
+/// preserving absolute timing, samples and speaker id.
 pub fn split_speech_segment(
     seg: &crate::types::SpeechSegment,
     max_seconds: f64,
 ) -> Vec<crate::types::SpeechSegment> {
+    split_speech_segment_borrowed(seg, max_seconds)
+        .into_iter()
+        .map(|chunk| crate::types::SpeechSegment {
+            start: chunk.start,
+            end: chunk.end,
+            samples: chunk.samples.to_vec(),
+            speaker_id: chunk.speaker_id.map(str::to_owned),
+        })
+        .collect()
+}
+
+/// Split a speech segment into borrowed chunks no longer than `max_seconds`
+/// (at 16 kHz), preserving absolute timing and speaker id. Borrowing avoids
+/// retaining a second copy of the PCM when ONNX transcribes a long input.
+///
+/// Boundaries are nudged back onto the quietest frame within the last ~1 s of
+/// each chunk so a chunk edge does not cut through a word, which makes models
+/// emit half-words (or, for normalizing models, stray symbols).
+pub(crate) fn split_speech_segment_borrowed(
+    seg: &crate::types::SpeechSegment,
+    max_seconds: f64,
+) -> Vec<SpeechChunk<'_>> {
     const SAMPLE_RATE: usize = 16000;
     const SEARCH_WINDOW_SAMPLES: usize = SAMPLE_RATE; // look back up to 1 s for silence
     let max_samples = (max_seconds * SAMPLE_RATE as f64) as usize;
+    let speaker_id = seg.speaker_id.as_deref();
     if max_samples == 0 || seg.samples.len() <= max_samples {
-        return vec![seg.clone()];
+        return vec![SpeechChunk {
+            start: seg.start,
+            end: seg.end,
+            samples: &seg.samples,
+            speaker_id,
+        }];
     }
 
     let mut out = Vec::new();
@@ -165,11 +195,11 @@ pub fn split_speech_segment(
         };
         let start_s = idx as f64 / SAMPLE_RATE as f64;
         let end_s = end_idx as f64 / SAMPLE_RATE as f64;
-        out.push(crate::types::SpeechSegment {
+        out.push(SpeechChunk {
             start: seg.start + start_s,
             end: seg.start + end_s,
-            samples: seg.samples[idx..end_idx].to_vec(),
-            speaker_id: seg.speaker_id.clone(),
+            samples: &seg.samples[idx..end_idx],
+            speaker_id,
         });
         idx = end_idx;
     }
@@ -288,7 +318,7 @@ mod tests {
             start: 10.0,
             end: 55.0,
             samples: samples_with_silence_at(45.0, 29.5),
-            speaker_id: None,
+            speaker_id: Some("2".into()),
         };
         let chunks = split_speech_segment(&seg, 30.0);
         assert_eq!(chunks.len(), 2);
@@ -300,6 +330,41 @@ mod tests {
         );
         assert_eq!(chunks[1].start, chunks[0].end);
         assert_eq!(chunks[1].end, seg.end);
+        assert!(chunks.iter().all(|chunk| chunk.speaker_id.as_deref() == Some("2")));
+        assert!(chunks.iter().flat_map(|chunk| &chunk.samples).eq(seg.samples.iter()));
+
+        let borrowed = split_speech_segment_borrowed(&seg, 30.0);
+        assert_eq!(borrowed.len(), chunks.len());
+        let mut offset = 0;
+        for (view, owned) in borrowed.iter().zip(&chunks) {
+            let end = offset + owned.samples.len();
+            assert!(std::ptr::eq(view.samples, &seg.samples[offset..end]));
+            assert_eq!((view.start, view.end), (owned.start, owned.end));
+            assert_eq!(view.speaker_id, owned.speaker_id.as_deref());
+            offset = end;
+        }
+        assert_eq!(offset, seg.samples.len());
+    }
+
+    #[test]
+    fn split_keeps_explicit_bounds_on_a_short_segment() {
+        let seg = SpeechSegment {
+            start: 10.0,
+            end: 10.5,
+            samples: vec![1, 2, 3],
+            speaker_id: None,
+        };
+        let chunks = split_speech_segment(&seg, 30.0);
+        assert_eq!(chunks.len(), 1);
+        assert_eq!((chunks[0].start, chunks[0].end), (seg.start, seg.end));
+        assert_eq!(chunks[0].samples, seg.samples);
+        assert_eq!(chunks[0].speaker_id, seg.speaker_id);
+
+        let borrowed = split_speech_segment_borrowed(&seg, 30.0);
+        assert_eq!(borrowed.len(), 1);
+        assert!(std::ptr::eq(borrowed[0].samples, seg.samples.as_slice()));
+        assert_eq!((borrowed[0].start, borrowed[0].end), (seg.start, seg.end));
+        assert_eq!(borrowed[0].speaker_id, None);
     }
 
     #[test]
