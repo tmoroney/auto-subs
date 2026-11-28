@@ -1510,10 +1510,12 @@ struct SortformerLayout {
 mod tests {
     use super::*;
 
-    /// Serve one HTTP response that sends `first` bytes of a `total`-byte body,
-    /// then either the rest (`finish`) or nothing more while holding the
-    /// connection open, like a stalled CDN transfer.
-    async fn serve_once(total: usize, first: usize, finish: bool) -> String {
+    /// Serve an initial chunk, then wait before sending the rest.
+    async fn serve_once(
+        total: usize,
+        first: usize,
+        finish: impl std::future::Future<Output = ()> + Send + 'static,
+    ) -> String {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
@@ -1524,11 +1526,8 @@ mod tests {
             let header = format!("HTTP/1.1 200 OK\r\nContent-Length: {total}\r\n\r\n");
             socket.write_all(header.as_bytes()).await.unwrap();
             socket.write_all(&vec![7u8; first]).await.unwrap();
-            if finish {
-                socket.write_all(&vec![7u8; total - first]).await.unwrap();
-            } else {
-                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-            }
+            finish.await;
+            socket.write_all(&vec![7u8; total - first]).await.unwrap();
         });
         format!("http://{addr}/model.onnx")
     }
@@ -1542,7 +1541,7 @@ mod tests {
 
     #[tokio::test]
     async fn flat_download_reports_progress_and_finalizes() {
-        let url = serve_once(200_000, 50_000, true).await;
+        let url = serve_once(200_000, 50_000, std::future::ready(())).await;
         let dest = temp_dest("ok");
         let mut last = (0, None);
         download_to_with(&dest, &url, None, |done, total| last = (done, total))
@@ -1550,12 +1549,12 @@ mod tests {
             .unwrap();
         assert_eq!(last, (200_000, Some(200_000)));
         assert_eq!(fs::metadata(&dest).unwrap().len(), 200_000);
-        assert!(!dest.with_file_name("model.onnx.part").exists());
+        assert_eq!(fs::read_dir(dest.parent().unwrap()).unwrap().count(), 1);
     }
 
     #[tokio::test]
     async fn flat_download_cancels_while_the_transfer_is_stalled() {
-        let url = serve_once(200_000, 50_000, false).await;
+        let url = serve_once(200_000, 50_000, std::future::pending()).await;
         let dest = temp_dest("cancel");
         let started = Instant::now();
         let cancelled = move || started.elapsed() > std::time::Duration::from_millis(500);
@@ -1565,7 +1564,46 @@ mod tests {
         assert!(format!("{err:#}").contains("cancelled"), "{err:#}");
         assert!(started.elapsed() < std::time::Duration::from_secs(5));
         assert!(!dest.exists());
-        assert!(!dest.with_file_name("model.onnx.part").exists());
+        assert_eq!(fs::read_dir(dest.parent().unwrap()).unwrap().count(), 0);
+    }
+
+    #[tokio::test]
+    async fn concurrent_flat_downloads_publish_one_complete_model() {
+        use tokio::sync::{Notify, oneshot};
+
+        let (finish_first, finish_first_rx) = oneshot::channel();
+        let (finish_second, finish_second_rx) = oneshot::channel();
+        let first_url = serve_once(200_000, 50_000, async { finish_first_rx.await.unwrap() }).await;
+        let second_url = serve_once(200_000, 10_000, async { finish_second_rx.await.unwrap() }).await;
+        let first_progress = Notify::new();
+        let second_progress = Notify::new();
+        let first_finished = Notify::new();
+        let dest = temp_dest("concurrent");
+
+        let first = async {
+            let result = download_to_with(&dest, &first_url, None, |_, _| first_progress.notify_one()).await;
+            first_finished.notify_one();
+            result
+        };
+        let second = async {
+            first_progress.notified().await;
+            download_to_with(&dest, &second_url, None, |_, _| second_progress.notify_one()).await
+        };
+        let finish = async {
+            second_progress.notified().await;
+            assert!(!dest.exists(), "an unfinished download reached the cache");
+            finish_first.send(()).unwrap();
+            first_finished.notified().await;
+            assert_eq!(fs::read(&dest).unwrap(), vec![7u8; 200_000]);
+            finish_second.send(()).unwrap();
+        };
+        let (first, second, ()) = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            tokio::join!(first, second, finish)
+        }).await.unwrap();
+        first.unwrap();
+        second.unwrap();
+        assert_eq!(fs::read(&dest).unwrap(), vec![7u8; 200_000]);
+        assert_eq!(fs::read_dir(dest.parent().unwrap()).unwrap().count(), 1);
     }
 
     #[test]
