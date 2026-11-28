@@ -747,5 +747,133 @@ do
     check_marker_move(2, 50, 38, "marker move with lead-in")
 end
 
+-- W2: The word highlight covers the words of the caption text, and it follows
+-- a corrected caption: a word that keeps its spelling keeps its time.
+do
+    local style = AutoSubs_require("caption_style")
+    -- "[first character..last character] start ms-end ms" for a frame rate of 1000
+    local function placed(timing)
+        local out = {}
+        for _, word in ipairs(timing) do
+            out[#out + 1] = string.format("[%d..%d] %d-%d", word.startIndex, word.endIndex, word.startFrame, word.endFrame)
+        end
+        return table.concat(out, " ")
+    end
+    local function word(spelling, start, finish)
+        return { word = spelling, start = start, ["end"] = finish }
+    end
+    local function same(actual, expected, label)
+        check(actual == expected, label, actual)
+    end
+    local function timing(words, text, origin)
+        return placed(style.word_timing(words, 1000, origin or 0, text))
+    end
+
+    -- Each word owns the space before it, and the spelled words give the same result.
+    local example = { word("Subtitle", 0, 0.7), word(" Example", 0.8, 1.5), word(" Text", 1.6, 2.3) }
+    same(timing(example, "Subtitle Example Text"), "[0..7] 0-700 [8..15] 800-1500 [16..20] 1600-2300", "words own the space before them")
+    same(placed(style.word_timing(example, 1000, 0)), "[0..7] 0-700 [8..15] 800-1500 [16..20] 1600-2300", "words without text are laid out by their spelling")
+
+    -- The first word of a caption split from a longer segment keeps a leading
+    -- space that the text does not show.
+    local split = { word(" core", 21.249, 21.729), word(" that", 21.729, 21.889), word(" checks", 21.889, 22.289) }
+    same(timing(split, "core that checks", 21.249), "[0..3] 0-480 [4..8] 480-640 [9..15] 640-1040", "a split caption is placed by its text")
+    same(timing(split, "core", 21.249), "[0..3] 0-480", "a caption that lost words keeps the time of the ones it kept")
+
+    -- A corrected caption: the words it kept keep their time, and a word that
+    -- replaces one other word takes that word's time.
+    local corrected = { word("One", 0, 0.5), word(" full", 0.5, 1), word(" elimin", 1, 1.5), word(" you'll", 1.5, 2) }
+    same(timing(corrected, "One faulty lemma you'll"), "[0..2] 0-500 [3..9] 500-1000 [10..15] 1000-1500 [16..22] 1500-2000", "a corrected caption keeps the time of its words")
+    local greeted = { word("Hello", 0, 0.4), word(" world", 2, 2.4) }
+    same(timing(greeted, "Hello world!"), "[0..4] 0-400 [5..11] 2000-2400", "punctuation does not move a word")
+
+    -- A word that was added shares the time with its neighbour, in proportion to its length.
+    local inserted = { word("Hello", 0, 1), word(" fantastic", 1, 2), word(" world!", 2, 3) }
+    same(timing(inserted, "Hello brave fantastic world!"), "[0..4] 0-1000 [5..10] 1000-1357 [11..20] 1357-2000 [21..27] 2000-3000", "an added word takes time from its neighbour")
+
+    -- A word that was deleted takes its time with it.
+    local deleted = { word("We", 0, 1), word(" visited", 1, 2), word(" Paris", 2, 3), word(" yesterday.", 3, 4) }
+    same(timing(deleted, "We visited yesterday."), "[0..1] 0-1000 [2..9] 1000-2000 [10..20] 3000-4000", "a deleted word takes its time with it")
+
+    -- A special space separates words, and an accented letter is one character.
+    local accented = { word("Alpöge's", 0, 0.6), word(" feat", 0.6, 0.9), word(" lean", 0.9, 1.3), word(" on", 1.3, 1.7) }
+    same(timing(accented, "Alpöge's feat lean\194\160on"), "[0..7] 0-600 [8..12] 600-900 [13..17] 900-1300 [18..20] 1300-1700", "a special space separates words")
+
+    -- A script with one timed word per character has no word boundaries in the text: the spelling stays the guide.
+    local han = { word("你好", 0, 0.5), word("世界", 0.5, 1) }
+    same(timing(han, "你好世界"), "[0..1] 0-500 [2..3] 500-1000", "Chinese words are laid out by their spelling")
+    local kana = { word("こ", 0, 0.1), word("ん", 0.1, 0.2), word("に", 0.2, 0.3), word("ち", 0.3, 0.4), word("は", 0.4, 0.5),
+        word(" 世", 0.5, 0.6), word("界", 0.6, 0.7), word("で", 0.7, 0.8), word("す", 0.8, 0.9) }
+    same(timing(kana, "こんにちは 世界です"), "[0..0] 0-100 [1..1] 100-200 [2..2] 200-300 [3..3] 300-400 [4..4] 400-500 [5..6] 500-600 [7..7] 600-700 [8..8] 700-800 [9..9] 800-900", "Japanese keeps one word per character, with a space in the text")
+    same(timing(kana, "こんにちは世界ですね"), "[0..0] 0-100 [1..1] 100-200 [2..2] 200-300 [3..3] 300-400 [4..4] 400-500 [5..5] 500-600 [6..6] 600-700 [7..7] 700-800 [8..8] 800-900", "a corrected Japanese caption follows the characters of its text")
+    local leading = { word(" こ", 0, 0.1), word("ん", 0.1, 0.2), word("に", 0.2, 0.3), word("ち", 0.3, 0.4), word("は", 0.4, 0.5),
+        word(" 世", 0.5, 0.6), word("界", 0.6, 0.7), word("で", 0.7, 0.8), word("す", 0.8, 0.9) }
+    same(timing(leading, "こんにちは 世界です"), "[0..0] 0-100 [1..1] 100-200 [2..2] 200-300 [3..3] 300-400 [4..4] 400-500 [5..6] 500-600 [7..7] 600-700 [8..8] 700-800 [9..9] 800-900", "a Japanese caption whose words have leading spaces is placed by its text")
+    same(timing(han, "你好朋友们"), "[0..1] 0-500 [2..3] 500-1000", "a corrected Chinese caption with words of two characters keeps one entry per word")
+    local thai = { word("สวัสดี", 0, 0.6), word("ครับ", 0.6, 1) }
+    same(timing(thai, "สวัสดีครับ"), "[0..5] 0-600 [6..9] 600-1000", "Thai words are laid out by their spelling")
+    same(#style.word_timing(kana, 1000, 0, ""), 0, "an empty text has no entry for a script with one word per character")
+
+    -- A script without spaces as the formatter gives it: one timed word per grapheme cluster, some with
+    -- a combining mark, and a leading space on the first grapheme of a later token.
+    local thai_graphemes = { word("ส", 0, 0.25), word("วั", 0.25, 0.5), word("ส", 0.5, 0.75), word("ดี", 0.75, 1),
+        word(" ค", 1, 1.25), word("รั", 1.25, 1.5), word("บ", 1.5, 1.75) }
+    local thai_placed = "[0..0] 0-250 [1..2] 250-500 [3..3] 500-750 [4..5] 750-1000 [6..6] 1000-1250 [7..8] 1250-1500 [9..9] 1500-1750"
+    same(timing(thai_graphemes, "สวัสดีครับ"), thai_placed, "a Thai caption is laid over its text by the length of its timed words")
+    same(timing(thai_graphemes, "สวัสดีครับพี่"), thai_placed, "a corrected Thai caption that grew keeps one entry per timed word")
+    same(timing(kana, "こんにちは\227\128\128世界ですね"),
+        "[0..0] 0-100 [1..1] 100-200 [2..2] 200-300 [3..3] 300-400 [4..4] 400-500 [5..6] 500-600 [7..7] 600-700 [8..8] 700-800 [9..9] 800-900",
+        "a full-width space in the text counts as one character and belongs to the word after it")
+    same(timing(han, "你好"), "[0..1] 0-500", "a corrected Chinese caption that lost a word")
+    -- A full-width space that is its own timed word (the formatter gives a space of such a script one),
+    -- with a leading space on the first word.
+    local with_space_word = { word(" こ", 0, 0.1), word("ん", 0.1, 0.2), word("に", 0.2, 0.3), word("ち", 0.3, 0.4),
+        word("は", 0.4, 0.5), word("\227\128\128", 0.5, 0.6), word("世", 0.6, 0.7), word("界", 0.7, 0.8) }
+    same(timing(with_space_word, "こんにちは\227\128\128世界"),
+        "[0..0] 0-100 [1..1] 100-200 [2..2] 200-300 [3..3] 300-400 [4..4] 400-500 [5..5] 500-600 [6..6] 600-700 [7..7] 700-800",
+        "a full-width space that is its own timed word takes the space in the text")
+    -- A caption of two lines in a script without spaces: the line break is not in the timed words.
+    local thai_two_lines = { word("ส", 0, 0.25), word("วั", 0.25, 0.5), word("ส", 0.5, 0.75), word("ดี", 0.75, 1),
+        word(" ค", 1, 1.25), word("รั", 1.25, 1.5), word("บ", 1.5, 1.75) }
+    same(timing(thai_two_lines, "สวัสดี\nครับ"),
+        "[0..0] 0-250 [1..2] 250-500 [3..3] 500-750 [4..5] 750-1000 [6..7] 1000-1250 [8..9] 1250-1500 [10..10] 1500-1750",
+        "a Thai caption of two lines keeps one entry per timed word, and the first word of the second line owns the line break")
+    -- The user deleted the space that was its own timed word: that word gets no entry, the others stay on their characters.
+    local space_removed = { word(" こ", 0, 0.1), word("ん", 0.1, 0.2), word("に", 0.2, 0.3), word("ち", 0.3, 0.4), word("は", 0.4, 0.5),
+        word("\227\128\128", 0.5, 0.6), word("世", 0.6, 0.7), word("界", 0.7, 0.8) }
+    same(timing(space_removed, "こんにちは世界"), "[0..0] 0-100 [1..1] 100-200 [2..2] 200-300 [3..3] 300-400 [4..4] 400-500 [5..5] 600-700 [6..6] 700-800",
+        "a timed word that is only whitespace gets no entry when the text has no whitespace for it")
+    -- Timed words without any character get no entry.
+    local empty_words = { word("a", 0, 1), word("", 1, 1), word("", 1, 1), word(" b", 2, 3) }
+    same(timing(empty_words, "a b"), "[0..0] 0-1000 [1..2] 2000-3000", "timed words without characters get no entry")
+    local unspaced = { word("dog", 0, 0.5), word("a", 0.5, 1) }
+    same(timing(unspaced, "a"), "[0..0] 500-1000", "timed words without leading spaces follow the text")
+    -- Spaces in the text, lines, and times that are not numbers.
+    local pair = { word("a", 0, 0.5), word(" b", 0.5, 1) }
+    same(timing(pair, "a  b"), "[0..1] 0-500 [2..3] 500-1000", "with two spaces between words, the first one belongs to the word before it")
+    same(timing(pair, " a b"), "[0..1] 0-500 [2..3] 500-1000", "a text that starts with a space")
+    local lines = { word("We", 0, 0.5), word(" visited", 0.5, 1), word("Paris", 1, 1.5), word(" yesterday.", 1.5, 2) }
+    same(timing(lines, "We visited\nParis yesterday."), "[0..1] 0-500 [2..9] 500-1000 [10..15] 1000-1500 [16..26] 1500-2000", "a caption of two lines")
+    local vanished = { word("a", 0, 1), word("b", 1, 1), word("c", 1, 2) }
+    same(timing(vanished, "a X c"), "[0..0] 0-1000 [1..2] 1000-1500 [3..4] 1500-2000", "a word that replaces a word without time shares the time with its neighbour")
+    local strings = { word("a", "0", "1"), word(" b", "1", "2") }
+    same(timing(strings, "a b c"), "[0..0] 0-1000 [1..2] 1000-1500 [3..4] 1500-2000", "times given as strings")
+    local stuck = { word("a", 1, 1), word(" b", 1, 1), word(" c", 1, 1) }
+    same(#style.word_timing(stuck, 1000, 0, "a b c d"), 4, "every word with the same time gives one entry per word")
+    local ideographic = { word("Hello", 0, 0.4), word("\227\128\128world", 2, 2.4) }
+    same(timing(ideographic, "Hello brave world"), "[0..4] 0-400 [5..10] 400-2000 [11..16] 2000-2400", "a timed word with a leading special space keeps its time")
+
+    -- An empty caption has no word timing.
+    check(#style.word_timing(split, 1000, 0, "") == 0, "an empty caption has no word timing")
+
+    -- AddSubtitles hands the caption's text to word_timing.
+    local comp = make_comp()
+    style.apply(comp, { templateName = "AutoSubs Caption 2026-09-17", text = "core that checks",
+        words = split, start = 21.249 })
+    local applied = comp.tools.AutoSubs:GetData("WordTiming")
+    check(applied[1].startIndex == 0 and applied[2].startIndex == 4 and applied[3].endIndex == 15,
+        "AddSubtitles places words by the caption text", placed(applied))
+end
+
 print(string.format("\n%d passed, %d failed", PASS, FAIL))
 os.exit(FAIL == 0 and 0 or 1)
