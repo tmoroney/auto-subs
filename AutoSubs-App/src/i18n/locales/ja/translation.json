@@ -397,6 +397,12 @@
       "details": "カザフ語、キルギス語、ウズベク語でオープンモデル最高水準の精度、ロシア語にも強い。句読点なしの小文字テキストを出力します。",
       "badge": "多言語"
     },
+    "gigaam_v4_ctc": {
+      "label": "GigaAM v4",
+      "description": "ロシア語と英語",
+      "details": "句読点を付け、大文字・小文字や数字の表記を整えます。",
+      "badge": "ロシア語と英語"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

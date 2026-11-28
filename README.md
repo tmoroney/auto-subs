@@ -168,6 +168,9 @@ Sber's GigaAM v3 (int8 ONNX). A Conformer model trained on 700k hours of Russian
 | Model | Size | RAM | Languages | Accuracy |
 |---|---|---|---|---|
 | gigaam-v3 | 225 MB | 2 GB | Russian, English | ★★★★ |
+| gigaam-v4-ctc | 242 MB | 2 GB | Russian, English | Unrated |
+
+[GigaAM v4 CTC (int8 ONNX)](https://huggingface.co/ai-babai/gigaam-v4-onnx/tree/868283a297ad4a85b73ad06a080950d0e0aec07e/ctc-e2e) is an optional model for Russian and English. It adds punctuation, capitalization and number formatting. Word timings are estimated by default and can be refined with the optional aligner.
 
 GigaAM Multilingual (600M, int8 ONNX) covers Central Asian languages that the other models handle poorly — Whisper large v3 scores 58–110% WER on Kazakh, Kyrgyz and Uzbek. It uses a character-wise CTC head, so unlike GigaAM v3 its output has no punctuation or capitalization.
 
@@ -214,6 +217,8 @@ AutoSubs code is MIT-licensed. The optional MMS forced-alignment weights are dow
 The forced-aligner weights originate from Meta's MMS model, with forced-alignment conversion work by MahmoudAshraf and ONNX/INT8 conversion by [onnx-community](https://huggingface.co/onnx-community/mms-300m-1130-forced-aligner-ONNX). Conversion and quantization changes were made by those respective projects; no endorsement is implied.
 
 While MMS supports over a thousand languages, word-level alignment relies on romanizing the transcript with [uroman](https://github.com/o24s/uroman-rs). uroman covers the major world scripts (Latin, Cyrillic, Arabic, CJK, most Indic scripts, etc.), but very low-resource minority languages whose scripts are not included in its data may produce degraded or missing word timestamps.
+
+The GigaAM team trained the [original GigaAM v4 CTC model](https://huggingface.co/ai-sage/GigaAM-v4/tree/5b81216afa29c8b5a1a3e64c424c8416e18c1e5b). Maksim Popkov converted and packaged the ONNX weights. AutoSubs downloads the [MIT weight license](https://huggingface.co/ai-babai/gigaam-v4-onnx/blob/868283a297ad4a85b73ad06a080950d0e0aec07e/ctc-e2e/LICENSE), the [Apache 2.0 license](https://huggingface.co/ai-babai/gigaam-v4-onnx/blob/868283a297ad4a85b73ad06a080950d0e0aec07e/LICENSE-APACHE-2.0) and the [notice](https://huggingface.co/ai-babai/gigaam-v4-onnx/blob/868283a297ad4a85b73ad06a080950d0e0aec07e/NOTICE) alongside the model.
 
 ## Acknowledgments
 

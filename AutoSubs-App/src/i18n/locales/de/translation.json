@@ -436,6 +436,12 @@
       "details": "Beste offene Qualität für Kasachisch, Kirgisisch und Usbekisch, stark auch bei Russisch. Gibt Kleinbuchstaben ohne Zeichensetzung aus.",
       "badge": "Mehrsprachig"
     },
+    "gigaam_v4_ctc": {
+      "label": "GigaAM v4",
+      "description": "Russisch und Englisch",
+      "details": "Setzt Satzzeichen, Großbuchstaben und formatiert Zahlen.",
+      "badge": "Russisch und Englisch"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

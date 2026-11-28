@@ -397,6 +397,12 @@
       "details": "카자흐어, 키르기스어, 우즈베크어에서 최고 수준의 오픈 모델 정확도를 제공하며 러시아어에도 강합니다. 문장 부호 없는 소문자 텍스트를 출력합니다.",
       "badge": "다국어"
     },
+    "gigaam_v4_ctc": {
+      "label": "GigaAM v4",
+      "description": "러시아어 및 영어",
+      "details": "문장 부호를 넣고 대소문자와 숫자 표기를 정리합니다.",
+      "badge": "러시아어 및 영어"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

@@ -360,6 +360,49 @@
       "ui": {"size": "225MB", "ramMb": 2048, "accuracy": 5, "speed": 5, "image": "arctic-wolf.png", "languageSupport": {"kind": "restricted", "languages": ["ru"]}}
     },
     {
+      "id": "gigaam-v4-ctc",
+      "engine": "gigaam",
+      "quantization": "int8",
+      "source": {
+        "type": "hf",
+        "repo": "ai-babai/gigaam-v4-onnx",
+        "files": [
+          {
+            "path": "ctc-e2e/model.int8.onnx",
+            "dest": "model.int8.onnx",
+            "revision": "868283a297ad4a85b73ad06a080950d0e0aec07e"
+          },
+          {
+            "path": "ctc-e2e/vocab.txt",
+            "dest": "vocab.txt",
+            "revision": "868283a297ad4a85b73ad06a080950d0e0aec07e"
+          },
+          {
+            "path": "ctc-e2e/LICENSE",
+            "dest": "LICENSE-WEIGHTS.txt",
+            "revision": "868283a297ad4a85b73ad06a080950d0e0aec07e"
+          },
+          {
+            "path": "LICENSE-APACHE-2.0",
+            "dest": "LICENSE-APACHE-2.0.txt",
+            "revision": "868283a297ad4a85b73ad06a080950d0e0aec07e"
+          },
+          {
+            "path": "NOTICE",
+            "dest": "NOTICE.txt",
+            "revision": "868283a297ad4a85b73ad06a080950d0e0aec07e"
+          }
+        ]
+      },
+      "ui": {
+        "size": "242MB",
+        "ramMb": 2048,
+        "bestFor": [],
+        "image": "arctic-wolf.png",
+        "languageSupport": { "kind": "restricted", "languages": ["ru", "en"] }
+      }
+    },
+    {
       "id": "gigaam-multilingual",
       "engine": "gigaam",
       "quantization": "int8",

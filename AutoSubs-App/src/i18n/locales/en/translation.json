@@ -440,6 +440,12 @@
       "details": "Best open quality for Kazakh, Kyrgyz and Uzbek, and strong on Russian. Outputs lowercase text without punctuation.",
       "badge": "Multilingual"
     },
+    "gigaam_v4_ctc": {
+      "label": "GigaAM v4",
+      "description": "Russian and English",
+      "details": "Adds punctuation, capitalization and number formatting.",
+      "badge": "Russian and English"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",
