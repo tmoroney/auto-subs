@@ -6,6 +6,9 @@ use tauri::test::{mock_builder, mock_context, noop_assets};
 mod tests {
     use super::*;
 
+    // Both integration fixtures drive the same process-wide transcription API.
+    static TRANSCRIPTION_TEST: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
     #[test]
     fn density_char_limits_profiles() {
         let en = density_char_limits("en".into());
@@ -21,6 +24,7 @@ mod tests {
     // run with cargo test transcribe_audio_smoke -- --nocapture
     #[tokio::test(flavor = "multi_thread")]
     async fn transcribe_audio_smoke() {
+        let _test = TRANSCRIPTION_TEST.lock().await;
         let app = mock_builder()
             .plugin(tauri_plugin_shell::init())
             .build(mock_context(noop_assets()))
@@ -81,6 +85,7 @@ mod tests {
     // run with: cargo test transcribe_audio_with_vad -- --nocapture
     #[tokio::test(flavor = "multi_thread")]
     async fn transcribe_audio_with_vad() {
+        let _test = TRANSCRIPTION_TEST.lock().await;
         let app = mock_builder()
             .plugin(tauri_plugin_shell::init())
             .build(mock_context(noop_assets()))

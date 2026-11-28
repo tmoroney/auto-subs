@@ -25,6 +25,18 @@ pub struct LabeledProgress {
 
 // Global cancellation state (public so main.rs can access it for exit handling)
 pub static SHOULD_CANCEL: Mutex<bool> = Mutex::new(false);
+static ACTIVE_TRANSCRIPTION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+fn begin_transcription_job<'a>(
+    active: &'a tokio::sync::Mutex<()>,
+    cancelled: &Mutex<bool>,
+) -> Result<tokio::sync::MutexGuard<'a, ()>, String> {
+    let job = active.try_lock().map_err(|_| "Transcription already in progress".to_string())?;
+    if let Ok(mut cancelled) = cancelled.lock() {
+        *cancelled = false;
+    }
+    Ok(job)
+}
 
 /// Progress updates waiting to be emitted, oldest first.
 ///
@@ -229,6 +241,7 @@ pub async fn ensure_models<R: Runtime>(
 ) -> Result<EnsureModelsResponse, String> {
     use transcription_engine::Engine;
 
+    let _job = begin_transcription_job(&ACTIVE_TRANSCRIPTION, &SHOULD_CANCEL)?;
     let cache_dir = get_cache_dir(app.clone()).map_err(|e| format!("Failed to get cache directory: {e}"))?;
     let engine = Engine::new(EngineConfig {
         cache_dir,
@@ -285,6 +298,7 @@ pub async fn transcribe_audio<R: Runtime>(
     app: AppHandle<R>,
     options: FrontendTranscribeOptions,
 ) -> Result<Transcript, String> {
+    let _job = begin_transcription_job(&ACTIVE_TRANSCRIPTION, &SHOULD_CANCEL)?;
     let start_time = Instant::now();
     let options_log = TranscribeOptionsLogView::from(&options);
     match serde_json::to_string(&options_log) {
@@ -296,12 +310,8 @@ pub async fn transcribe_audio<R: Runtime>(
         }
     }
 
-    // Reset progress and cancellation state
     if let Ok(mut queue) = PROGRESS_QUEUE.lock() {
         queue.clear();
-    }
-    if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
-        *should_cancel = false;
     }
 
     let emit_app = app.clone();
@@ -908,6 +918,22 @@ pub fn density_char_limits(lang: String) -> DensityCharLimits {
         standard: resolve(TextDensity::Standard),
         more: resolve(TextDensity::More),
     }
+}
+
+#[cfg(test)]
+#[test]
+fn concurrent_job_cannot_clear_cancellation() {
+    let active = tokio::sync::Mutex::new(());
+    let cancelled = Mutex::new(false);
+    let job = begin_transcription_job(&active, &cancelled).unwrap();
+    *cancelled.lock().unwrap() = true;
+
+    assert!(begin_transcription_job(&active, &cancelled).is_err());
+    assert!(*cancelled.lock().unwrap());
+
+    drop(job);
+    let _next = begin_transcription_job(&active, &cancelled).unwrap();
+    assert!(!*cancelled.lock().unwrap());
 }
 
 #[cfg(test)]
