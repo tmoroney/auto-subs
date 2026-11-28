@@ -1,4 +1,4 @@
-use crate::formatting::{CensorStyle, PostProcessConfig, TextCase, TextDensity, process_segments};
+use crate::formatting::{CensorStyle, PostProcessConfig, TextCase, TextDensity, process_segments_until};
 use crate::post_process::vad_snap::{snap_timestamps_to_vad, extract_vad_intervals, VadSnapConfig};
 use crate::types::{Callbacks, DiarizeBackend, LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment};
 use std::path::PathBuf;
@@ -475,6 +475,34 @@ impl Engine {
         content_formatting: Option<ContentFormatting>,
         cb: Option<Callbacks>,
     ) -> eyre::Result<(Vec<Segment>, Vec<Segment>, String)> {
+        let (raw, formatted, language, _) = self
+            .transcribe_audio_with_media_end(
+                audio_path,
+                options,
+                max_lines,
+                density,
+                custom_max_chars_per_line,
+                custom_max_words_per_line,
+                content_formatting,
+                cb,
+            )
+            .await?;
+        Ok((raw, formatted, language))
+    }
+
+    /// Return the media end on the same timeline as the transcript segments.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn transcribe_audio_with_media_end(
+        &mut self,
+        audio_path: &str,
+        options: crate::TranscribeOptions,
+        max_lines: Option<usize>,
+        density: Option<TextDensity>,
+        custom_max_chars_per_line: Option<usize>,
+        custom_max_words_per_line: Option<usize>,
+        content_formatting: Option<ContentFormatting>,
+        cb: Option<Callbacks>,
+    ) -> eyre::Result<(Vec<Segment>, Vec<Segment>, String, f64)> {
         let cb = cb.unwrap_or_default();
         if !std::path::PathBuf::from(audio_path).exists() {
             eyre::bail!("audio file doesn't exist")
@@ -792,7 +820,8 @@ impl Engine {
         if let Some(callback) = cb.progress.as_deref() {
             callback(0, crate::ProgressType::Finish, "progressSteps.finish");
         }
-        let formatted_segments = process_segments(&segments, &pp_cfg);
+        let media_end = user_offset + original_samples.len() as f64 / 16_000.0;
+        let formatted_segments = process_segments_until(&segments, &pp_cfg, media_end);
         if let Some(callback) = cb.progress.as_deref() {
             callback(100, crate::ProgressType::Finish, "progressSteps.finish");
         }
@@ -805,7 +834,7 @@ impl Engine {
             audio_duration_sec / elapsed.as_secs_f64()
         );
 
-        Ok((segments, formatted_segments, output_lang))
+        Ok((segments, formatted_segments, output_lang, media_end))
     }
 
     pub async fn delete_whisper_model(&self, model_name: &str) -> eyre::Result<()> {

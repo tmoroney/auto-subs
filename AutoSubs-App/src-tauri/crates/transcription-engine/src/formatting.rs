@@ -365,6 +365,15 @@ pub fn process_segments(
     segments: &[Segment],
     cfg: &PostProcessConfig,
 ) -> Vec<Segment> {
+    process_segments_until(segments, cfg, f64::INFINITY)
+}
+
+/// Format cues using the media end on the same timeline as the segments.
+pub fn process_segments_until(
+    segments: &[Segment],
+    cfg: &PostProcessConfig,
+    media_end: f64,
+) -> Vec<Segment> {
     // 1) Normalize all engine outputs into real word tokens. Segment text is
     //    tokenized as a fallback for engines that do not provide word data.
     let mut all: Vec<(Option<String>, WordTimestamp, bool)> = Vec::new();
@@ -448,7 +457,7 @@ pub fn process_segments(
             apply_content_formatting(&mut t, cfg, &censor_set);
             segment_from_lines(&[vec![t]], cfg)
         }).collect();
-        schedule_min_duration(&mut cues, cfg.min_sub_dur);
+        schedule_min_duration(&mut cues, cfg.min_sub_dur, media_end);
         return cues;
     }
 
@@ -472,7 +481,7 @@ pub fn process_segments(
 
     // 7) Minimum display duration is a scheduling concern and therefore runs
     //    last, while also clamping any natural overlap between adjacent cues.
-    schedule_min_duration(&mut cues, cfg.min_sub_dur);
+    schedule_min_duration(&mut cues, cfg.min_sub_dur, media_end);
 
     cues
 }
@@ -1017,10 +1026,10 @@ fn segment_from_lines(lines: &[Vec<Tok>], cfg: &PostProcessConfig) -> Segment {
     }
 }
 
-fn schedule_min_duration(cues: &mut [Segment], min_duration: f64) {
+fn schedule_min_duration(cues: &mut [Segment], min_duration: f64, media_end: f64) {
     let min_duration = min_duration.max(0.0);
     for index in 0..cues.len() {
-        let next_start = cues.get(index + 1).map(|cue| cue.start).unwrap_or(f64::MAX);
+        let next_start = cues.get(index + 1).map_or(media_end, |cue| cue.start.min(media_end));
         let desired_end = cues[index].end.max(cues[index].start + min_duration);
         cues[index].end = round3(desired_end.min(next_start).max(cues[index].start));
 
@@ -1444,6 +1453,26 @@ mod tests {
         let cues = process_segments(&[seg], &cfg);
         assert!(cues.len() >= 2, "expected separate cues after terminal punct, got {}: {:?}",
             cues.len(), cues.iter().map(|c| &c.text).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn last_cue_respects_media_end_in_both_layouts() {
+        let speech = Segment {
+            start: 11.9,
+            end: 12.0,
+            text: "Hello".into(),
+            words: None,
+            speaker_id: None,
+        };
+        let mut cfg = PostProcessConfig::latin();
+        for single_word in [false, true] {
+            cfg.single_word = single_word;
+            let segments = std::slice::from_ref(&speech);
+            let at_eof = process_segments_until(segments, &cfg, 12.0);
+            assert_eq!((at_eof[0].start, at_eof[0].end), (11.9, 12.0));
+            let before_silence = process_segments_until(segments, &cfg, 14.0);
+            assert_eq!(before_silence[0].end, 12.9);
+        }
     }
 
     #[test]

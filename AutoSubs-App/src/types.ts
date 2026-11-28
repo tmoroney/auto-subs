@@ -292,6 +292,7 @@ export interface FormattingOptions {
     customMaxCharsPerLine?: number,
     customMaxWordsPerLine?: number,
     language?: string,
+    mediaEnd?: number,
     // Content formatting (applied by Rust backend after structural line wrapping).
     textCase?: "none" | "uppercase" | "lowercase" | "titlecase",
     removePunctuation?: boolean,

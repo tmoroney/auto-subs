@@ -59,6 +59,7 @@ const document: RawTranscriptSource = {
   sourceFilePath: "/Users/me/Movies/interview.mp4",
   language: "en",
   processingTime: 12,
+  mediaEnd: 9.72,
   mark_in: 0,
   mark_out: 9.5,
   segments: [{ ...current, text: "stale cue" }],
@@ -128,6 +129,7 @@ test("raw JSON keeps word timings, edits, and source metadata", () => {
   assert.equal(serialized.endsWith("\n"), true);
   assert.match(serialized, /\n {2}"segments"/);
   const roundTrip = JSON.parse(serialized);
+  assert.equal(roundTrip.mediaEnd, 9.72);
   assert.equal(roundTrip.filename, undefined);
   assert.equal(roundTrip.transcriptId, undefined);
   assert.equal(roundTrip.sourceFilePath, undefined);

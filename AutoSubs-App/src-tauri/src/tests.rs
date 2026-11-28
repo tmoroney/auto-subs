@@ -18,6 +18,54 @@ mod tests {
         assert_eq!((auto.less, auto.standard, auto.more), (en.less, en.standard, en.more));
     }
 
+    #[test]
+    fn reformat_keeps_the_media_end_across_ipc_calls() {
+        use tauri::{
+            WebviewWindowBuilder,
+            ipc::{CallbackFn, InvokeBody},
+            test::{INVOKE_KEY, get_ipc_response},
+            webview::InvokeRequest,
+        };
+        let app = mock_builder()
+            .invoke_handler(tauri::generate_handler![crate::transcription_api::reformat_subtitles])
+            .build(mock_context(noop_assets()))
+            .unwrap();
+        let view = WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .unwrap();
+        let reformat = |segments, options| {
+            get_ipc_response(
+                &view,
+                InvokeRequest {
+                    cmd: "reformat_subtitles".into(),
+                    callback: CallbackFn(0),
+                    error: CallbackFn(1),
+                    url: "tauri://localhost".parse().unwrap(),
+                    body: InvokeBody::Json(serde_json::json!({
+                        "segments": segments, "options": options
+                    })),
+                    headers: Default::default(),
+                    invoke_key: INVOKE_KEY.into(),
+                },
+            )
+            .unwrap()
+            .deserialize::<serde_json::Value>()
+            .unwrap()
+        };
+        let raw = serde_json::json!([{ "start": 41.7, "end": 41.9, "text": "Ending" }]);
+        let prepared = reformat(raw.clone(), serde_json::json!({
+            "mediaEnd": 42.0, "textDensity": "custom", "customMaxCharsPerLine": 100000
+        }));
+        assert_eq!(prepared[0]["end"], 42.0);
+        let displayed = reformat(prepared, serde_json::json!({
+            "mediaEnd": 42.0, "textDensity": "single", "textCase": "uppercase"
+        }));
+        assert_eq!(displayed[0]["text"], "ENDING");
+        assert_eq!(displayed[0]["end"], 42.0);
+        assert_eq!(reformat(raw.clone(), serde_json::json!({"mediaEnd": 43.2}))[0]["end"], 42.7);
+        assert_eq!(reformat(raw, serde_json::json!({}))[0]["end"], 42.7);
+    }
+
     // run with cargo test transcribe_audio_smoke -- --nocapture
     #[tokio::test(flavor = "multi_thread")]
     async fn transcribe_audio_smoke() {

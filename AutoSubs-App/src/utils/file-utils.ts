@@ -51,6 +51,7 @@ export interface StoredSubtitleDocument {
   createdAt: string;
   processingTime?: number;
   language?: string;
+  mediaEnd?: number;
   speakers: Speaker[];
   originalSegments: Subtitle[];
   /** Unformatted source with user corrections, created on the first edited reformat. */
@@ -744,6 +745,7 @@ export async function saveSubtitleDocument(
       createdAt: metadata.createdAt,
       processingTime: transcript.processing_time_sec,
       language: transcript.language,
+      mediaEnd: transcript.mediaEnd,
       metadata,
       timelineId: metadata.timelineId,
       timelineName: metadata.timelineName,
