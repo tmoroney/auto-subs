@@ -56,6 +56,9 @@ pub struct Speaker {
 pub struct Transcript {
     pub processing_time_sec: u64,
     pub language: String,
+    /// End of the decoded audio in the same timeline coordinates as the cues.
+    #[serde(rename = "mediaEnd", skip_serializing_if = "Option::is_none")]
+    pub media_end: Option<f64>,
     /// Fully-formatted segments ready for display (structural line wrapping +
     /// content formatting: case, punctuation removal, censoring).
     pub segments: Vec<Segment>,

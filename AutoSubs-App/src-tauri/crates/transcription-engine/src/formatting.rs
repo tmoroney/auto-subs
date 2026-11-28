@@ -369,7 +369,7 @@ pub fn process_segments(
 }
 
 /// Format cues using the media end on the same timeline as the segments.
-pub(crate) fn process_segments_until(
+pub fn process_segments_until(
     segments: &[Segment],
     cfg: &PostProcessConfig,
     media_end: f64,

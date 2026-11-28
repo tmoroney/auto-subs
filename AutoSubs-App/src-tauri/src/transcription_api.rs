@@ -10,9 +10,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, Runtime, command};
+use transcription_engine::formatting::process_segments_until;
 use transcription_engine::{
     Callbacks, CensorStyle, ContentFormatting, DiarizeBackend, Engine, EngineConfig, LabeledProgressFn, PostProcessConfig, ProgressType, SegmentStage,
-    Segment as WDSegment, TextCase, TextDensity, TranscribeOptions, process_segments,
+    Segment as WDSegment, TextCase, TextDensity, TranscribeOptions,
 };
 
 // Frontend-compatible progress data type
@@ -525,8 +526,8 @@ pub async fn transcribe_audio<R: Runtime>(
         // `raw_segments` preserves the engine's pre-formatting word data (used as
         // `originalSegments` for reformatting). `segments` are fully formatted for display.
         tracing::info!("transcription pipeline started");
-        let (raw_segments, segments, output_language) = engine
-            .transcribe_audio(
+        let (raw_segments, segments, output_language, media_end) = engine
+            .transcribe_audio_with_media_end(
                 &audio_path.to_string_lossy(),
                 transcribe_options,
                 options.max_lines, // max_lines
@@ -596,6 +597,7 @@ pub async fn transcribe_audio<R: Runtime>(
         Ok::<Transcript, String>(Transcript {
             processing_time_sec: 0, // Will be set below
             language: output_language,
+            media_end: Some(media_end + options.offset.unwrap_or(0.0)),
             segments,
             original_segments: app_raw_segments,
             speakers,
@@ -785,6 +787,7 @@ fn aggregate_speakers_from_segments(segments: &[Segment]) -> (Vec<Speaker>, Vec<
 #[serde(rename_all = "camelCase")]
 pub struct FrontendFormattingOptions {
     pub language: Option<String>,
+    pub media_end: Option<f64>,
     pub max_lines: Option<usize>,
     pub text_density: Option<String>,
     pub custom_max_chars_per_line: Option<usize>,
@@ -874,7 +877,8 @@ pub async fn reformat_subtitles(
     config.censor_style = options.censor_style.unwrap_or_default();
 
     // Run the formatting engine
-    let formatted = process_segments(&engine_segments, &config);
+    let media_end = options.media_end.filter(|end| end.is_finite()).unwrap_or(f64::INFINITY);
+    let formatted = process_segments_until(&engine_segments, &config, media_end);
 
     // Convert back to app segments
     let result: Vec<Segment> = formatted

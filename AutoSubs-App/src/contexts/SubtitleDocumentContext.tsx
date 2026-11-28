@@ -279,6 +279,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     // display text with its word tokens to recover manual corrections.
     const normalizedSource = await rustReformatSubtitles(source, {
       language: transcript.language,
+      mediaEnd: transcript.mediaEnd,
       textDensity: 'custom',
       customMaxCharsPerLine: 100000,
       maxLines: 1,
@@ -299,6 +300,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       customMaxCharsPerLine: settings.textDensity === "custom" && settings.customDensityUnit !== "words" ? settings.customMaxCharsPerLine : undefined,
       customMaxWordsPerLine: settings.textDensity === "custom" && settings.customDensityUnit === "words" ? settings.customMaxWordsPerLine : undefined,
       language: transcript.language,
+      mediaEnd: transcript.mediaEnd,
       textCase: settings.textCase,
       removePunctuation: settings.removePunctuation,
       censoredWords: settings.enableCensor ? getActiveCensorWords(settings) : [],

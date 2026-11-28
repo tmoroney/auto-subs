@@ -15,6 +15,7 @@ import type { Speaker, Subtitle } from "@/types";
 export interface RawTranscriptExport {
   language?: string;
   processingTime?: number;
+  mediaEnd?: number;
   speakers: Speaker[];
   segments: Subtitle[];
   originalSegments?: Subtitle[];
@@ -37,6 +38,7 @@ export interface RawTranscriptExportMetadata {
 export interface RawTranscriptSource {
   language?: string;
   processingTime?: number;
+  mediaEnd?: number;
   createdAt?: string;
   speakers?: Speaker[];
   originalSegments?: Subtitle[];
@@ -230,6 +232,7 @@ export function buildRawTranscriptExport(input: {
   const document = input.document ?? undefined;
   const language = cleanString(document?.language);
   const processingTime = cleanNumber(document?.processingTime);
+  const mediaEnd = cleanNumber(document?.mediaEnd);
   const originalSegments = segmentList(document?.originalSegments);
   const editedSegments = segmentList(document?.editedSegments);
   const metadata = pickMetadata(document);
@@ -237,6 +240,7 @@ export function buildRawTranscriptExport(input: {
   return {
     ...(language ? { language } : {}),
     ...(processingTime !== undefined ? { processingTime } : {}),
+    ...(mediaEnd !== undefined ? { mediaEnd } : {}),
     speakers: input.speakers ?? [],
     segments: input.subtitles ?? [],
     ...(originalSegments ? { originalSegments } : {}),
