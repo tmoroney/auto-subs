@@ -1,4 +1,4 @@
-use crate::formatting::{CensorStyle, PostProcessConfig, TextCase, TextDensity, process_segments};
+use crate::formatting::{CensorStyle, PostProcessConfig, TextCase, TextDensity, process_segments_until};
 use crate::post_process::vad_snap::{snap_timestamps_to_vad, extract_vad_intervals, VadSnapConfig};
 use crate::types::{Callbacks, DiarizeBackend, LabeledProgressFn, NewSegmentFn, Segment, SpeechSegment};
 use std::path::PathBuf;
@@ -792,7 +792,7 @@ impl Engine {
         if let Some(callback) = cb.progress.as_deref() {
             callback(0, crate::ProgressType::Finish, "progressSteps.finish");
         }
-        let formatted_segments = process_segments(&segments, &pp_cfg);
+        let formatted_segments = process_segments_until(&segments, &pp_cfg, user_offset + audio_duration_sec);
         if let Some(callback) = cb.progress.as_deref() {
             callback(100, crate::ProgressType::Finish, "progressSteps.finish");
         }
