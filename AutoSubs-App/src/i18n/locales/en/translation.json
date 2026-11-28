@@ -434,6 +434,12 @@
       "details": "Trained on 700k hours of Russian speech, with punctuation and text normalization. The most accurate option for Russian.",
       "badge": "Russian"
     },
+    "gigaam_multilingual_v2": {
+      "label": "GigaAM Multilingual-v2",
+      "description": "21 languages with punctuation",
+      "details": "Includes Bashkir and Tatar. Choose a language or Auto.",
+      "badge": "Multilingual"
+    },
     "gigaam_multilingual": {
       "label": "GigaAM Multilingual",
       "description": "Central Asian & Russian",

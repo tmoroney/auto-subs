@@ -9,7 +9,7 @@ publish = false
 [dependencies]
 whisper-rs = { version = "0.16.0", default-features = false, features = ["tracing_backend"] }
 diarize = { path = "../diarize" }
-transcribe-rs = { version = "0.3.11", features = ["onnx"] }
+transcribe-rs = { version = "0.3.12", features = ["onnx", "gigaam-multilingual-v2"] }
 hf-hub = "0.5.0"
 dirs = "5.0"
 regex = "1"

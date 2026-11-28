@@ -375,6 +375,25 @@
       "ui": {"size": "592MB", "ramMb": 3072, "accuracy": 4, "speed": 4, "bestFor": ["ru", "kk", "ky", "uz"], "image": "snow-leopard.png", "languageSupport": {"kind": "restricted", "languages": ["ru", "kk", "ky", "uz", "en"]}}
     },
     {
+      "id": "gigaam-multilingual-v2",
+      "engine": "gigaam_multilingual_v2",
+      "quantization": "int8",
+      "source": {
+        "type": "hf",
+        "repo": "ai-babai/gigaam-multilingual-v2-onnx",
+        "files": [
+          { "path": "multilingual_v2_rnnt_encoder.int8.onnx", "revision": "2ba2f3882940b11703320abcbf3163b0247a57ef" },
+          { "path": "multilingual_v2_rnnt_advance.onnx", "revision": "2ba2f3882940b11703320abcbf3163b0247a57ef" },
+          { "path": "multilingual_v2_rnnt_e2e_tokenizer.model", "revision": "2ba2f3882940b11703320abcbf3163b0247a57ef" },
+          { "path": "multilingual_v2_rnnt_mel.npz", "revision": "2ba2f3882940b11703320abcbf3163b0247a57ef" },
+          { "path": "LICENSE", "dest": "LICENSE-WEIGHTS.txt", "revision": "2ba2f3882940b11703320abcbf3163b0247a57ef" },
+          { "path": "LICENSE-APACHE-2.0", "dest": "LICENSE-APACHE-2.0.txt", "revision": "2ba2f3882940b11703320abcbf3163b0247a57ef" },
+          { "path": "NOTICE", "dest": "NOTICE.txt", "revision": "2ba2f3882940b11703320abcbf3163b0247a57ef" }
+        ]
+      },
+      "ui": {"size": "811MB", "ramMb": 3072, "accuracy": null, "speed": null, "bestFor": [], "image": "snow-leopard.png", "languageSupport": {"kind": "restricted", "languages": ["ru", "en", "kk", "ky", "uz", "be", "fr", "es", "ba", "ka", "hy", "ro", "tk", "az", "tg", "de", "it", "nl", "pl", "pt", "tt"]}}
+    },
+    {
       "id": "omni-asr-1b-ctc",
       "engine": "omni_asr",
       "quantization": "fp32",

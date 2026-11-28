@@ -30,6 +30,10 @@ autosubs --version
 
 ## Additional Options
 
+### Source language
+
+Use `autosubs clip.wav --model gigaam-multilingual-v2 --lang ba` for a Bashkir hint, `--lang tt` for Tatar, or `--lang auto` to let the model transcribe without a hint.
+
 **Subtitle formatting:**
 - `--density` - Text density: `less`, `standard`, `more`, `single`, or `custom`
 - `--max-lines` - Maximum lines per subtitle

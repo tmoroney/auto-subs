@@ -229,8 +229,7 @@ export function downloadedAuxiliaryModels(
  * Check if a model's engine supports automatic language detection.
  * - Multilingual Whisper: yes (built-in auto-detection)
  * - Single-language models (Whisper .en, Moonshine variants): no
- * - Restricted models: depends on the engine — SenseVoice and Parakeet
- *   support auto; Canary and Cohere do not.
+ * - Restricted models: Parakeet and GigaAM Multilingual-v2 accept Auto.
  */
 export function modelSupportsAutoDetect(model: Model): boolean {
   switch (model.languageSupport.kind) {
@@ -239,7 +238,7 @@ export function modelSupportsAutoDetect(model: Model): boolean {
     case "single_language":
       return false
     case "restricted":
-      return model.engine === "parakeet"
+      return model.engine === "parakeet" || model.engine === "gigaam_multilingual_v2"
     default:
       return true
   }
@@ -250,6 +249,8 @@ export function modelSupportsAutoDetect(model: Model): boolean {
  */
 export function modelSupportsLanguage(model: Model, language: string): boolean {
   if (language === "auto") return modelSupportsAutoDetect(model)
+  // Whisper has no Kyrgyz language token.
+  if (language === "ky" && model.engine === "whisper") return false
 
   switch (model.languageSupport.kind) {
     case "multilingual":

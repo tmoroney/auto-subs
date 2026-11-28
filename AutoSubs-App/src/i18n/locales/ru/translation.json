@@ -422,6 +422,12 @@
       "details": "Понимает контекст и поддерживает перевод, 25 языков.",
       "badge": "Европейские"
     },
+    "gigaam_multilingual_v2": {
+      "label": "GigaAM Multilingual-v2",
+      "description": "21 язык с пунктуацией",
+      "details": "Есть башкирский и татарский. Выбери язык или Авто.",
+      "badge": "Многоязычная"
+    },
     "cohere": {
       "label": "Cohere",
       "description": "Многоязычная (большая)",
