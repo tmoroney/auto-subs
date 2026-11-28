@@ -282,6 +282,7 @@ impl ModelManager {
             }
             MEngine::Canary => ("canary", entry.id.clone()),
             MEngine::Gigaam => ("gigaam", entry.id.clone()),
+            MEngine::GigaamMultilingualV2 => ("gigaam_multilingual_v2", entry.id.clone()),
             MEngine::Cohere => ("cohere", entry.id.clone()),
             MEngine::SenseVoice => ("sense_voice", entry.id.clone()),
             MEngine::Parakeet => ("parakeet", entry.id.clone()),
@@ -1376,6 +1377,12 @@ fn validate_model_file(path: &Path) -> Result<()> {
         // Smallest Whisper model (tiny.en) is ~77 MB; 50 MB catches partial downloads that
         // would otherwise pass the old 100 KB floor and cause a native crash in whisper.cpp.
         50_000_000
+    } else if matches!(
+        stem,
+        "multilingual_v2_rnnt_e2e_tokenizer.model" | "multilingual_v2_rnnt_mel.npz"
+    ) {
+        // These two companion files are roughly 54 KB and 43 KB.
+        10_000
     } else {
         match ext {
             "json" | "txt" => 1,
@@ -1565,6 +1572,24 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir.join("model.onnx")
+    }
+
+    #[test]
+    fn multilingual_v2_accepts_small_companions_without_lowering_onnx_floor() {
+        let onnx_path = temp_dest("multilingual-v2");
+        for (name, size) in [
+            ("multilingual_v2_rnnt_e2e_tokenizer.model", 54_214),
+            ("multilingual_v2_rnnt_mel.npz", 43_014),
+        ] {
+            let path = onnx_path.with_file_name(name);
+            fs::File::create(&path).unwrap().set_len(size).unwrap();
+            assert!(validate_model_file(&path).is_ok());
+            fs::write(&path, []).unwrap();
+            assert!(validate_model_file(&path).is_err());
+        }
+        fs::File::create(&onnx_path).unwrap().set_len(54_214).unwrap();
+        assert!(validate_model_file(&onnx_path).is_err());
+        fs::remove_dir_all(onnx_path.parent().unwrap()).unwrap();
     }
 
     #[tokio::test]

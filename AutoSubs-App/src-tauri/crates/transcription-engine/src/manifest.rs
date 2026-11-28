@@ -127,6 +127,7 @@ pub enum Engine {
     Canary,
     Cohere,
     Gigaam,
+    GigaamMultilingualV2,
     SenseVoice,
     OmniAsr,
 }
@@ -513,6 +514,7 @@ mod tests {
                         | Engine::Canary
                         | Engine::Cohere
                         | Engine::Gigaam
+                        | Engine::GigaamMultilingualV2
                         | Engine::OmniAsr
                 ),
                 "model '{}' uses engine {:?} which has no wrapper yet",

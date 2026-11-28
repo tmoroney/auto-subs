@@ -391,6 +391,12 @@
       "details": "70만 시간의 러시아어 음성으로 학습. 문장 부호와 텍스트 정규화를 지원하는 러시아어에 가장 정확한 모델.",
       "badge": "러시아어"
     },
+    "gigaam_multilingual_v2": {
+      "label": "GigaAM Multilingual-v2",
+      "description": "문장부호가 포함된 21개 언어",
+      "details": "바시키르어와 타타르어를 지원합니다. 언어 지정 또는 자동.",
+      "badge": "다국어"
+    },
     "gigaam_multilingual": {
       "label": "GigaAM Multilingual",
       "description": "중앙아시아 언어 및 러시아어",

@@ -430,6 +430,12 @@
       "details": "Trainiert mit 700.000 Stunden russischer Sprache, mit Zeichensetzung und Textnormalisierung. Die genaueste Option für Russisch.",
       "badge": "Russisch"
     },
+    "gigaam_multilingual_v2": {
+      "label": "GigaAM Multilingual-v2",
+      "description": "21 Sprachen mit Satzzeichen",
+      "details": "Auch Baschkirisch und Tatarisch. Sprachauswahl oder Auto.",
+      "badge": "Mehrsprachig"
+    },
     "gigaam_multilingual": {
       "label": "GigaAM Multilingual",
       "description": "Zentralasiatisch & Russisch",

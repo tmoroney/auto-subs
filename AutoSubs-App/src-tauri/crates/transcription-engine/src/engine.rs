@@ -554,7 +554,11 @@ impl Engine {
 
         // Capture translation options before moving `options` into the pipeline
         let translate_to = options.translate_target.clone();
-        let from_lang = options.lang.clone().unwrap_or_else(|| "auto".to_string());
+        let from_lang = match (engine_kind, options.lang.as_deref().unwrap_or("auto")) {
+            (ModelEngine::GigaamMultilingualV2, "kz") => "kk",
+            (_, language) => language,
+        }
+        .to_owned();
         let use_native = options.use_native_translation.unwrap_or(false);
         let enable_forced_alignment = options.enable_forced_alignment.unwrap_or(false);
         let user_offset = options.offset.unwrap_or(0.0);

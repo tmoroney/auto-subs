@@ -57,6 +57,7 @@ export const languages = [
     { label: "Kazakh", value: "kk" },
     { label: "Khmer", value: "km" },
     { label: "Korean", value: "ko" },
+    { label: "Kyrgyz", value: "ky" },
     { label: "Lao", value: "lo" },
     { label: "Latin", value: "la" },
     { label: "Latvian", value: "lv" },

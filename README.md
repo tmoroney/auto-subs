@@ -175,6 +175,14 @@ GigaAM Multilingual (600M, int8 ONNX) covers Central Asian languages that the ot
 |---|---|---|---|---|
 | gigaam-multilingual | 592 MB | 3 GB | Russian, Kazakh, Kyrgyz, Uzbek, English | ★★★★ |
 
+GigaAM Multilingual-v2 adds formatted subtitles in 21 languages. Select a source language as a hint or choose Auto. Word timings are estimated and can be refined by the optional aligner. [ONNX weights and model card](https://huggingface.co/ai-babai/gigaam-multilingual-v2-onnx/tree/2ba2f3882940b11703320abcbf3163b0247a57ef)
+
+Supported language hints are Armenian (`hy`), Azerbaijani (`az`), Bashkir (`ba`), Belarusian (`be`), Dutch (`nl`), English (`en`), French (`fr`), Georgian (`ka`), German (`de`), Italian (`it`), Kazakh (`kk`), Kyrgyz (`ky`), Polish (`pl`), Portuguese (`pt`), Romanian (`ro`), Russian (`ru`), Spanish (`es`), Tajik (`tg`), Tatar (`tt`), Turkmen (`tk`), and Uzbek (`uz`).
+
+| Model | Size | RAM | Languages | Accuracy |
+|---|---|---|---|---|
+| gigaam-multilingual-v2 | 811 MB | 3 GB | 21, including Bashkir and Tatar | Unrated |
+
 ### Omni-ASR
 
 Meta's Omnilingual ASR (1B CTC, fp32 ONNX). Covers 1600+ languages, making it the fallback for languages no specialist model supports. Output is lowercase with no punctuation.

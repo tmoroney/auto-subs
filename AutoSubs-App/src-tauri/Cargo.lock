@@ -1124,7 +1124,7 @@ dependencies = [
  "knf-rs",
  "ndarray 0.16.1",
  "ndarray 0.17.2",
- "ndarray-npy",
+ "ndarray-npy 0.9.1",
  "ort",
  "realfft",
  "sysinfo",
@@ -3107,6 +3107,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ndarray-npy"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58e8a348bca0075000d999d750420d74434fd0d3e0993b456554f885e7657a11"
+dependencies = [
+ "byteorder",
+ "ndarray 0.17.2",
+ "num-traits",
+ "py_literal",
+ "zip 6.0.0",
+]
+
+[[package]]
 name = "ndk"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4829,6 +4842,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sentencepiece-rs"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6bc4483945bfd66b8727ed59005af1543d3d966ca92f9bc065bfef532de1d7e8"
+
+[[package]]
 name = "serde"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6395,9 +6414,8 @@ dependencies = [
 
 [[package]]
 name = "transcribe-rs"
-version = "0.3.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb9d5cfb8e68a2a8fc27fb548987473221d3cc3776a331ccde46c8bd8b2eda0f"
+version = "0.3.12"
+source = "git+https://github.com/ai-babai/transcribe-rs.git?rev=fa6c78c02d872494c4b4a53056a41322a8f428ed#fa6c78c02d872494c4b4a53056a41322a8f428ed"
 dependencies = [
  "base64 0.22.1",
  "derive_builder",
@@ -6405,10 +6423,12 @@ dependencies = [
  "hound",
  "log",
  "ndarray 0.17.2",
+ "ndarray-npy 0.10.0",
  "once_cell",
  "ort",
  "regex",
  "rustfft",
+ "sentencepiece-rs",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -8187,6 +8207,18 @@ dependencies = [
  "indexmap 2.14.0",
  "memchr",
  "zopfli",
+]
+
+[[package]]
+name = "zip"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb2a05c7c36fde6c09b08576c9f7fb4cda705990f73b58fe011abf7dfb24168b"
+dependencies = [
+ "arbitrary",
+ "crc32fast",
+ "indexmap 2.14.0",
+ "memchr",
 ]
 
 [[package]]

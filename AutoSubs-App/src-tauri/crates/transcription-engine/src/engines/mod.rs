@@ -6,6 +6,7 @@
 //! - **Moonshine**: Useful Sensors' Moonshine via transcribe-rs (ONNX format)
 //! - **SenseVoice**: FunAudioLLM SenseVoice via transcribe-rs (ONNX format)
 //! - **GigaAM**: Sber's Russian GigaAM v3 CTC via transcribe-rs (ONNX format)
+//! - **GigaAM Multilingual-v2**: Sber's multilingual RNN-T via transcribe-rs (ONNX format)
 //! - **OmniAsr**: Facebook Omni-ASR 300M CTC via ORT (ONNX format)
 
 use crate::engine::EngineConfig;
@@ -20,6 +21,7 @@ pub mod onnx;
 pub mod canary;
 pub mod cohere;
 pub mod gigaam;
+mod gigaam_multilingual_v2;
 pub mod moonshine;
 pub mod omni_asr;
 pub mod parakeet;
@@ -154,6 +156,18 @@ pub async fn run_engine(
         }
         ModelEngine::Gigaam => {
             crate::engines::gigaam::transcribe_gigaam(
+                model_path,
+                speech_segments,
+                options,
+                use_gpu,
+                progress,
+                new_segment_callback,
+                abort_callback,
+            )
+            .await
+        }
+        ModelEngine::GigaamMultilingualV2 => {
+            gigaam_multilingual_v2::transcribe(
                 model_path,
                 speech_segments,
                 options,

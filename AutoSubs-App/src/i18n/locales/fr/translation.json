@@ -430,6 +430,12 @@
       "details": "Entraîné sur 700 000 heures de parole russe, avec ponctuation et normalisation du texte. L'option la plus précise pour le russe.",
       "badge": "Russe"
     },
+    "gigaam_multilingual_v2": {
+      "label": "GigaAM Multilingual-v2",
+      "description": "21 langues avec ponctuation",
+      "details": "Inclut le bachkir et le tatar. Choix de la langue ou Auto.",
+      "badge": "Multilingue"
+    },
     "gigaam_multilingual": {
       "label": "GigaAM Multilingual",
       "description": "Asie centrale et russe",
