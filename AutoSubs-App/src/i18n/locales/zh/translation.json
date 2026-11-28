@@ -436,6 +436,12 @@
       "details": "在哈萨克语、吉尔吉斯语和乌兹别克语上具有开源模型的最佳质量，俄语表现也很强。输出不含标点的小写文本。",
       "badge": "多语言"
     },
+    "gigaam_v4_ctc": {
+      "label": "GigaAM v4",
+      "description": "俄语和英语",
+      "details": "自动添加标点、调整大小写并规范数字格式。",
+      "badge": "俄语和英语"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

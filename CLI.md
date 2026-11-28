@@ -28,6 +28,8 @@ autosubs --version
 
 `--model` accepts any AutoSubs model — Whisper sizes (`tiny`…`large-v3`), `parakeet`, or a `moonshine-*` variant. Run `autosubs --list-models` for the full list.
 
+Select GigaAM v4 CTC with `--model gigaam-v4-ctc --lang ru` for Russian or `--lang en` for English.
+
 ## Additional Options
 
 **Subtitle formatting:**

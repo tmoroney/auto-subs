@@ -436,6 +436,12 @@
       "details": "La mejor calidad abierta para kazajo, kirguís y uzbeko, y muy buena en ruso. Devuelve texto en minúsculas sin puntuación.",
       "badge": "Multilingüe"
     },
+    "gigaam_v4_ctc": {
+      "label": "GigaAM v4",
+      "description": "Ruso e inglés",
+      "details": "Añade puntuación, mayúsculas y da formato a los números.",
+      "badge": "Ruso e inglés"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

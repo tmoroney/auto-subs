@@ -436,6 +436,12 @@
       "details": "Meilleure qualité ouverte pour le kazakh, le kirghize et l'ouzbek, et solide en russe. Produit un texte en minuscules sans ponctuation.",
       "badge": "Multilingue"
     },
+    "gigaam_v4_ctc": {
+      "label": "GigaAM v4",
+      "description": "Russe et anglais",
+      "details": "Ponctuation, majuscules et mise en forme des nombres.",
+      "badge": "Russe et anglais"
+    },
     "omni_asr_1b_ctc": {
       "label": "Omni-ASR",
       "description": "On-device Multilingual",

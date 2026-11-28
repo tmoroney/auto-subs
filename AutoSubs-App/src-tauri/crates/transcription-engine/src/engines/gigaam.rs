@@ -31,6 +31,14 @@ impl OnnxEngine for GigaamEngine {
     }
 
     fn transcribe_chunk(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
+        // VAD can fall back to a chunk of digital silence. The v4 CTC graph
+        // may emit a letter for that chunk.
+        if samples.iter().all(|&sample| sample == 0.0) {
+            return Ok(TranscriptionResult {
+                text: String::new(),
+                segments: None,
+            });
+        }
         self.model
             .transcribe_with(samples, &self.params)
             .map_err(|e| eyre!("GigaAM transcription failed: {}", e))
