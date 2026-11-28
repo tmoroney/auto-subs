@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "_comment": "Single source of truth for transcription model download/load metadata. Consumed by the Rust transcription-engine crate (compiled in via include_str!) and the frontend (src/lib/models.ts). To add a model hosted on Hugging Face, add an entry here. Files are listed as a plain string (downloaded by repo path, name kept) or { path, dest } (downloaded then flattened/renamed).",
+  "_comment": "Single source of truth for transcription model download/load metadata. Consumed by the Rust transcription-engine crate (compiled in via include_str!) and the frontend (src/lib/models.ts). To add a model hosted on Hugging Face, add an entry here. Files are listed as a plain string (downloaded by repo path, name kept) or { path, dest } (downloaded then flattened/renamed). Settings store model array indices, so append new models at the end.",
   "_ui_comment": "The `ui` block drives the model picker, and the picker's ordering is derived from it entirely — there is no hand-maintained sort order anywhere. `accuracy` and `speed` are 1-5 (5 = best), or null when unrated; they are the two meters shown per row. `ramMb` is peak memory at load and is a hard constraint, not a preference — a machine below it cannot run the model. `bestFor` lists the languages this model is a *proven strong* choice for, and it promotes the model within its accuracy tier. Omit `bestFor` to derive it from `languageSupport` (a restricted/single-language model is trained on exactly those languages, so its whole set qualifies); set it explicitly to narrow that default, as gigaam-multilingual does to drop `en`. An empty or absent list on a multilingual model means 'unproven, use as fallback' — that is what floats omni-asr to the top for languages nothing else covers well.",
   "models": [
     {
@@ -375,6 +375,17 @@
       "ui": {"size": "592MB", "ramMb": 3072, "accuracy": 4, "speed": 4, "bestFor": ["ru", "kk", "ky", "uz"], "image": "snow-leopard.png", "languageSupport": {"kind": "restricted", "languages": ["ru", "kk", "ky", "uz", "en"]}}
     },
     {
+      "id": "omni-asr-1b-ctc",
+      "engine": "omni_asr",
+      "quantization": "fp32",
+      "source": {
+        "type": "hf",
+        "repo": "csukuangfj2/sherpa-onnx-omnilingual-asr-1600-languages-1B-ctc-v2-2026-02-05",
+        "files": ["model.onnx", "model.weights", "tokens.txt"]
+      },
+      "ui": {"size": "3.7GB", "ramMb": 4096, "accuracy": 3.5, "speed": 2, "image": "lyrebird.png", "languageSupport": {"kind": "multilingual"}}
+    },
+    {
       "id": "gigaam-multilingual-v2",
       "engine": "gigaam_multilingual_v2",
       "quantization": "int8",
@@ -392,17 +403,6 @@
         ]
       },
       "ui": {"size": "811MB", "ramMb": 3072, "accuracy": null, "speed": null, "bestFor": [], "image": "snow-leopard.png", "languageSupport": {"kind": "restricted", "languages": ["ru", "en", "kk", "ky", "uz", "be", "fr", "es", "ba", "ka", "hy", "ro", "tk", "az", "tg", "de", "it", "nl", "pl", "pt", "tt"]}}
-    },
-    {
-      "id": "omni-asr-1b-ctc",
-      "engine": "omni_asr",
-      "quantization": "fp32",
-      "source": {
-        "type": "hf",
-        "repo": "csukuangfj2/sherpa-onnx-omnilingual-asr-1600-languages-1B-ctc-v2-2026-02-05",
-        "files": ["model.onnx", "model.weights", "tokens.txt"]
-      },
-      "ui": {"size": "3.7GB", "ramMb": 4096, "accuracy": 3.5, "speed": 2, "image": "lyrebird.png", "languageSupport": {"kind": "multilingual"}}
     }
   ],
   "_vad_comment": "Voice-activity detection model, auto-downloaded during transcription (not user-selectable).",
