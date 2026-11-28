@@ -25,6 +25,7 @@ sha2 = "0.10"
 futures = "0.3"
 tokio = { version = "1", features = ["time", "macros", "rt-multi-thread", "sync"] }
 tokio-util = "0.7"
+tempfile = "3.9.0"
 unicode-segmentation = "1.11"
 ort = { version = "=2.0.0-rc.12", features = ["ndarray"] }
 ndarray = "0.16"
