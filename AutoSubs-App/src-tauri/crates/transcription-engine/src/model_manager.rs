@@ -577,28 +577,21 @@ impl ModelManager {
             return Ok(dest);
         }
 
-        // Remove any partial/corrupt file left by a previous interrupted attempt.
-        if dest.exists() {
-            let _ = fs::remove_file(&dest);
-        }
-
         if let Some(cb) = progress {
             cb(0, ProgressType::Prepare, "progressSteps.prepare.vad");
         }
 
         match tokio::time::timeout(
             std::time::Duration::from_secs(VAD_TIMEOUT_SECS),
-            download_to(&dest, &vad_url),
+            download_to_with(&dest, &vad_url, is_cancelled, |_, _| {}),
         )
         .await
         {
             Ok(Ok(())) => {}
             Ok(Err(e)) => {
-                let _ = fs::remove_file(&dest);
                 bail!("Failed to download Silero VAD model: {}", e);
             }
             Err(_) => {
-                let _ = fs::remove_file(&dest);
                 bail!(
                     "Timed out downloading Silero VAD model after {}s (network stalled). \
                      Check your connection / proxy / firewall and try again.",
@@ -1360,10 +1353,14 @@ fn resolve_symlink_target(path: &Path) -> Result<PathBuf> {
 
 fn validate_model_file(path: &Path) -> Result<()> {
     let blob_path = resolve_symlink_target(path)?;
+    validate_model_blob(&blob_path, path)
+}
+
+fn validate_model_blob(blob_path: &Path, path: &Path) -> Result<()> {
     if !blob_path.exists() {
         bail!("Model blob target does not exist: {}", blob_path.display());
     }
-    let md = fs::metadata(&blob_path).context("metadata failed")?;
+    let md = fs::metadata(blob_path).context("metadata failed")?;
     // IMPORTANT: use the *snapshot file* extension (the symlink name) to decide the threshold.
     // The resolved blob path in HF caches is typically a hash with no extension.
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
@@ -1388,8 +1385,8 @@ fn validate_model_file(path: &Path) -> Result<()> {
     // This is only a cheap cache/download sanity check. whisper-rs/whisper.cpp
     // remains the authority on whether a model is actually compatible.
 
-    if blob_path.extension().and_then(|e| e.to_str()) == Some("zip") {
-        let file = fs::File::open(&blob_path).context("open failed")?;
+    if ext == "zip" || blob_path.extension().and_then(|e| e.to_str()) == Some("zip") {
+        let file = fs::File::open(blob_path).context("open failed")?;
         let _ = zip::ZipArchive::new(file).context("invalid zip archive")?;
     }
     Ok(())
@@ -1412,11 +1409,7 @@ fn remove_snapshot_file_and_blob(path: &Path) -> Result<()> {
     Ok(())
 }
 
-async fn download_to(dest_path: &Path, url: &str) -> Result<()> {
-    download_to_with(dest_path, url, None, |_, _| {}).await
-}
-
-/// [`download_to`] that can be cancelled mid-transfer, fails after
+/// Download a model with cancellation and progress, failing after
 /// `STALL_TIMEOUT_SECS` without data (a stalled connection otherwise hangs
 /// forever: reqwest has no read timeout), and reports `(bytes_done, total)`.
 async fn download_to_with(
@@ -1426,8 +1419,10 @@ async fn download_to_with(
     mut on_progress: impl FnMut(u64, Option<u64>),
 ) -> Result<()> {
     use futures::StreamExt;
+    use std::io::{ErrorKind, Write};
 
-    if let Some(parent) = dest_path.parent() { fs::create_dir_all(parent).ok(); }
+    let parent = dest_path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new("."));
+    fs::create_dir_all(parent).context("Failed to create model directory")?;
     // Explicit client with a connect timeout so a dead/blocked endpoint fails fast
     // instead of hanging on connection setup. Callers that need a bound on the whole
     // transfer (e.g. ensure_vad_model) wrap this in tokio::time::timeout.
@@ -1439,89 +1434,67 @@ async fn download_to_with(
     if !resp.status().is_success() {
         bail!("Failed to download '{}': status {}", url, resp.status());
     }
-    // Stream to a `.part` temp file in the same directory, then atomically rename
-    // on success. This avoids leaving a partial file at the destination path if the
-    // transfer fails mid-stream — otherwise `list_cached_models` (which only checks
-    // existence for flat-layout models) would mark a half-downloaded model as cached.
-    // The temp file lives in the same directory as the destination, so `fs::rename`
-    // is atomic on the same filesystem across all platforms.
-    let part_path = {
-        let mut name = dest_path.file_name().map(|s| s.to_os_string()).unwrap_or_default();
-        name.push(".part");
-        dest_path.with_file_name(name)
-    };
-
-    // Best-effort cleanup of any stale `.part` file from a previous failed attempt.
-    let _ = fs::remove_file(&part_path);
-
-    let stream_result: Result<()> = async {
-        let mut f = fs::File::create(&part_path).context("Failed to create temp download file")?;
-        let total = resp.content_length();
-        let mut done: u64 = 0;
-        let mut stream = resp.bytes_stream();
-        let mut tick = tokio::time::interval(std::time::Duration::from_millis(250));
-        let mut last_data = Instant::now();
-        loop {
-            // `StreamExt::next` is cancel-safe, so polling it against the ticker
-            // never loses data.
-            tokio::select! {
-                chunk = stream.next() => {
-                    let Some(chunk) = chunk else { break };
-                    let chunk = chunk.context("Failed to read response chunk")?;
-                    std::io::copy(&mut chunk.as_ref(), &mut f).context("Failed to write file")?;
-                    done += chunk.len() as u64;
-                    last_data = Instant::now();
-                    on_progress(done, total);
+    // A competing request may be staging the same model. Each one owns its
+    // temporary file, and only a completed download can reach the cache path.
+    let mut staged = tempfile::Builder::new()
+        .prefix(".autosubs-download-")
+        .suffix(".part")
+        .tempfile_in(parent)
+        .context("Failed to create temp download file")?;
+    let total = resp.content_length();
+    let mut done = 0;
+    let mut stream = resp.bytes_stream();
+    let mut tick = tokio::time::interval(std::time::Duration::from_millis(250));
+    let mut last_data = Instant::now();
+    loop {
+        // StreamExt::next is cancel-safe when polled against the ticker.
+        tokio::select! {
+            chunk = stream.next() => {
+                let Some(chunk) = chunk else { break };
+                let chunk = chunk.context("Failed to read response chunk")?;
+                staged.write_all(&chunk).context("Failed to write file")?;
+                done += chunk.len() as u64;
+                last_data = Instant::now();
+                on_progress(done, total);
+            }
+            _ = tick.tick() => {
+                if is_cancelled.is_some_and(|f| f()) {
+                    bail!("Model download cancelled");
                 }
-                _ = tick.tick() => {
-                    if is_cancelled.is_some_and(|f| f()) {
-                        bail!("Model download cancelled");
-                    }
-                    if last_data.elapsed().as_secs() > STALL_TIMEOUT_SECS {
-                        bail!(
-                            "Timed out downloading '{}': no data for {}s (network stalled). \
-                             Check your connection and try again.",
-                            url,
-                            STALL_TIMEOUT_SECS
-                        );
-                    }
+                if last_data.elapsed().as_secs() > STALL_TIMEOUT_SECS {
+                    bail!(
+                        "Timed out downloading '{}': no data for {}s (network stalled). \
+                         Check your connection and try again.",
+                        url,
+                        STALL_TIMEOUT_SECS
+                    );
                 }
             }
         }
-        f.sync_all().context("Failed to sync download file")?;
-        Ok(())
     }
-    .await;
+    if is_cancelled.is_some_and(|f| f()) {
+        bail!("Model download cancelled");
+    }
+    validate_model_blob(staged.path(), dest_path)
+        .with_context(|| format!("Model validation failed for {}", dest_path.display()))?;
+    staged.as_file().sync_all().context("Failed to sync download file")?;
 
-    match stream_result {
-        Ok(()) => {
-            // On POSIX, `fs::rename` atomically replaces an existing destination.
-            // On Windows, `fs::rename` fails if the destination already exists, which
-            // would block finalization when re-downloading a corrupt or partial
-            // flat-layout model file that `ensure_hf_flat` already detected at
-            // `dest_path` (validation failed → re-download → can't rename over the
-            // bad file). Retry once after removing a pre-existing destination so the
-            // fresh download replaces the corrupt one instead of stranding the user
-            // with a `.part` they can't finalize without manual cleanup.
-            if let Err(e) = fs::rename(&part_path, dest_path) {
-                if dest_path.exists() {
-                    let _ = fs::remove_file(dest_path);
-                    fs::rename(&part_path, dest_path).with_context(|| {
-                        format!("Failed to finalize download to {}", dest_path.display())
-                    })?;
-                } else {
-                    return Err(e).with_context(|| {
-                        format!("Failed to finalize download to {}", dest_path.display())
-                    });
-                }
-            }
-            Ok(())
+    // Keep a completed file published by another request. Repair an invalid
+    // cache entry with an atomic replacement on both Windows and Unix.
+    let published = match staged.persist_noclobber(dest_path) {
+        Err(err)
+            if err.error.kind() == ErrorKind::AlreadyExists
+                && validate_model_file(dest_path).is_err() =>
+        {
+            err.file.persist(dest_path)
         }
-        Err(e) => {
-            // Remove the partial temp file so it isn't mistaken for a complete download.
-            let _ = fs::remove_file(&part_path);
-            Err(e)
-        }
+        result => result,
+    };
+    match published {
+        Ok(_) => Ok(()),
+        Err(_) if validate_model_file(dest_path).is_ok() => Ok(()),
+        Err(err) => Err(err.error)
+            .with_context(|| format!("Failed to finalize download to {}", dest_path.display())),
     }
 }
 
@@ -1537,10 +1510,12 @@ struct SortformerLayout {
 mod tests {
     use super::*;
 
-    /// Serve one HTTP response that sends `first` bytes of a `total`-byte body,
-    /// then either the rest (`finish`) or nothing more while holding the
-    /// connection open, like a stalled CDN transfer.
-    async fn serve_once(total: usize, first: usize, finish: bool) -> String {
+    /// Serve an initial chunk, then wait for permission to send the rest.
+    async fn serve_once(
+        body: Vec<u8>,
+        first: usize,
+        finish: impl std::future::Future<Output = bool> + Send + 'static,
+    ) -> String {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
@@ -1548,42 +1523,36 @@ mod tests {
             let (mut socket, _) = listener.accept().await.unwrap();
             let mut request = [0u8; 1024];
             let _ = socket.read(&mut request).await;
+            let total = body.len();
             let header = format!("HTTP/1.1 200 OK\r\nContent-Length: {total}\r\n\r\n");
             socket.write_all(header.as_bytes()).await.unwrap();
-            socket.write_all(&vec![7u8; first]).await.unwrap();
-            if finish {
-                socket.write_all(&vec![7u8; total - first]).await.unwrap();
-            } else {
-                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            socket.write_all(&body[..first]).await.unwrap();
+            if finish.await {
+                socket.write_all(&body[first..]).await.unwrap();
             }
         });
         format!("http://{addr}/model.onnx")
     }
 
-    fn temp_dest(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("autosubs-dl-{}-{name}", std::process::id()));
-        let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(&dir).unwrap();
-        dir.join("model.onnx")
-    }
-
     #[tokio::test]
     async fn flat_download_reports_progress_and_finalizes() {
-        let url = serve_once(200_000, 50_000, true).await;
-        let dest = temp_dest("ok");
+        let url = serve_once(vec![7; 200_000], 50_000, std::future::ready(true)).await;
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("model.onnx");
         let mut last = (0, None);
         download_to_with(&dest, &url, None, |done, total| last = (done, total))
             .await
             .unwrap();
         assert_eq!(last, (200_000, Some(200_000)));
         assert_eq!(fs::metadata(&dest).unwrap().len(), 200_000);
-        assert!(!dest.with_file_name("model.onnx.part").exists());
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
     }
 
     #[tokio::test]
     async fn flat_download_cancels_while_the_transfer_is_stalled() {
-        let url = serve_once(200_000, 50_000, false).await;
-        let dest = temp_dest("cancel");
+        let url = serve_once(vec![7; 200_000], 50_000, std::future::pending()).await;
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("model.onnx");
         let started = Instant::now();
         let cancelled = move || started.elapsed() > std::time::Duration::from_millis(500);
         let err = download_to_with(&dest, &url, Some(&cancelled), |_, _| {})
@@ -1592,7 +1561,106 @@ mod tests {
         assert!(format!("{err:#}").contains("cancelled"), "{err:#}");
         assert!(started.elapsed() < std::time::Duration::from_secs(5));
         assert!(!dest.exists());
-        assert!(!dest.with_file_name("model.onnx.part").exists());
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
+    }
+
+    #[derive(Clone, Copy)]
+    enum FirstDownload {
+        Valid,
+        Cancelled,
+        Short,
+    }
+
+    async fn check_concurrent_flat_downloads(first: FirstDownload) {
+        use tokio::sync::{Notify, oneshot};
+
+        let (first_size, first_error) = match first {
+            FirstDownload::Valid => (200_000, None),
+            FirstDownload::Cancelled => (200_000, Some("cancelled")),
+            FirstDownload::Short => (50_000, Some("Model blob seems too small")),
+        };
+        let first_body = vec![7; first_size];
+        let second_body = vec![9; 200_000];
+        let (finish_first, finish_first_rx) = oneshot::channel();
+        let (finish_second, finish_second_rx) = oneshot::channel();
+        let first_url = serve_once(first_body.clone(), 10_000, async {
+            finish_first_rx.await.is_ok()
+        }).await;
+        let second_url = serve_once(second_body.clone(), 10_000, async {
+            finish_second_rx.await.is_ok()
+        }).await;
+        let first_progress = Notify::new();
+        let second_progress = Notify::new();
+        let first_finished = Notify::new();
+        let cancelled = AtomicBool::new(false);
+        let is_cancelled = || cancelled.load(Ordering::Relaxed);
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("model.onnx");
+
+        let first_request = async {
+            let result = download_to_with(&dest, &first_url, Some(&is_cancelled), |_, _| {
+                first_progress.notify_one();
+            }).await;
+            first_finished.notify_one();
+            result
+        };
+        let second_request = async {
+            first_progress.notified().await;
+            download_to_with(&dest, &second_url, None, |_, _| second_progress.notify_one()).await
+        };
+        let finish = async {
+            // Both requests have written a partial body and neither may publish yet.
+            second_progress.notified().await;
+            assert!(!dest.exists(), "an unfinished download reached the cache");
+            assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 2);
+            if matches!(first, FirstDownload::Cancelled) {
+                cancelled.store(true, Ordering::Relaxed);
+                first_finished.notified().await;
+                drop(finish_first);
+            } else {
+                finish_first.send(()).unwrap();
+                first_finished.notified().await;
+            }
+
+            if first_error.is_some() {
+                assert!(!dest.exists(), "a failed download reached the cache");
+                assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
+            } else {
+                assert!(fs::read(&dest).unwrap() == first_body, "first download did not publish");
+            }
+            finish_second.send(()).unwrap();
+        };
+
+        let (first_result, second_result, ()) = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            async { tokio::join!(first_request, second_request, finish) },
+        ).await.unwrap();
+        let expected = if let Some(message) = first_error {
+            let err = first_result.unwrap_err();
+            assert!(format!("{err:#}").contains(message), "{err:#}");
+            second_body
+        } else {
+            first_result.unwrap();
+            first_body
+        };
+        second_result.unwrap();
+        assert!(fs::read(&dest).unwrap() == expected, "wrong download was published");
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
+
+    #[tokio::test]
+    async fn concurrent_flat_downloads_preserve_first_published_body() {
+        check_concurrent_flat_downloads(FirstDownload::Valid).await;
+    }
+
+    #[tokio::test]
+    async fn concurrent_flat_download_survives_cancelled_peer() {
+        check_concurrent_flat_downloads(FirstDownload::Cancelled).await;
+    }
+
+    #[tokio::test]
+    async fn concurrent_flat_download_survives_short_peer() {
+        check_concurrent_flat_downloads(FirstDownload::Short).await;
     }
 
     #[test]

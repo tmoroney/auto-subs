@@ -6,7 +6,6 @@ use eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, Runtime, command};
@@ -26,6 +25,18 @@ pub struct LabeledProgress {
 
 // Global cancellation state (public so main.rs can access it for exit handling)
 pub static SHOULD_CANCEL: Mutex<bool> = Mutex::new(false);
+static ACTIVE_TRANSCRIPTION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+fn begin_transcription_job<'a>(
+    active: &'a tokio::sync::Mutex<()>,
+    cancelled: &Mutex<bool>,
+) -> Result<tokio::sync::MutexGuard<'a, ()>, String> {
+    let job = active.try_lock().map_err(|_| "Transcription already in progress".to_string())?;
+    if let Ok(mut cancelled) = cancelled.lock() {
+        *cancelled = false;
+    }
+    Ok(job)
+}
 
 /// Progress updates waiting to be emitted, oldest first.
 ///
@@ -77,8 +88,6 @@ fn flush_progress_queue<R: Runtime>(app: &AppHandle<R>, last_emitted: &mut Optio
         *last_emitted = Some((percent, label));
     }
 }
-
-static NORMALIZED_AUDIO_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 // Utility function for rounding to n decimal places
 fn round_to_places(val: f64, places: u32) -> f64 {
@@ -232,6 +241,7 @@ pub async fn ensure_models<R: Runtime>(
 ) -> Result<EnsureModelsResponse, String> {
     use transcription_engine::Engine;
 
+    let _job = begin_transcription_job(&ACTIVE_TRANSCRIPTION, &SHOULD_CANCEL)?;
     let cache_dir = get_cache_dir(app.clone()).map_err(|e| format!("Failed to get cache directory: {e}"))?;
     let engine = Engine::new(EngineConfig {
         cache_dir,
@@ -288,6 +298,7 @@ pub async fn transcribe_audio<R: Runtime>(
     app: AppHandle<R>,
     options: FrontendTranscribeOptions,
 ) -> Result<Transcript, String> {
+    let _job = begin_transcription_job(&ACTIVE_TRANSCRIPTION, &SHOULD_CANCEL)?;
     let start_time = Instant::now();
     let options_log = TranscribeOptionsLogView::from(&options);
     match serde_json::to_string(&options_log) {
@@ -299,12 +310,8 @@ pub async fn transcribe_audio<R: Runtime>(
         }
     }
 
-    // Reset progress and cancellation state
     if let Ok(mut queue) = PROGRESS_QUEUE.lock() {
         queue.clear();
-    }
-    if let Ok(mut should_cancel) = SHOULD_CANCEL.lock() {
-        *should_cancel = false;
     }
 
     let emit_app = app.clone();
@@ -325,24 +332,6 @@ pub async fn transcribe_audio<R: Runtime>(
         }
     });
 
-    // --- Audio Normalization (only task left in app before passing to crate) ---
-    report_progress(0, ProgressType::Prepare, "progressSteps.prepare.normalize");
-
-    let audio_path = if should_normalize(options.audio_path.clone().into()) {
-        create_normalized_audio(app.clone(), options.audio_path.clone().into(), None)
-            .await
-            .map_err(|e| {
-                tracing::error!("audio normalization failed: {}", e);
-                format!("Failed to normalize audio: {}", e)
-            })?
-    } else {
-        tracing::info!("audio normalization skipped");
-        options.audio_path.clone().into()
-    };
-
-    report_progress(100, ProgressType::Prepare, "progressSteps.prepare.normalize");
-    tracing::debug!("normalized audio path: {}", audio_path.display());
-
     // Clone app handle for segment callback and wrap in Arc for thread-safe sharing
     let segment_emit_app = Arc::new(app.clone());
     let segment_emit_app_clone = Arc::clone(&segment_emit_app);
@@ -353,6 +342,15 @@ pub async fn transcribe_audio<R: Runtime>(
     let enable_alignment_for_log =
         options.enable_forced_alignment.unwrap_or(false) && !options.translate.unwrap_or(false);
     let res = async move {
+        report_progress(0, ProgressType::Prepare, "progressSteps.prepare.normalize");
+        let audio_path = create_normalized_audio(app.clone(), options.audio_path.clone().into())
+            .await
+            .map_err(|e| {
+                tracing::error!("audio normalization failed: {}", e);
+                format!("Failed to normalize audio: {}", e)
+            })?;
+        report_progress(100, ProgressType::Prepare, "progressSteps.prepare.normalize");
+
         // Get the proper cache directory for models
         let cache_dir = get_cache_dir(app.clone())
             .map_err(|e| {
@@ -639,12 +637,6 @@ pub async fn transcribe_audio<R: Runtime>(
     }
 }
 
-/// Always normalize audio to ensure it's mono 16kHz WAV for whisper-diarize-rs
-fn should_normalize(_source: PathBuf) -> bool {
-    true
-}
-
-// This function must now be `async` because it calls the async `normalize` function.
 /// Expand a leading `~` in a file path to the user's home directory.
 /// Windows CMD and PowerShell expand `~` as a path alias only in specific contexts;
 /// Rust's `PathBuf` does not expand it at all, so we must do it explicitly.
@@ -662,31 +654,24 @@ fn expand_tilde(path: PathBuf) -> PathBuf {
     }
 }
 
-pub async fn create_normalized_audio<R: Runtime>(
+/// Normalize audio to a job-owned WAV that is removed when transcription ends.
+async fn create_normalized_audio<R: Runtime>(
     app: AppHandle<R>,
     source: PathBuf,
-    additional_ffmpeg_args: Option<Vec<String>>,
-) -> Result<PathBuf> {
-    // Expand ~ to home directory (Windows doesn't expand tilde natively)
+) -> Result<tempfile::TempPath> {
     let source = expand_tilde(source);
     tracing::info!("audio normalization: start input={}", source.display());
 
-    let path_resolver = app.path();
+    let cache_dir = app.path().app_cache_dir().unwrap_or_else(|_| std::env::temp_dir());
+    std::fs::create_dir_all(&cache_dir)?;
+    let out_path = tempfile::Builder::new()
+        .prefix("normalized_audio-")
+        .suffix(".wav")
+        .tempfile_in(cache_dir)?
+        .into_temp_path();
 
-    let cache_dir = path_resolver
-        .app_cache_dir()
-        .unwrap_or_else(|_| std::env::temp_dir());
-
-    let out_path = if cfg!(test) {
-        let n = NORMALIZED_AUDIO_COUNTER.fetch_add(1, Ordering::Relaxed);
-        cache_dir.join(format!("normalized_audio_{}.wav", n))
-    } else {
-        cache_dir.join("normalized_audio.wav")
-    };
-
-    tracing::info!("Normalizing audio to path: {}", out_path.display());
-
-    audio::normalize(app, source, out_path.clone(), additional_ffmpeg_args)
+    // TempPath keeps the file reserved while letting FFmpeg open it on Windows.
+    audio::normalize(app, source, out_path.to_path_buf(), None)
         .await
         .map_err(|e| eyre::eyre!("Failed to normalize audio: {}", e))?;
 
@@ -933,6 +918,22 @@ pub fn density_char_limits(lang: String) -> DensityCharLimits {
         standard: resolve(TextDensity::Standard),
         more: resolve(TextDensity::More),
     }
+}
+
+#[cfg(test)]
+#[test]
+fn concurrent_job_cannot_clear_cancellation() {
+    let active = tokio::sync::Mutex::new(());
+    let cancelled = Mutex::new(false);
+    let job = begin_transcription_job(&active, &cancelled).unwrap();
+    *cancelled.lock().unwrap() = true;
+
+    assert!(begin_transcription_job(&active, &cancelled).is_err());
+    assert!(*cancelled.lock().unwrap());
+
+    drop(job);
+    let _next = begin_transcription_job(&active, &cancelled).unwrap();
+    assert!(!*cancelled.lock().unwrap());
 }
 
 #[cfg(test)]
